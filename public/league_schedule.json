@@ -1,0 +1,1441 @@
+{
+  "version": "1.0.0",
+  "fileName": "league_schedule.json",
+  "seasonConfig": {
+    "seasonName": "Spring 2026 Metro Youth Soccer Championship",
+    "startDate": "2026-03-28",
+    "endDate": "2026-05-30",
+    "blackoutDates": [
+      "2026-04-05",
+      "2026-05-24"
+    ]
+  },
+  "teamSizes": [
+    {
+      "id": "size-11v11",
+      "name": "11v11 Full",
+      "playersPerSide": 11,
+      "typicalRoster": 18,
+      "description": "Standard FIFA regulation field"
+    },
+    {
+      "id": "size-9v9",
+      "name": "9v9 Intermediate",
+      "playersPerSide": 9,
+      "typicalRoster": 14,
+      "description": "Youth U11-U12 development size"
+    },
+    {
+      "id": "size-7v7",
+      "name": "7v7 Small",
+      "playersPerSide": 7,
+      "typicalRoster": 12,
+      "description": "Youth U9-U10 small-sided pitch"
+    },
+    {
+      "id": "size-5v5",
+      "name": "5v5 Futsal / Micro",
+      "playersPerSide": 5,
+      "typicalRoster": 9,
+      "description": "Indoor hardcourt or turf cage"
+    },
+    {
+      "id": "size-4v4",
+      "name": "4v4 Grassroots",
+      "playersPerSide": 4,
+      "typicalRoster": 7,
+      "description": "U6-U8 development non-goalkeeper"
+    }
+  ],
+  "fields": [
+    {
+      "id": "f1",
+      "name": "Memorial Park - Field 1 (South)",
+      "address": "1400 Olympic Blvd, Los Angeles, CA 90064",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=1400+Olympic+Blvd+Los+Angeles+CA",
+      "assignedDivisionIds": [
+        "div-u12-boys",
+        "div-u14-coed"
+      ],
+      "blackoutDates": [
+        "2026-04-05"
+      ],
+      "size": "11v11 Full",
+      "surfaceType": "Natural Grass",
+      "notes": "Regulation full pitch with floodlights. Parking available on 14th St."
+    },
+    {
+      "id": "f2",
+      "name": "Memorial Park - Field 2 (North)",
+      "address": "1400 Olympic Blvd, Los Angeles, CA 90064",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=1400+Olympic+Blvd+Los+Angeles+CA",
+      "assignedDivisionIds": [
+        "div-u12-boys",
+        "div-u10-girls",
+        "div-u14-coed"
+      ],
+      "blackoutDates": [],
+      "size": "9v9 Intermediate",
+      "surfaceType": "Artificial Turf",
+      "notes": "All-weather synthetic turf. No metal cleats allowed."
+    },
+    {
+      "id": "f3",
+      "name": "Clover Field - Pitch A",
+      "address": "2600 Ocean Park Blvd, Santa Monica, CA 90405",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=2600+Ocean+Park+Blvd+Santa+Monica+CA",
+      "assignedDivisionIds": [
+        "div-u10-girls"
+      ],
+      "blackoutDates": [
+        "2026-04-18"
+      ],
+      "size": "7v7 Small",
+      "surfaceType": "Natural Grass",
+      "notes": "Well maintained Bermuda grass, shaded spectator bleachers."
+    },
+    {
+      "id": "f4",
+      "name": "Clover Field - Pitch B",
+      "address": "2600 Ocean Park Blvd, Santa Monica, CA 90405",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=2600+Ocean+Park+Blvd+Santa+Monica+CA",
+      "assignedDivisionIds": [
+        "div-u10-girls",
+        "div-u12-boys"
+      ],
+      "blackoutDates": [],
+      "size": "7v7 Small",
+      "surfaceType": "Natural Grass",
+      "notes": "Adjacent to playground. Restrooms and hydration station nearby."
+    },
+    {
+      "id": "f5",
+      "name": "Westside Sports Complex - Stadium Field",
+      "address": "11300 Wilshire Blvd, Los Angeles, CA 90025",
+      "googleMapsUrl": "https://www.google.com/maps/search/?api=1&query=11300+Wilshire+Blvd+Los+Angeles+CA",
+      "assignedDivisionIds": [
+        "div-u14-coed",
+        "div-u12-boys"
+      ],
+      "blackoutDates": [
+        "2026-05-25"
+      ],
+      "size": "11v11 Full",
+      "surfaceType": "Artificial Turf",
+      "notes": "Scoreboard equipped, locker facilities open on match days."
+    }
+  ],
+  "divisions": [
+    {
+      "id": "div-u12-boys",
+      "name": "U12 Boys Premier",
+      "playDays": [
+        6
+      ],
+      "playTimeSlots": [
+        "09:00",
+        "10:30",
+        "12:00",
+        "13:30"
+      ],
+      "fieldIds": [
+        "f1",
+        "f2",
+        "f5"
+      ],
+      "matchDurationMinutes": 70,
+      "colorTheme": "blue"
+    },
+    {
+      "id": "div-u10-girls",
+      "name": "U10 Girls Classic",
+      "playDays": [
+        6,
+        0
+      ],
+      "playTimeSlots": [
+        "09:00",
+        "10:15",
+        "11:30"
+      ],
+      "fieldIds": [
+        "f2",
+        "f3",
+        "f4"
+      ],
+      "matchDurationMinutes": 50,
+      "colorTheme": "emerald"
+    },
+    {
+      "id": "div-u14-coed",
+      "name": "U14 Coed Metro",
+      "playDays": [
+        0
+      ],
+      "playTimeSlots": [
+        "11:00",
+        "13:00",
+        "15:00"
+      ],
+      "fieldIds": [
+        "f1",
+        "f5"
+      ],
+      "matchDurationMinutes": 80,
+      "colorTheme": "purple"
+    }
+  ],
+  "teams": [
+    {
+      "id": "t-u12-1",
+      "name": "Pacific Strikers",
+      "divisionId": "div-u12-boys",
+      "sizeId": "size-9v9",
+      "primaryHomeFieldId": "f1",
+      "alternateHomeFieldIds": [
+        "f2",
+        "f5"
+      ],
+      "notes": "Coach: Marco Rossi. Cell: (310) 555-0144. Email: coach.rossi@strikers.org. Primary jersey: Royal Blue.",
+      "contactName": "Marco Rossi",
+      "contactPhone": "(310) 555-0144",
+      "contactEmail": "coach.rossi@strikers.org",
+      "jerseyColor": "Royal Blue"
+    },
+    {
+      "id": "t-u12-2",
+      "name": "Canyon Rapids",
+      "divisionId": "div-u12-boys",
+      "sizeId": "size-9v9",
+      "primaryHomeFieldId": "f2",
+      "alternateHomeFieldIds": [
+        "f1",
+        "f5"
+      ],
+      "notes": "Coach: Sarah Jenkins. Cell: (310) 555-0189. Email: sjenkins@rapidsfc.com. Primary jersey: Teal / Black.",
+      "contactName": "Sarah Jenkins",
+      "contactPhone": "(310) 555-0189",
+      "contactEmail": "sjenkins@rapidsfc.com",
+      "jerseyColor": "Teal & Black"
+    },
+    {
+      "id": "t-u12-3",
+      "name": "Bay City Storm",
+      "divisionId": "div-u12-boys",
+      "sizeId": "size-9v9",
+      "primaryHomeFieldId": "f5",
+      "alternateHomeFieldIds": [
+        "f1"
+      ],
+      "notes": "Coach: David Chen. Cell: (213) 555-0192. Email: dchen@baycitystorm.net. Primary jersey: Red / White.",
+      "contactName": "David Chen",
+      "contactPhone": "(213) 555-0192",
+      "contactEmail": "dchen@baycitystorm.net",
+      "jerseyColor": "Red & White"
+    },
+    {
+      "id": "t-u12-4",
+      "name": "Harbor Sounders",
+      "divisionId": "div-u12-boys",
+      "sizeId": "size-9v9",
+      "primaryHomeFieldId": "f1",
+      "alternateHomeFieldIds": [
+        "f5",
+        "f2"
+      ],
+      "notes": "Coach: Elena Alvarez. Cell: (310) 555-0131. Email: elena@harborsoccer.org. Primary jersey: Gold / Navy.",
+      "contactName": "Elena Alvarez",
+      "contactPhone": "(310) 555-0131",
+      "contactEmail": "elena@harborsoccer.org",
+      "jerseyColor": "Gold & Navy"
+    },
+    {
+      "id": "t-u10-1",
+      "name": "Wildcats SC",
+      "divisionId": "div-u10-girls",
+      "sizeId": "size-7v7",
+      "primaryHomeFieldId": "f3",
+      "alternateHomeFieldIds": [
+        "f4",
+        "f2"
+      ],
+      "notes": "Coach: Tyler Vance. Cell: (424) 555-0118. Email: tvance@wildcats.org. Primary jersey: Purple.",
+      "contactName": "Tyler Vance",
+      "contactPhone": "(424) 555-0118",
+      "contactEmail": "tvance@wildcats.org",
+      "jerseyColor": "Purple"
+    },
+    {
+      "id": "t-u10-2",
+      "name": "Thunderbolts",
+      "divisionId": "div-u10-girls",
+      "sizeId": "size-7v7",
+      "primaryHomeFieldId": "f4",
+      "alternateHomeFieldIds": [
+        "f3"
+      ],
+      "notes": "Coach: Jessica Morales. Cell: (310) 555-0177. Email: jessica@thunderboltsfc.com. Primary jersey: Yellow / Black.",
+      "contactName": "Jessica Morales",
+      "contactPhone": "(310) 555-0177",
+      "contactEmail": "jessica@thunderboltsfc.com",
+      "jerseyColor": "Yellow & Black"
+    },
+    {
+      "id": "t-u10-3",
+      "name": "Ocean Breeze",
+      "divisionId": "div-u10-girls",
+      "sizeId": "size-7v7",
+      "primaryHomeFieldId": "f3",
+      "alternateHomeFieldIds": [
+        "f4",
+        "f2"
+      ],
+      "notes": "Coach: Brian O'Connor. Cell: (310) 555-0164. Email: boconnor@oceanbreeze.org. Primary jersey: Sky Blue.",
+      "contactName": "Brian O'Connor",
+      "contactPhone": "(310) 555-0164",
+      "contactEmail": "boconnor@oceanbreeze.org",
+      "jerseyColor": "Sky Blue"
+    },
+    {
+      "id": "t-u10-4",
+      "name": "Solar Flare",
+      "divisionId": "div-u10-girls",
+      "sizeId": "size-7v7",
+      "primaryHomeFieldId": "f4",
+      "alternateHomeFieldIds": [
+        "f2"
+      ],
+      "notes": "Coach: Angela Wu. Cell: (213) 555-0155. Email: angela.wu@solarflare.com. Primary jersey: Orange.",
+      "contactName": "Angela Wu",
+      "contactPhone": "(213) 555-0155",
+      "contactEmail": "angela.wu@solarflare.com",
+      "jerseyColor": "Orange"
+    },
+    {
+      "id": "t-u10-5",
+      "name": "Coastal Stars",
+      "divisionId": "div-u10-girls",
+      "sizeId": "size-7v7",
+      "primaryHomeFieldId": "f2",
+      "alternateHomeFieldIds": [
+        "f3",
+        "f4"
+      ],
+      "notes": "Coach: Marcus Reed. Cell: (310) 555-0123. Email: mreed@coastalstars.org. Primary jersey: Forest Green.",
+      "contactName": "Marcus Reed",
+      "contactPhone": "(310) 555-0123",
+      "contactEmail": "mreed@coastalstars.org",
+      "jerseyColor": "Forest Green"
+    },
+    {
+      "id": "t-u14-1",
+      "name": "Metropolitan United",
+      "divisionId": "div-u14-coed",
+      "sizeId": "size-11v11",
+      "primaryHomeFieldId": "f5",
+      "alternateHomeFieldIds": [
+        "f1"
+      ],
+      "notes": "Coach: Alex Becker. Cell: (310) 555-0199. Email: abecker@metrounited.org. Primary jersey: Crimson.",
+      "contactName": "Alex Becker",
+      "contactPhone": "(310) 555-0199",
+      "contactEmail": "abecker@metrounited.org",
+      "jerseyColor": "Crimson"
+    },
+    {
+      "id": "t-u14-2",
+      "name": "Apex Academy",
+      "divisionId": "div-u14-coed",
+      "sizeId": "size-11v11",
+      "primaryHomeFieldId": "f1",
+      "alternateHomeFieldIds": [
+        "f5"
+      ],
+      "notes": "Coach: Rachel Kim. Cell: (213) 555-0112. Email: rkim@apexacademyfc.com. Primary jersey: Navy / Silver.",
+      "contactName": "Rachel Kim",
+      "contactPhone": "(213) 555-0112",
+      "contactEmail": "rkim@apexacademyfc.com",
+      "jerseyColor": "Navy & Silver"
+    },
+    {
+      "id": "t-u14-3",
+      "name": "Silverlake Rovers",
+      "divisionId": "div-u14-coed",
+      "sizeId": "size-11v11",
+      "primaryHomeFieldId": "f5",
+      "alternateHomeFieldIds": [
+        "f1"
+      ],
+      "notes": "Coach: Kenneth Price. Cell: (310) 555-0145. Email: ken.price@roversfc.org. Primary jersey: Black / White.",
+      "contactName": "Kenneth Price",
+      "contactPhone": "(310) 555-0145",
+      "contactEmail": "ken.price@roversfc.org",
+      "jerseyColor": "Black & White"
+    },
+    {
+      "id": "t-u14-4",
+      "name": "Westside Alliance",
+      "divisionId": "div-u14-coed",
+      "sizeId": "size-11v11",
+      "primaryHomeFieldId": "f1",
+      "alternateHomeFieldIds": [
+        "f5"
+      ],
+      "notes": "Coach: Carlos Mendoza. Cell: (424) 555-0182. Email: cmendoza@westsidealliance.org. Primary jersey: White / Green.",
+      "contactName": "Carlos Mendoza",
+      "contactPhone": "(424) 555-0182",
+      "contactEmail": "cmendoza@westsidealliance.org",
+      "jerseyColor": "White & Green"
+    },
+    {
+      "id": "bye-div-u10-girls",
+      "name": "Bye",
+      "divisionId": "div-u10-girls",
+      "sizeId": "size-7v7",
+      "primaryHomeFieldId": "",
+      "alternateHomeFieldIds": [],
+      "notes": "Automated bye slot. Opponent holds dedicated home practice game.",
+      "isBye": true
+    }
+  ],
+  "games": [
+    {
+      "id": "g-div-u12-boys-r1-m1-20260328",
+      "divisionId": "div-u12-boys",
+      "date": "2026-03-28",
+      "time": "09:00",
+      "fieldId": "f1",
+      "homeTeamId": "t-u12-1",
+      "awayTeamId": "t-u12-4",
+      "isByePractice": false,
+      "roundNumber": 1,
+      "status": "scheduled"
+    },
+    {
+      "id": "g-div-u12-boys-r1-m2-20260328",
+      "divisionId": "div-u12-boys",
+      "date": "2026-03-28",
+      "time": "09:00",
+      "fieldId": "f5",
+      "homeTeamId": "t-u12-3",
+      "awayTeamId": "t-u12-2",
+      "isByePractice": false,
+      "roundNumber": 1,
+      "status": "scheduled"
+    },
+    {
+      "id": "g-div-u10-girls-r1-m1-20260328",
+      "divisionId": "div-u10-girls",
+      "date": "2026-03-28",
+      "time": "09:00",
+      "fieldId": "f3",
+      "homeTeamId": "t-u10-1",
+      "awayTeamId": "bye-div-u10-girls",
+      "isByePractice": true,
+      "roundNumber": 1,
+      "status": "scheduled",
+      "notes": "Bye Practice Session on home / alternate pitch for Wildcats SC"
+    },
+    {
+      "id": "g-div-u10-girls-r1-m2-20260328",
+      "divisionId": "div-u10-girls",
+      "date": "2026-03-28",
+      "time": "09:00",
+      "fieldId": "f2",
+      "homeTeamId": "t-u10-5",
+      "awayTeamId": "t-u10-2",
+      "isByePractice": false,
+      "roundNumber": 1,
+      "status": "scheduled"
+    },
+    {
+      "id": "g-div-u10-girls-r1-m3-20260328",
+      "divisionId": "div-u10-girls",
+      "date": "2026-03-28",
+      "time": "09:00",
+      "fieldId": "f4",
+      "homeTeamId": "t-u10-3",
+      "awayTeamId": "t-u10-4",
+      "isByePractice": false,
+      "roundNumber": 1,
+      "status": "scheduled"
+    },
+    {
+      "id": "g-div-u10-girls-r2-m1-20260329",
+      "divisionId": "div-u10-girls",
+      "date": "2026-03-29",
+      "time": "09:00",
+      "fieldId": "f2",
+      "homeTeamId": "t-u10-5",
+      "awayTeamId": "t-u10-1",
+      "isByePractice": false,
+      "roundNumber": 2,
+      "status": "scheduled"
+    },
+    {
+      "id": "g-div-u10-girls-r2-m2-20260329",
+      "divisionId": "div-u10-girls",
+      "date": "2026-03-29",
+      "time": "09:00",
+      "fieldId": "f4",
+      "homeTeamId": "t-u10-4",
+      "awayTeamId": "bye-div-u10-girls",
+      "isByePractice": true,
+      "roundNumber": 2,
+      "status": "scheduled",
+      "notes": "Bye Practice Session on home / alternate pitch for Solar Flare"
+    },
+    {
+      "id": "g-div-u10-girls-r2-m3-20260329",
+      "divisionId": "div-u10-girls",
+      "date": "2026-03-29",
+      "time": "09:00",
+      "fieldId": "f3",
+      "homeTeamId": "t-u10-3",
+      "awayTeamId": "t-u10-2",
+      "isByePractice": false,
+      "roundNumber": 2,
+      "status": "scheduled"
+    },
+    {
+      "id": "g-div-u14-coed-r1-m1-20260329",
+      "divisionId": "div-u14-coed",
+      "date": "2026-03-29",
+      "time": "11:00",
+      "fieldId": "f5",
+      "homeTeamId": "t-u14-1",
+      "awayTeamId": "t-u14-4",
+      "isByePractice": false,
+      "roundNumber": 1,
+      "status": "scheduled"
+    },
+    {
+      "id": "g-div-u14-coed-r1-m2-20260329",
+      "divisionId": "div-u14-coed",
+      "date": "2026-03-29",
+      "time": "11:00",
+      "fieldId": "f1",
+      "homeTeamId": "t-u14-3",
+      "awayTeamId": "t-u14-2",
+      "isByePractice": false,
+      "roundNumber": 1,
+      "status": "scheduled"
+    },
+    {
+      "id": "g-div-u12-boys-r2-m1-20260404",
+      "divisionId": "div-u12-boys",
+      "date": "2026-04-04",
+      "time": "09:00",
+      "fieldId": "f5",
+      "homeTeamId": "t-u12-3",
+      "awayTeamId": "t-u12-1",
+      "isByePractice": false,
+      "roundNumber": 2,
+      "status": "scheduled"
+    },
+    {
+      "id": "g-div-u12-boys-r2-m2-20260404",
+      "divisionId": "div-u12-boys",
+      "date": "2026-04-04",
+      "time": "09:00",
+      "fieldId": "f1",
+      "homeTeamId": "t-u12-4",
+      "awayTeamId": "t-u12-2",
+      "isByePractice": false,
+      "roundNumber": 2,
+      "status": "scheduled"
+    },
+    {
+      "id": "g-div-u10-girls-r3-m1-20260404",
+      "divisionId": "div-u10-girls",
+      "date": "2026-04-04",
+      "time": "09:00",
+      "fieldId": "f3",
+      "homeTeamId": "t-u10-1",
+      "awayTeamId": "t-u10-4",
+      "isByePractice": false,
+      "roundNumber": 3,
+      "status": "scheduled"
+    },
+    {
+      "id": "g-div-u10-girls-r3-m2-20260404",
+      "divisionId": "div-u10-girls",
+      "date": "2026-04-04",
+      "time": "09:00",
+      "fieldId": "f4",
+      "homeTeamId": "t-u10-3",
+      "awayTeamId": "t-u10-5",
+      "isByePractice": false,
+      "roundNumber": 3,
+      "status": "scheduled"
+    },
+    {
+      "id": "g-div-u10-girls-r3-m3-20260404",
+      "divisionId": "div-u10-girls",
+      "date": "2026-04-04",
+      "time": "09:00",
+      "fieldId": "f2",
+      "homeTeamId": "t-u10-2",
+      "awayTeamId": "bye-div-u10-girls",
+      "isByePractice": true,
+      "roundNumber": 3,
+      "status": "scheduled",
+      "notes": "Bye Practice Session on home / alternate pitch for Thunderbolts"
+    },
+    {
+      "id": "g-div-u12-boys-r3-m1-20260411",
+      "divisionId": "div-u12-boys",
+      "date": "2026-04-11",
+      "time": "09:00",
+      "fieldId": "f1",
+      "homeTeamId": "t-u12-1",
+      "awayTeamId": "t-u12-2",
+      "isByePractice": false,
+      "roundNumber": 3,
+      "status": "scheduled"
+    },
+    {
+      "id": "g-div-u12-boys-r3-m2-20260411",
+      "divisionId": "div-u12-boys",
+      "date": "2026-04-11",
+      "time": "09:00",
+      "fieldId": "f5",
+      "homeTeamId": "t-u12-4",
+      "awayTeamId": "t-u12-3",
+      "isByePractice": false,
+      "roundNumber": 3,
+      "status": "scheduled"
+    },
+    {
+      "id": "g-div-u10-girls-r4-m1-20260411",
+      "divisionId": "div-u10-girls",
+      "date": "2026-04-11",
+      "time": "09:00",
+      "fieldId": "f3",
+      "homeTeamId": "t-u10-3",
+      "awayTeamId": "t-u10-1",
+      "isByePractice": false,
+      "roundNumber": 4,
+      "status": "scheduled"
+    },
+    {
+      "id": "g-div-u10-girls-r4-m2-20260411",
+      "divisionId": "div-u10-girls",
+      "date": "2026-04-11",
+      "time": "09:00",
+      "fieldId": "f4",
+      "homeTeamId": "t-u10-4",
+      "awayTeamId": "t-u10-2",
+      "isByePractice": false,
+      "roundNumber": 4,
+      "status": "scheduled"
+    },
+    {
+      "id": "g-div-u10-girls-r4-m3-20260411",
+      "divisionId": "div-u10-girls",
+      "date": "2026-04-11",
+      "time": "09:00",
+      "fieldId": "f2",
+      "homeTeamId": "t-u10-5",
+      "awayTeamId": "bye-div-u10-girls",
+      "isByePractice": true,
+      "roundNumber": 4,
+      "status": "scheduled",
+      "notes": "Bye Practice Session on home / alternate pitch for Coastal Stars"
+    },
+    {
+      "id": "g-div-u10-girls-r5-m1-20260412",
+      "divisionId": "div-u10-girls",
+      "date": "2026-04-12",
+      "time": "09:00",
+      "fieldId": "f3",
+      "homeTeamId": "t-u10-1",
+      "awayTeamId": "t-u10-2",
+      "isByePractice": false,
+      "roundNumber": 5,
+      "status": "scheduled"
+    },
+    {
+      "id": "g-div-u10-girls-r5-m2-20260412",
+      "divisionId": "div-u10-girls",
+      "date": "2026-04-12",
+      "time": "09:00",
+      "fieldId": "f4",
+      "homeTeamId": "t-u10-3",
+      "awayTeamId": "bye-div-u10-girls",
+      "isByePractice": true,
+      "roundNumber": 5,
+      "status": "scheduled",
+      "notes": "Bye Practice Session on home / alternate pitch for Ocean Breeze"
+    },
+    {
+      "id": "g-div-u10-girls-r5-m3-20260412",
+      "divisionId": "div-u10-girls",
+      "date": "2026-04-12",
+      "time": "09:00",
+      "fieldId": "f2",
+      "homeTeamId": "t-u10-4",
+      "awayTeamId": "t-u10-5",
+      "isByePractice": false,
+      "roundNumber": 5,
+      "status": "scheduled"
+    },
+    {
+      "id": "g-div-u14-coed-r2-m1-20260412",
+      "divisionId": "div-u14-coed",
+      "date": "2026-04-12",
+      "time": "11:00",
+      "fieldId": "f5",
+      "homeTeamId": "t-u14-3",
+      "awayTeamId": "t-u14-1",
+      "isByePractice": false,
+      "roundNumber": 2,
+      "status": "scheduled"
+    },
+    {
+      "id": "g-div-u14-coed-r2-m2-20260412",
+      "divisionId": "div-u14-coed",
+      "date": "2026-04-12",
+      "time": "11:00",
+      "fieldId": "f1",
+      "homeTeamId": "t-u14-4",
+      "awayTeamId": "t-u14-2",
+      "isByePractice": false,
+      "roundNumber": 2,
+      "status": "scheduled"
+    },
+    {
+      "id": "g-div-u12-boys-r4-m1-20260418",
+      "divisionId": "div-u12-boys",
+      "date": "2026-04-18",
+      "time": "09:00",
+      "fieldId": "f1",
+      "homeTeamId": "t-u12-4",
+      "awayTeamId": "t-u12-1",
+      "isByePractice": false,
+      "roundNumber": 4,
+      "status": "scheduled"
+    },
+    {
+      "id": "g-div-u12-boys-r4-m2-20260418",
+      "divisionId": "div-u12-boys",
+      "date": "2026-04-18",
+      "time": "09:00",
+      "fieldId": "f2",
+      "homeTeamId": "t-u12-2",
+      "awayTeamId": "t-u12-3",
+      "isByePractice": false,
+      "roundNumber": 4,
+      "status": "scheduled"
+    },
+    {
+      "id": "g-div-u10-girls-r6-m1-20260418",
+      "divisionId": "div-u10-girls",
+      "date": "2026-04-18",
+      "time": "09:00",
+      "fieldId": "f4",
+      "homeTeamId": "t-u10-1",
+      "awayTeamId": "bye-div-u10-girls",
+      "isByePractice": true,
+      "roundNumber": 6,
+      "status": "scheduled",
+      "notes": "Bye Practice Session on home / alternate pitch for Wildcats SC"
+    },
+    {
+      "id": "g-div-u10-girls-r6-m2-20260418",
+      "divisionId": "div-u10-girls",
+      "date": "2026-04-18",
+      "time": "10:15",
+      "fieldId": "f4",
+      "homeTeamId": "t-u10-2",
+      "awayTeamId": "t-u10-5",
+      "isByePractice": false,
+      "roundNumber": 6,
+      "status": "scheduled"
+    },
+    {
+      "id": "g-div-u10-girls-r6-m3-20260418",
+      "divisionId": "div-u10-girls",
+      "date": "2026-04-18",
+      "time": "10:15",
+      "fieldId": "f2",
+      "homeTeamId": "t-u10-4",
+      "awayTeamId": "t-u10-3",
+      "isByePractice": false,
+      "roundNumber": 6,
+      "status": "scheduled"
+    },
+    {
+      "id": "g-div-u10-girls-r7-m1-20260419",
+      "divisionId": "div-u10-girls",
+      "date": "2026-04-19",
+      "time": "09:00",
+      "fieldId": "f3",
+      "homeTeamId": "t-u10-1",
+      "awayTeamId": "t-u10-5",
+      "isByePractice": false,
+      "roundNumber": 7,
+      "status": "scheduled"
+    },
+    {
+      "id": "g-div-u10-girls-r7-m2-20260419",
+      "divisionId": "div-u10-girls",
+      "date": "2026-04-19",
+      "time": "09:00",
+      "fieldId": "f4",
+      "homeTeamId": "t-u10-4",
+      "awayTeamId": "bye-div-u10-girls",
+      "isByePractice": true,
+      "roundNumber": 7,
+      "status": "scheduled",
+      "notes": "Bye Practice Session on home / alternate pitch for Solar Flare"
+    },
+    {
+      "id": "g-div-u10-girls-r7-m3-20260419",
+      "divisionId": "div-u10-girls",
+      "date": "2026-04-19",
+      "time": "09:00",
+      "fieldId": "f2",
+      "homeTeamId": "t-u10-2",
+      "awayTeamId": "t-u10-3",
+      "isByePractice": false,
+      "roundNumber": 7,
+      "status": "scheduled"
+    },
+    {
+      "id": "g-div-u14-coed-r3-m1-20260419",
+      "divisionId": "div-u14-coed",
+      "date": "2026-04-19",
+      "time": "11:00",
+      "fieldId": "f5",
+      "homeTeamId": "t-u14-1",
+      "awayTeamId": "t-u14-2",
+      "isByePractice": false,
+      "roundNumber": 3,
+      "status": "scheduled"
+    },
+    {
+      "id": "g-div-u14-coed-r3-m2-20260419",
+      "divisionId": "div-u14-coed",
+      "date": "2026-04-19",
+      "time": "11:00",
+      "fieldId": "f1",
+      "homeTeamId": "t-u14-4",
+      "awayTeamId": "t-u14-3",
+      "isByePractice": false,
+      "roundNumber": 3,
+      "status": "scheduled"
+    },
+    {
+      "id": "g-div-u12-boys-r5-m1-20260425",
+      "divisionId": "div-u12-boys",
+      "date": "2026-04-25",
+      "time": "09:00",
+      "fieldId": "f1",
+      "homeTeamId": "t-u12-1",
+      "awayTeamId": "t-u12-3",
+      "isByePractice": false,
+      "roundNumber": 5,
+      "status": "scheduled"
+    },
+    {
+      "id": "g-div-u12-boys-r5-m2-20260425",
+      "divisionId": "div-u12-boys",
+      "date": "2026-04-25",
+      "time": "09:00",
+      "fieldId": "f2",
+      "homeTeamId": "t-u12-2",
+      "awayTeamId": "t-u12-4",
+      "isByePractice": false,
+      "roundNumber": 5,
+      "status": "scheduled"
+    },
+    {
+      "id": "g-div-u10-girls-r8-m1-20260425",
+      "divisionId": "div-u10-girls",
+      "date": "2026-04-25",
+      "time": "09:00",
+      "fieldId": "f4",
+      "homeTeamId": "t-u10-4",
+      "awayTeamId": "t-u10-1",
+      "isByePractice": false,
+      "roundNumber": 8,
+      "status": "scheduled"
+    },
+    {
+      "id": "g-div-u10-girls-r8-m2-20260425",
+      "divisionId": "div-u10-girls",
+      "date": "2026-04-25",
+      "time": "09:00",
+      "fieldId": "f3",
+      "homeTeamId": "t-u10-5",
+      "awayTeamId": "t-u10-3",
+      "isByePractice": false,
+      "roundNumber": 8,
+      "status": "scheduled"
+    },
+    {
+      "id": "g-div-u10-girls-r8-m3-20260425",
+      "divisionId": "div-u10-girls",
+      "date": "2026-04-25",
+      "time": "10:15",
+      "fieldId": "f4",
+      "homeTeamId": "t-u10-2",
+      "awayTeamId": "bye-div-u10-girls",
+      "isByePractice": true,
+      "roundNumber": 8,
+      "status": "scheduled",
+      "notes": "Bye Practice Session on home / alternate pitch for Thunderbolts"
+    },
+    {
+      "id": "g-div-u10-girls-r9-m1-20260426",
+      "divisionId": "div-u10-girls",
+      "date": "2026-04-26",
+      "time": "09:00",
+      "fieldId": "f3",
+      "homeTeamId": "t-u10-1",
+      "awayTeamId": "t-u10-3",
+      "isByePractice": false,
+      "roundNumber": 9,
+      "status": "scheduled"
+    },
+    {
+      "id": "g-div-u10-girls-r9-m2-20260426",
+      "divisionId": "div-u10-girls",
+      "date": "2026-04-26",
+      "time": "09:00",
+      "fieldId": "f4",
+      "homeTeamId": "t-u10-2",
+      "awayTeamId": "t-u10-4",
+      "isByePractice": false,
+      "roundNumber": 9,
+      "status": "scheduled"
+    },
+    {
+      "id": "g-div-u10-girls-r9-m3-20260426",
+      "divisionId": "div-u10-girls",
+      "date": "2026-04-26",
+      "time": "09:00",
+      "fieldId": "f2",
+      "homeTeamId": "t-u10-5",
+      "awayTeamId": "bye-div-u10-girls",
+      "isByePractice": true,
+      "roundNumber": 9,
+      "status": "scheduled",
+      "notes": "Bye Practice Session on home / alternate pitch for Coastal Stars"
+    },
+    {
+      "id": "g-div-u14-coed-r4-m1-20260426",
+      "divisionId": "div-u14-coed",
+      "date": "2026-04-26",
+      "time": "11:00",
+      "fieldId": "f1",
+      "homeTeamId": "t-u14-4",
+      "awayTeamId": "t-u14-1",
+      "isByePractice": false,
+      "roundNumber": 4,
+      "status": "scheduled"
+    },
+    {
+      "id": "g-div-u14-coed-r4-m2-20260426",
+      "divisionId": "div-u14-coed",
+      "date": "2026-04-26",
+      "time": "11:00",
+      "fieldId": "f5",
+      "homeTeamId": "t-u14-2",
+      "awayTeamId": "t-u14-3",
+      "isByePractice": false,
+      "roundNumber": 4,
+      "status": "scheduled"
+    },
+    {
+      "id": "g-div-u12-boys-r6-m1-20260502",
+      "divisionId": "div-u12-boys",
+      "date": "2026-05-02",
+      "time": "09:00",
+      "fieldId": "f2",
+      "homeTeamId": "t-u12-2",
+      "awayTeamId": "t-u12-1",
+      "isByePractice": false,
+      "roundNumber": 6,
+      "status": "scheduled"
+    },
+    {
+      "id": "g-div-u12-boys-r6-m2-20260502",
+      "divisionId": "div-u12-boys",
+      "date": "2026-05-02",
+      "time": "09:00",
+      "fieldId": "f5",
+      "homeTeamId": "t-u12-3",
+      "awayTeamId": "t-u12-4",
+      "isByePractice": false,
+      "roundNumber": 6,
+      "status": "scheduled"
+    },
+    {
+      "id": "g-div-u10-girls-r10-m1-20260502",
+      "divisionId": "div-u10-girls",
+      "date": "2026-05-02",
+      "time": "09:00",
+      "fieldId": "f4",
+      "homeTeamId": "t-u10-2",
+      "awayTeamId": "t-u10-1",
+      "isByePractice": false,
+      "roundNumber": 10,
+      "status": "scheduled"
+    },
+    {
+      "id": "g-div-u10-girls-r10-m2-20260502",
+      "divisionId": "div-u10-girls",
+      "date": "2026-05-02",
+      "time": "09:00",
+      "fieldId": "f3",
+      "homeTeamId": "t-u10-3",
+      "awayTeamId": "bye-div-u10-girls",
+      "isByePractice": true,
+      "roundNumber": 10,
+      "status": "scheduled",
+      "notes": "Bye Practice Session on home / alternate pitch for Ocean Breeze"
+    },
+    {
+      "id": "g-div-u10-girls-r10-m3-20260502",
+      "divisionId": "div-u10-girls",
+      "date": "2026-05-02",
+      "time": "10:15",
+      "fieldId": "f2",
+      "homeTeamId": "t-u10-5",
+      "awayTeamId": "t-u10-4",
+      "isByePractice": false,
+      "roundNumber": 10,
+      "status": "scheduled"
+    },
+    {
+      "id": "g-div-u10-girls-r11-m1-20260503",
+      "divisionId": "div-u10-girls",
+      "date": "2026-05-03",
+      "time": "09:00",
+      "fieldId": "f3",
+      "homeTeamId": "t-u10-1",
+      "awayTeamId": "bye-div-u10-girls",
+      "isByePractice": true,
+      "roundNumber": 11,
+      "status": "scheduled",
+      "notes": "Bye Practice Session on home / alternate pitch for Wildcats SC"
+    },
+    {
+      "id": "g-div-u10-girls-r11-m2-20260503",
+      "divisionId": "div-u10-girls",
+      "date": "2026-05-03",
+      "time": "09:00",
+      "fieldId": "f2",
+      "homeTeamId": "t-u10-5",
+      "awayTeamId": "t-u10-2",
+      "isByePractice": false,
+      "roundNumber": 11,
+      "status": "scheduled"
+    },
+    {
+      "id": "g-div-u10-girls-r11-m3-20260503",
+      "divisionId": "div-u10-girls",
+      "date": "2026-05-03",
+      "time": "09:00",
+      "fieldId": "f4",
+      "homeTeamId": "t-u10-3",
+      "awayTeamId": "t-u10-4",
+      "isByePractice": false,
+      "roundNumber": 11,
+      "status": "scheduled"
+    },
+    {
+      "id": "g-div-u14-coed-r5-m1-20260503",
+      "divisionId": "div-u14-coed",
+      "date": "2026-05-03",
+      "time": "11:00",
+      "fieldId": "f5",
+      "homeTeamId": "t-u14-1",
+      "awayTeamId": "t-u14-3",
+      "isByePractice": false,
+      "roundNumber": 5,
+      "status": "scheduled"
+    },
+    {
+      "id": "g-div-u14-coed-r5-m2-20260503",
+      "divisionId": "div-u14-coed",
+      "date": "2026-05-03",
+      "time": "11:00",
+      "fieldId": "f1",
+      "homeTeamId": "t-u14-2",
+      "awayTeamId": "t-u14-4",
+      "isByePractice": false,
+      "roundNumber": 5,
+      "status": "scheduled"
+    },
+    {
+      "id": "g-div-u12-boys-r7-m1-20260509",
+      "divisionId": "div-u12-boys",
+      "date": "2026-05-09",
+      "time": "09:00",
+      "fieldId": "f1",
+      "homeTeamId": "t-u12-1",
+      "awayTeamId": "t-u12-4",
+      "isByePractice": false,
+      "roundNumber": 7,
+      "status": "scheduled"
+    },
+    {
+      "id": "g-div-u12-boys-r7-m2-20260509",
+      "divisionId": "div-u12-boys",
+      "date": "2026-05-09",
+      "time": "09:00",
+      "fieldId": "f5",
+      "homeTeamId": "t-u12-3",
+      "awayTeamId": "t-u12-2",
+      "isByePractice": false,
+      "roundNumber": 7,
+      "status": "scheduled"
+    },
+    {
+      "id": "g-div-u10-girls-r12-m1-20260509",
+      "divisionId": "div-u10-girls",
+      "date": "2026-05-09",
+      "time": "09:00",
+      "fieldId": "f2",
+      "homeTeamId": "t-u10-5",
+      "awayTeamId": "t-u10-1",
+      "isByePractice": false,
+      "roundNumber": 12,
+      "status": "scheduled"
+    },
+    {
+      "id": "g-div-u10-girls-r12-m2-20260509",
+      "divisionId": "div-u10-girls",
+      "date": "2026-05-09",
+      "time": "09:00",
+      "fieldId": "f4",
+      "homeTeamId": "t-u10-4",
+      "awayTeamId": "bye-div-u10-girls",
+      "isByePractice": true,
+      "roundNumber": 12,
+      "status": "scheduled",
+      "notes": "Bye Practice Session on home / alternate pitch for Solar Flare"
+    },
+    {
+      "id": "g-div-u10-girls-r12-m3-20260509",
+      "divisionId": "div-u10-girls",
+      "date": "2026-05-09",
+      "time": "09:00",
+      "fieldId": "f3",
+      "homeTeamId": "t-u10-3",
+      "awayTeamId": "t-u10-2",
+      "isByePractice": false,
+      "roundNumber": 12,
+      "status": "scheduled"
+    },
+    {
+      "id": "g-div-u10-girls-r13-m1-20260510",
+      "divisionId": "div-u10-girls",
+      "date": "2026-05-10",
+      "time": "09:00",
+      "fieldId": "f3",
+      "homeTeamId": "t-u10-1",
+      "awayTeamId": "t-u10-4",
+      "isByePractice": false,
+      "roundNumber": 13,
+      "status": "scheduled"
+    },
+    {
+      "id": "g-div-u10-girls-r13-m2-20260510",
+      "divisionId": "div-u10-girls",
+      "date": "2026-05-10",
+      "time": "09:00",
+      "fieldId": "f4",
+      "homeTeamId": "t-u10-3",
+      "awayTeamId": "t-u10-5",
+      "isByePractice": false,
+      "roundNumber": 13,
+      "status": "scheduled"
+    },
+    {
+      "id": "g-div-u10-girls-r13-m3-20260510",
+      "divisionId": "div-u10-girls",
+      "date": "2026-05-10",
+      "time": "09:00",
+      "fieldId": "f2",
+      "homeTeamId": "t-u10-2",
+      "awayTeamId": "bye-div-u10-girls",
+      "isByePractice": true,
+      "roundNumber": 13,
+      "status": "scheduled",
+      "notes": "Bye Practice Session on home / alternate pitch for Thunderbolts"
+    },
+    {
+      "id": "g-div-u14-coed-r6-m1-20260510",
+      "divisionId": "div-u14-coed",
+      "date": "2026-05-10",
+      "time": "11:00",
+      "fieldId": "f1",
+      "homeTeamId": "t-u14-2",
+      "awayTeamId": "t-u14-1",
+      "isByePractice": false,
+      "roundNumber": 6,
+      "status": "scheduled"
+    },
+    {
+      "id": "g-div-u14-coed-r6-m2-20260510",
+      "divisionId": "div-u14-coed",
+      "date": "2026-05-10",
+      "time": "11:00",
+      "fieldId": "f5",
+      "homeTeamId": "t-u14-3",
+      "awayTeamId": "t-u14-4",
+      "isByePractice": false,
+      "roundNumber": 6,
+      "status": "scheduled"
+    },
+    {
+      "id": "g-div-u12-boys-r8-m1-20260516",
+      "divisionId": "div-u12-boys",
+      "date": "2026-05-16",
+      "time": "09:00",
+      "fieldId": "f5",
+      "homeTeamId": "t-u12-3",
+      "awayTeamId": "t-u12-1",
+      "isByePractice": false,
+      "roundNumber": 8,
+      "status": "scheduled"
+    },
+    {
+      "id": "g-div-u12-boys-r8-m2-20260516",
+      "divisionId": "div-u12-boys",
+      "date": "2026-05-16",
+      "time": "09:00",
+      "fieldId": "f1",
+      "homeTeamId": "t-u12-4",
+      "awayTeamId": "t-u12-2",
+      "isByePractice": false,
+      "roundNumber": 8,
+      "status": "scheduled"
+    },
+    {
+      "id": "g-div-u10-girls-r14-m1-20260516",
+      "divisionId": "div-u10-girls",
+      "date": "2026-05-16",
+      "time": "09:00",
+      "fieldId": "f3",
+      "homeTeamId": "t-u10-3",
+      "awayTeamId": "t-u10-1",
+      "isByePractice": false,
+      "roundNumber": 14,
+      "status": "scheduled"
+    },
+    {
+      "id": "g-div-u10-girls-r14-m2-20260516",
+      "divisionId": "div-u10-girls",
+      "date": "2026-05-16",
+      "time": "09:00",
+      "fieldId": "f4",
+      "homeTeamId": "t-u10-4",
+      "awayTeamId": "t-u10-2",
+      "isByePractice": false,
+      "roundNumber": 14,
+      "status": "scheduled"
+    },
+    {
+      "id": "g-div-u10-girls-r14-m3-20260516",
+      "divisionId": "div-u10-girls",
+      "date": "2026-05-16",
+      "time": "09:00",
+      "fieldId": "f2",
+      "homeTeamId": "t-u10-5",
+      "awayTeamId": "bye-div-u10-girls",
+      "isByePractice": true,
+      "roundNumber": 14,
+      "status": "scheduled",
+      "notes": "Bye Practice Session on home / alternate pitch for Coastal Stars"
+    },
+    {
+      "id": "g-div-u10-girls-r15-m1-20260517",
+      "divisionId": "div-u10-girls",
+      "date": "2026-05-17",
+      "time": "09:00",
+      "fieldId": "f3",
+      "homeTeamId": "t-u10-1",
+      "awayTeamId": "t-u10-2",
+      "isByePractice": false,
+      "roundNumber": 15,
+      "status": "scheduled"
+    },
+    {
+      "id": "g-div-u10-girls-r15-m2-20260517",
+      "divisionId": "div-u10-girls",
+      "date": "2026-05-17",
+      "time": "09:00",
+      "fieldId": "f4",
+      "homeTeamId": "t-u10-3",
+      "awayTeamId": "bye-div-u10-girls",
+      "isByePractice": true,
+      "roundNumber": 15,
+      "status": "scheduled",
+      "notes": "Bye Practice Session on home / alternate pitch for Ocean Breeze"
+    },
+    {
+      "id": "g-div-u10-girls-r15-m3-20260517",
+      "divisionId": "div-u10-girls",
+      "date": "2026-05-17",
+      "time": "09:00",
+      "fieldId": "f2",
+      "homeTeamId": "t-u10-4",
+      "awayTeamId": "t-u10-5",
+      "isByePractice": false,
+      "roundNumber": 15,
+      "status": "scheduled"
+    },
+    {
+      "id": "g-div-u14-coed-r7-m1-20260517",
+      "divisionId": "div-u14-coed",
+      "date": "2026-05-17",
+      "time": "11:00",
+      "fieldId": "f5",
+      "homeTeamId": "t-u14-1",
+      "awayTeamId": "t-u14-4",
+      "isByePractice": false,
+      "roundNumber": 7,
+      "status": "scheduled"
+    },
+    {
+      "id": "g-div-u14-coed-r7-m2-20260517",
+      "divisionId": "div-u14-coed",
+      "date": "2026-05-17",
+      "time": "11:00",
+      "fieldId": "f1",
+      "homeTeamId": "t-u14-3",
+      "awayTeamId": "t-u14-2",
+      "isByePractice": false,
+      "roundNumber": 7,
+      "status": "scheduled"
+    },
+    {
+      "id": "g-div-u12-boys-r9-m1-20260523",
+      "divisionId": "div-u12-boys",
+      "date": "2026-05-23",
+      "time": "09:00",
+      "fieldId": "f1",
+      "homeTeamId": "t-u12-1",
+      "awayTeamId": "t-u12-2",
+      "isByePractice": false,
+      "roundNumber": 9,
+      "status": "scheduled"
+    },
+    {
+      "id": "g-div-u12-boys-r9-m2-20260523",
+      "divisionId": "div-u12-boys",
+      "date": "2026-05-23",
+      "time": "09:00",
+      "fieldId": "f5",
+      "homeTeamId": "t-u12-4",
+      "awayTeamId": "t-u12-3",
+      "isByePractice": false,
+      "roundNumber": 9,
+      "status": "scheduled"
+    },
+    {
+      "id": "g-div-u10-girls-r16-m1-20260523",
+      "divisionId": "div-u10-girls",
+      "date": "2026-05-23",
+      "time": "09:00",
+      "fieldId": "f3",
+      "homeTeamId": "t-u10-1",
+      "awayTeamId": "bye-div-u10-girls",
+      "isByePractice": true,
+      "roundNumber": 16,
+      "status": "scheduled",
+      "notes": "Bye Practice Session on home / alternate pitch for Wildcats SC"
+    },
+    {
+      "id": "g-div-u10-girls-r16-m2-20260523",
+      "divisionId": "div-u10-girls",
+      "date": "2026-05-23",
+      "time": "09:00",
+      "fieldId": "f4",
+      "homeTeamId": "t-u10-2",
+      "awayTeamId": "t-u10-5",
+      "isByePractice": false,
+      "roundNumber": 16,
+      "status": "scheduled"
+    },
+    {
+      "id": "g-div-u10-girls-r16-m3-20260523",
+      "divisionId": "div-u10-girls",
+      "date": "2026-05-23",
+      "time": "09:00",
+      "fieldId": "f2",
+      "homeTeamId": "t-u10-4",
+      "awayTeamId": "t-u10-3",
+      "isByePractice": false,
+      "roundNumber": 16,
+      "status": "scheduled"
+    },
+    {
+      "id": "g-div-u12-boys-r10-m1-20260530",
+      "divisionId": "div-u12-boys",
+      "date": "2026-05-30",
+      "time": "09:00",
+      "fieldId": "f1",
+      "homeTeamId": "t-u12-4",
+      "awayTeamId": "t-u12-1",
+      "isByePractice": false,
+      "roundNumber": 10,
+      "status": "scheduled"
+    },
+    {
+      "id": "g-div-u12-boys-r10-m2-20260530",
+      "divisionId": "div-u12-boys",
+      "date": "2026-05-30",
+      "time": "09:00",
+      "fieldId": "f2",
+      "homeTeamId": "t-u12-2",
+      "awayTeamId": "t-u12-3",
+      "isByePractice": false,
+      "roundNumber": 10,
+      "status": "scheduled"
+    },
+    {
+      "id": "g-div-u10-girls-r17-m1-20260530",
+      "divisionId": "div-u10-girls",
+      "date": "2026-05-30",
+      "time": "09:00",
+      "fieldId": "f3",
+      "homeTeamId": "t-u10-1",
+      "awayTeamId": "t-u10-5",
+      "isByePractice": false,
+      "roundNumber": 17,
+      "status": "scheduled"
+    },
+    {
+      "id": "g-div-u10-girls-r17-m2-20260530",
+      "divisionId": "div-u10-girls",
+      "date": "2026-05-30",
+      "time": "09:00",
+      "fieldId": "f4",
+      "homeTeamId": "t-u10-4",
+      "awayTeamId": "bye-div-u10-girls",
+      "isByePractice": true,
+      "roundNumber": 17,
+      "status": "scheduled",
+      "notes": "Bye Practice Session on home / alternate pitch for Solar Flare"
+    },
+    {
+      "id": "g-div-u10-girls-r17-m3-20260530",
+      "divisionId": "div-u10-girls",
+      "date": "2026-05-30",
+      "time": "10:15",
+      "fieldId": "f4",
+      "homeTeamId": "t-u10-2",
+      "awayTeamId": "t-u10-3",
+      "isByePractice": false,
+      "roundNumber": 17,
+      "status": "scheduled"
+    }
+  ],
+  "lastModified": "2026-10-13T14:15:04.291Z"
+}

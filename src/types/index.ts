@@ -118,3 +118,25 @@ export interface TeamBalanceStats {
   practiceGames: number;
   differential: number; // home - away
 }
+
+export interface TeamRecordStats {
+  team: Team;
+  divisionName: string;
+  totalGames: number; // total games scheduled
+  gamesPlayed: number; // games completed / with scores
+  wins: number;
+  losses: number;
+  ties: number;
+  points: number; // (wins * 3) + (ties * 1)
+  winPercentage: number;
+  goalsFor: number;
+  goalsAgainst: number;
+  goalDifferential: number;
+  homeWins: number;
+  homeLosses: number;
+  homeTies: number;
+  awayWins: number;
+  awayLosses: number;
+  awayTies: number;
+  recentForm: ('W' | 'L' | 'D')[];
+}

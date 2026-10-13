@@ -28,6 +28,12 @@ export const EditGameModal: React.FC<EditGameModalProps> = ({
   const [awayTeamId, setAwayTeamId] = useState(game.awayTeamId);
   const [isByePractice, setIsByePractice] = useState(game.isByePractice);
   const [status, setStatus] = useState<Game['status']>(game.status);
+  const [homeScore, setHomeScore] = useState<string>(
+    game.score?.home !== undefined ? String(game.score.home) : ''
+  );
+  const [awayScore, setAwayScore] = useState<string>(
+    game.score?.away !== undefined ? String(game.score.away) : ''
+  );
   const [notes, setNotes] = useState(game.notes || '');
 
   // Teams in this division
@@ -41,10 +47,24 @@ export const EditGameModal: React.FC<EditGameModalProps> = ({
     const temp = homeTeamId;
     setHomeTeamId(awayTeamId);
     setAwayTeamId(temp);
+    const tempScore = homeScore;
+    setHomeScore(awayScore);
+    setAwayScore(tempScore);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    const hasScores = homeScore.trim() !== '' && awayScore.trim() !== '';
+    const scoreObj = hasScores
+      ? {
+          home: Math.max(0, parseInt(homeScore, 10) || 0),
+          away: Math.max(0, parseInt(awayScore, 10) || 0),
+        }
+      : undefined;
+
+    // If score is entered and status was 'scheduled', auto-mark as 'completed'
+    const finalStatus = hasScores && status === 'scheduled' ? 'completed' : status;
+
     onSave({
       ...game,
       date,
@@ -53,7 +73,8 @@ export const EditGameModal: React.FC<EditGameModalProps> = ({
       homeTeamId,
       awayTeamId,
       isByePractice,
-      status,
+      status: finalStatus,
+      score: scoreObj,
       notes,
     });
     onClose();
@@ -217,6 +238,58 @@ export const EditGameModal: React.FC<EditGameModalProps> = ({
                 );
               })}
             </select>
+          </div>
+
+          {/* Game Score (Optional / Completed) */}
+          <div className="bg-slate-50 p-3.5 rounded-lg border border-slate-200">
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-xs font-semibold text-slate-700">
+                Match Score / Result
+              </label>
+              {(homeScore !== '' || awayScore !== '') && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setHomeScore('');
+                    setAwayScore('');
+                    setStatus('scheduled');
+                  }}
+                  className="text-xs text-rose-600 hover:text-rose-800 underline"
+                >
+                  Clear Score (Reset to Scheduled)
+                </button>
+              )}
+            </div>
+            <div className="grid grid-cols-2 gap-3 items-center">
+              <div>
+                <label className="block text-[11px] text-slate-500 mb-1">
+                  Home ({teams.find((t) => t.id === homeTeamId)?.name || 'Home'}) Goals
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  max="99"
+                  placeholder="e.g. 2"
+                  value={homeScore}
+                  onChange={(e) => setHomeScore(e.target.value)}
+                  className="w-full text-sm rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-slate-900 font-mono text-center"
+                />
+              </div>
+              <div>
+                <label className="block text-[11px] text-slate-500 mb-1">
+                  Away ({teams.find((t) => t.id === awayTeamId)?.name || 'Away'}) Goals
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  max="99"
+                  placeholder="e.g. 1"
+                  value={awayScore}
+                  onChange={(e) => setAwayScore(e.target.value)}
+                  className="w-full text-sm rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-slate-900 font-mono text-center"
+                />
+              </div>
+            </div>
           </div>
 
           {/* Status & Match Notes */}

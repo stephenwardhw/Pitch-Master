@@ -22,8 +22,15 @@ import {
   Sparkles,
   CalendarPlus,
   ChevronDown,
+  Users,
+  Globe,
+  CheckCircle2,
+  AlertCircle,
+  X,
 } from 'lucide-react';
 import { ExportCalendarModal } from './modals/ExportCalendarModal';
+import { PrintScheduleView } from './PrintScheduleView';
+import { publishScheduleToServer } from '../utils/serverSync';
 import {
   buildEventPayload,
   createGoogleCalendarUrl,
@@ -42,6 +49,7 @@ interface SchedulePageProps {
   onSelectFieldMap: (field: Field) => void;
   onEditGame: (game: Game) => void;
   onRegenerateSchedule: () => void;
+  onSwitchToPublicPortal?: () => void;
 }
 
 export const SchedulePage: React.FC<SchedulePageProps> = ({
@@ -54,6 +62,7 @@ export const SchedulePage: React.FC<SchedulePageProps> = ({
   onSelectFieldMap,
   onEditGame,
   onRegenerateSchedule,
+  onSwitchToPublicPortal,
 }) => {
   const [selectedDivision, setSelectedDivision] = useState<string>('all');
   const [selectedTeam, setSelectedTeam] = useState<string>('all');
@@ -61,13 +70,28 @@ export const SchedulePage: React.FC<SchedulePageProps> = ({
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [gameTypeFilter, setGameTypeFilter] = useState<'all' | 'regular' | 'practice'>('all');
   const [showConflictsOnly, setShowConflictsOnly] = useState<boolean>(false);
+  const [startDateFilter, setStartDateFilter] = useState<string>('');
+  const [endDateFilter, setEndDateFilter] = useState<string>('');
   const [isCalendarModalOpen, setIsCalendarModalOpen] = useState<boolean>(false);
+  const [isPrintViewOpen, setIsPrintViewOpen] = useState<boolean>(false);
   const [activeCalDropdownGameId, setActiveCalDropdownGameId] = useState<string | null>(null);
+  const [isPublishing, setIsPublishing] = useState<boolean>(false);
+  const [publishResult, setPublishResult] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
   // Maps for rapid lookup
   const teamMap = useMemo(() => new Map(appData.teams.map((t) => [t.id, t])), [appData.teams]);
   const fieldMap = useMemo(() => new Map(appData.fields.map((f) => [f.id, f])), [appData.fields]);
   const divisionMap = useMemo(() => new Map(appData.divisions.map((d) => [d.id, d])), [appData.divisions]);
+
+  // Extract all unique dates from games in ascending order
+  const allGameDates = useMemo(() => {
+    return Array.from(new Set(appData.games.map((g) => g.date)))
+      .filter(Boolean)
+      .sort();
+  }, [appData.games]);
+
+  const minGameDate = allGameDates[0] || appData.seasonConfig.startDate || '';
+  const maxGameDate = allGameDates[allGameDates.length - 1] || appData.seasonConfig.endDate || '';
 
   // Set of game IDs that have conflicts
   const conflictedGameIdMap = useMemo(() => {
@@ -92,6 +116,10 @@ export const SchedulePage: React.FC<SchedulePageProps> = ({
       if (gameTypeFilter === 'practice' && !g.isByePractice) return false;
       if (gameTypeFilter === 'regular' && g.isByePractice) return false;
       if (showConflictsOnly && !conflictedGameIdMap.has(g.id)) return false;
+
+      // Date range filtering
+      if (startDateFilter && g.date < startDateFilter) return false;
+      if (endDateFilter && g.date > endDateFilter) return false;
 
       if (searchQuery.trim()) {
         const query = searchQuery.toLowerCase();
@@ -118,6 +146,8 @@ export const SchedulePage: React.FC<SchedulePageProps> = ({
     selectedField,
     gameTypeFilter,
     showConflictsOnly,
+    startDateFilter,
+    endDateFilter,
     searchQuery,
     teamMap,
     fieldMap,
@@ -215,19 +245,76 @@ export const SchedulePage: React.FC<SchedulePageProps> = ({
     }
   };
 
+  const handlePublishToServer = async () => {
+    setIsPublishing(true);
+    setPublishResult(null);
+    try {
+      const res = await publishScheduleToServer(appData);
+      setPublishResult({
+        type: 'success',
+        message:
+          res.message ||
+          'Successfully published schedule to server file league_schedule.json! Coaches and parents now see this updated schedule.',
+      });
+      setTimeout(() => setPublishResult(null), 6000);
+    } catch (err: any) {
+      setPublishResult({
+        type: 'error',
+        message: err.message || 'Failed to publish to server file league_schedule.json.',
+      });
+    } finally {
+      setIsPublishing(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Top Controls Toolbar */}
       <div className="bg-white rounded-xl border border-slate-200 p-4 sm:p-5 shadow-xs space-y-4 no-print">
+        {/* Publish Banner Notification */}
+        {publishResult && (
+          <div
+            className={`p-3 rounded-lg text-xs flex items-center justify-between gap-2 animate-in fade-in ${
+              publishResult.type === 'success'
+                ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                : 'bg-rose-50 text-rose-800 border border-rose-200'
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              {publishResult.type === 'success' ? (
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+              ) : (
+                <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+              )}
+              <span className="font-medium">{publishResult.message}</span>
+            </div>
+            <button
+              onClick={() => setPublishResult(null)}
+              className="text-xs opacity-60 hover:opacity-100"
+            >
+              ✕
+            </button>
+          </div>
+        )}
+
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div>
             <h1 className="text-xl font-bold text-slate-900 tracking-tight">League Schedule</h1>
             <p className="text-xs text-slate-500 mt-0.5">
-              Round-robin fixtures, pitch assignments, team contact links, and conflict resolution
+              Round-robin games, pitch assignments, team contact links, and conflict resolution
             </p>
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
+            <button
+              onClick={handlePublishToServer}
+              disabled={isPublishing}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-purple-900 bg-purple-50 border border-purple-200 rounded-lg hover:bg-purple-100 transition-colors shadow-2xs disabled:opacity-50"
+              title="Publish active schedule directly to server file league_schedule.json for the public portal"
+            >
+              <Globe className={`w-3.5 h-3.5 text-purple-600 ${isPublishing ? 'animate-spin' : ''}`} />
+              <span>{isPublishing ? 'Publishing...' : 'Publish to Server'}</span>
+            </button>
             <button
               onClick={() => setIsCalendarModalOpen(true)}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-emerald-800 bg-emerald-50 border border-emerald-300 rounded-lg hover:bg-emerald-100 transition-colors shadow-2xs"
@@ -237,12 +324,25 @@ export const SchedulePage: React.FC<SchedulePageProps> = ({
               <span>Export Schedule to Calendar</span>
             </button>
 
+            {onSwitchToPublicPortal && (
+              <button
+                onClick={onSwitchToPublicPortal}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-emerald-800 bg-emerald-50 border border-emerald-300 rounded-lg hover:bg-emerald-100 transition-colors shadow-2xs"
+                title="Launch standalone read-only portal for coaches, players, and parents"
+              >
+                <Users className="w-3.5 h-3.5 text-emerald-600" />
+                <span>Coach & Parent Portal</span>
+                <ExternalLink className="w-3 h-3 text-emerald-600" />
+              </button>
+            )}
+
             <button
-              onClick={handlePrint}
+              onClick={() => setIsPrintViewOpen(true)}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors"
+              title="Open print-ready PDF layout with headers and team contact directory"
             >
               <Printer className="w-3.5 h-3.5 text-slate-500" />
-              <span>Print Schedule</span>
+              <span>Print View (PDF)</span>
             </button>
 
             <button
@@ -368,17 +468,204 @@ export const SchedulePage: React.FC<SchedulePageProps> = ({
           </div>
         </div>
 
+        {/* Date Range Filter Row */}
+        <div className="pt-3 border-t border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-3 bg-slate-50/70 p-3 rounded-lg border border-slate-200/70">
+          <div className="flex flex-wrap items-center gap-2.5">
+            <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-700">
+              <Calendar className="w-4 h-4 text-emerald-600 shrink-0" />
+              <span>Date Range:</span>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="flex items-center gap-1.5">
+                <label htmlFor="filter-start-date" className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+                  From
+                </label>
+                <input
+                  id="filter-start-date"
+                  type="date"
+                  value={startDateFilter}
+                  min={minGameDate}
+                  max={endDateFilter || maxGameDate}
+                  onChange={(e) => setStartDateFilter(e.target.value)}
+                  className="py-1 px-2.5 text-xs rounded-lg border border-slate-300 bg-white text-slate-800 focus:outline-hidden focus:ring-2 focus:ring-slate-900 shadow-2xs font-mono"
+                  title="Filter games on or after this start date"
+                />
+              </div>
+
+              <span className="text-xs text-slate-400 font-medium">to</span>
+
+              <div className="flex items-center gap-1.5">
+                <label htmlFor="filter-end-date" className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+                  To
+                </label>
+                <input
+                  id="filter-end-date"
+                  type="date"
+                  value={endDateFilter}
+                  min={startDateFilter || minGameDate}
+                  max={maxGameDate}
+                  onChange={(e) => setEndDateFilter(e.target.value)}
+                  className="py-1 px-2.5 text-xs rounded-lg border border-slate-300 bg-white text-slate-800 focus:outline-hidden focus:ring-2 focus:ring-slate-900 shadow-2xs font-mono"
+                  title="Filter games on or before this end date"
+                />
+              </div>
+
+              {(startDateFilter || endDateFilter) && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setStartDateFilter('');
+                    setEndDateFilter('');
+                  }}
+                  className="inline-flex items-center gap-1 py-1 px-2 text-xs font-medium text-slate-600 hover:text-slate-900 bg-white border border-slate-300 rounded-lg hover:bg-slate-100 transition-colors shadow-2xs"
+                  title="Clear date range filters"
+                >
+                  <X className="w-3 h-3 text-slate-400" />
+                  <span>Reset Dates</span>
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Quick Date Range Presets */}
+          <div className="flex flex-wrap items-center gap-1.5 text-xs">
+            <span className="text-[11px] font-medium text-slate-500 uppercase tracking-wider mr-1">Presets:</span>
+            <button
+              type="button"
+              onClick={() => {
+                setStartDateFilter('');
+                setEndDateFilter('');
+              }}
+              className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
+                !startDateFilter && !endDateFilter
+                  ? 'bg-slate-900 text-white shadow-2xs'
+                  : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200 shadow-2xs'
+              }`}
+            >
+              Full Season
+            </button>
+
+            {allGameDates.length > 0 && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const midIndex = Math.floor(allGameDates.length / 2);
+                    setStartDateFilter(allGameDates[0]);
+                    setEndDateFilter(allGameDates[midIndex]);
+                  }}
+                  className="px-2.5 py-1 rounded-md text-xs font-medium bg-white text-slate-600 hover:bg-slate-100 border border-slate-200 transition-colors shadow-2xs"
+                  title="View the first half of scheduled game dates"
+                >
+                  First Half
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const midIndex = Math.floor(allGameDates.length / 2);
+                    setStartDateFilter(allGameDates[midIndex]);
+                    setEndDateFilter(allGameDates[allGameDates.length - 1]);
+                  }}
+                  className="px-2.5 py-1 rounded-md text-xs font-medium bg-white text-slate-600 hover:bg-slate-100 border border-slate-200 transition-colors shadow-2xs"
+                  title="View the second half of scheduled game dates"
+                >
+                  Second Half
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const todayStr = new Date().toISOString().slice(0, 10);
+                    const upcomingDates = allGameDates.filter((d) => d >= todayStr);
+                    if (upcomingDates.length > 0) {
+                      setStartDateFilter(upcomingDates[0]);
+                      const targetEnd = upcomingDates[Math.min(upcomingDates.length - 1, 3)] || upcomingDates[upcomingDates.length - 1];
+                      setEndDateFilter(targetEnd);
+                    } else {
+                      // If season dates are in future or past, take first 4 dates
+                      setStartDateFilter(allGameDates[0]);
+                      setEndDateFilter(allGameDates[Math.min(allGameDates.length - 1, 3)]);
+                    }
+                  }}
+                  className="px-2.5 py-1 rounded-md text-xs font-medium bg-white text-slate-600 hover:bg-slate-100 border border-slate-200 transition-colors shadow-2xs"
+                  title="Filter to the next 4 match weekends"
+                >
+                  Next 4 Weeks
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* Date Filter Validation Message */}
+        {startDateFilter && endDateFilter && startDateFilter > endDateFilter && (
+          <div className="p-2.5 rounded-lg text-xs bg-rose-50 text-rose-800 border border-rose-200 flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
+            <span className="font-medium">
+              Start Date ({startDateFilter}) is after End Date ({endDateFilter}). Please adjust your date range to view scheduled games.
+            </span>
+          </div>
+        )}
+
         {/* Conflicts Toggle & Summary */}
         <div className="flex flex-wrap items-center justify-between gap-3 pt-2 text-xs text-slate-600">
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <span>
               Showing <strong className="font-mono text-slate-900">{filteredGames.length}</strong> of{' '}
-              <strong className="font-mono text-slate-900">{appData.games.length}</strong> total matches
+              <strong className="font-mono text-slate-900">{appData.games.length}</strong> total games
             </span>
             <span aria-hidden="true" className="text-slate-300">·</span>
             <span>
-              Dates: <span className="font-mono">{sortedDates.length}</span> match days
+              Dates: <span className="font-mono">{sortedDates.length}</span> game days
             </span>
+
+            {(startDateFilter || endDateFilter) && (
+              <>
+                <span aria-hidden="true" className="text-slate-300">·</span>
+                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[11px] font-medium bg-emerald-50 text-emerald-800 border border-emerald-200">
+                  <Calendar className="w-3 h-3 text-emerald-600" />
+                  <span>
+                    Range: {startDateFilter ? formatDateFriendly(startDateFilter) : 'Start'} –{' '}
+                    {endDateFilter ? formatDateFriendly(endDateFilter) : 'End'}
+                  </span>
+                  <button
+                    onClick={() => {
+                      setStartDateFilter('');
+                      setEndDateFilter('');
+                    }}
+                    className="text-emerald-700 hover:text-emerald-950 ml-0.5 font-bold"
+                    title="Remove date filter"
+                  >
+                    ×
+                  </button>
+                </span>
+              </>
+            )}
+
+            {(selectedDivision !== 'all' ||
+              selectedTeam !== 'all' ||
+              selectedField !== 'all' ||
+              gameTypeFilter !== 'all' ||
+              showConflictsOnly ||
+              searchQuery.trim() ||
+              startDateFilter ||
+              endDateFilter) && (
+              <button
+                onClick={() => {
+                  setSelectedDivision('all');
+                  setSelectedTeam('all');
+                  setSelectedField('all');
+                  setSearchQuery('');
+                  setGameTypeFilter('all');
+                  setShowConflictsOnly(false);
+                  setStartDateFilter('');
+                  setEndDateFilter('');
+                }}
+                className="text-slate-500 hover:text-slate-900 underline ml-1 cursor-pointer"
+              >
+                Clear all filters
+              </button>
+            )}
           </div>
 
           {conflicts.length > 0 && (
@@ -392,7 +679,7 @@ export const SchedulePage: React.FC<SchedulePageProps> = ({
             >
               <AlertTriangle className="w-3.5 h-3.5" />
               <span>
-                {showConflictsOnly ? 'Show All Matches' : `Filter Only Conflicted Matches (${conflicts.length})`}
+                {showConflictsOnly ? 'Show All Games' : `Filter Only Conflicted Games (${conflicts.length})`}
               </span>
             </button>
           )}
@@ -405,15 +692,22 @@ export const SchedulePage: React.FC<SchedulePageProps> = ({
         <p className="text-sm text-gray-600">
           Season: {appData.seasonConfig.startDate} to {appData.seasonConfig.endDate} · Generated by PitchMaster
         </p>
+        {(startDateFilter || endDateFilter) && (
+          <p className="text-xs text-gray-500 mt-1">
+            Filtered Date Range: {startDateFilter || appData.seasonConfig.startDate} to {endDateFilter || appData.seasonConfig.endDate}
+          </p>
+        )}
       </div>
 
       {/* Games list grouped by date */}
       {sortedDates.length === 0 ? (
         <div className="bg-white rounded-xl border border-slate-200 p-12 text-center space-y-3">
           <Calendar className="w-8 h-8 text-slate-400 mx-auto" />
-          <h3 className="text-base font-semibold text-slate-800">No matches found for current filter</h3>
+          <h3 className="text-base font-semibold text-slate-800">No games found for current filter</h3>
           <p className="text-xs text-slate-500 max-w-md mx-auto">
-            Try adjusting your search criteria or division filter. You can also re-run the round-robin scheduler to generate matches across the season dates.
+            {startDateFilter || endDateFilter
+              ? `There are no scheduled games within the selected date range (${startDateFilter || 'Season Start'} to ${endDateFilter || 'Season End'}). Try adjusting the dates or clearing filters.`
+              : 'Try adjusting your search criteria or division filter. You can also re-run the round-robin scheduler to generate games across the season dates.'}
           </p>
           <div className="pt-2">
             <button
@@ -424,6 +718,8 @@ export const SchedulePage: React.FC<SchedulePageProps> = ({
                 setSearchQuery('');
                 setGameTypeFilter('all');
                 setShowConflictsOnly(false);
+                setStartDateFilter('');
+                setEndDateFilter('');
               }}
               className="px-3.5 py-1.5 text-xs font-medium text-slate-700 bg-slate-100 rounded-lg hover:bg-slate-200 transition-colors"
             >
@@ -733,6 +1029,16 @@ export const SchedulePage: React.FC<SchedulePageProps> = ({
           appData={appData}
           filteredGames={filteredGames}
           onClose={() => setIsCalendarModalOpen(false)}
+        />
+      )}
+
+      {/* Print View Component (Clean PDF layout with headers and team contacts) */}
+      {isPrintViewOpen && (
+        <PrintScheduleView
+          appData={appData}
+          initialDivisionId={selectedDivision}
+          initialTeamId={selectedTeam}
+          onClose={() => setIsPrintViewOpen(false)}
         />
       )}
     </div>

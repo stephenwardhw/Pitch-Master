@@ -12,6 +12,8 @@ import { DivisionsPage } from './components/DivisionsPage';
 import { TeamsPage } from './components/TeamsPage';
 import { FieldsPage } from './components/FieldsPage';
 import { SeasonConfigPage } from './components/SeasonConfigPage';
+import { StandaloneParentPortal } from './components/StandaloneParentPortal';
+import { TeamStatisticsPage } from './components/TeamStatisticsPage';
 
 import { TeamContactModal } from './components/modals/TeamContactModal';
 import { FieldMapModal } from './components/modals/FieldMapModal';
@@ -19,11 +21,62 @@ import { EditGameModal } from './components/modals/EditGameModal';
 import { DatasetModal } from './components/modals/DatasetModal';
 import { ManageTeamSizesModal } from './components/modals/ManageTeamSizesModal';
 
+function checkIsPortalRoute(): boolean {
+  try {
+    const pathname = window.location.pathname.toLowerCase();
+    const search = window.location.search.toLowerCase();
+    const hash = window.location.hash.toLowerCase();
+    return (
+      pathname.includes('/portal') ||
+      pathname.includes('/parents') ||
+      pathname.includes('/public') ||
+      pathname.includes('/coach') ||
+      search.includes('portal') ||
+      search.includes('view=public') ||
+      search.includes('view=portal') ||
+      hash.includes('portal') ||
+      hash.includes('public')
+    );
+  } catch {
+    return false;
+  }
+}
+
 export default function App() {
   const [appData, setAppData] = useState<AppData>(() => loadAppData());
   const [currentTab, setCurrentTab] = useState<NavTab>('schedule');
+  const [appMode, setAppMode] = useState<'admin' | 'portal'>(() =>
+    checkIsPortalRoute() ? 'portal' : 'admin'
+  );
 
-  // Modals state
+  // Sync mode with browser back/forward buttons
+  useEffect(() => {
+    const handlePopState = () => {
+      setAppMode(checkIsPortalRoute() ? 'portal' : 'admin');
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  const handleOpenPortal = useCallback((openInNewTab = false) => {
+    if (openInNewTab) {
+      window.open('/portal', '_blank');
+      return;
+    }
+    setAppMode('portal');
+    try {
+      window.history.pushState(null, '', '/portal');
+    } catch {}
+  }, []);
+
+  const handleSwitchToAdmin = useCallback(() => {
+    setAppMode('admin');
+    try {
+      window.history.pushState(null, '', '/');
+    } catch {}
+  }, []);
+
+  // Modals state (Admin workspace)
   const [activeContactTeam, setActiveContactTeam] = useState<{ team: Team; divisionName?: string } | null>(null);
   const [activeMapField, setActiveMapField] = useState<Field | null>(null);
   const [activeEditingGame, setActiveEditingGame] = useState<Game | null>(null);
@@ -193,15 +246,28 @@ export default function App() {
     }
   }, [appData, updateAndSaveAppData]);
 
+  // ================= STANDALONE PORTAL MODE =================
+  // If in portal mode, render exclusively the Standalone Parent & Coach Portal
+  if (appMode === 'portal') {
+    return (
+      <StandaloneParentPortal
+        appData={appData}
+        onSwitchToAdmin={handleSwitchToAdmin}
+      />
+    );
+  }
+
+  // ================= LEAGUE ADMIN MODE =================
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col text-slate-900 font-sans">
-      {/* Top Navigation Bar with Cookie Tracked File Indicator */}
+      {/* Top Navigation Bar with Cookie Tracked File Indicator & Portal Launcher */}
       <Navbar
         currentTab={currentTab}
         onSelectTab={setCurrentTab}
         appData={appData}
         conflicts={conflicts}
         onOpenDatasetModal={() => setIsDatasetModalOpen(true)}
+        onOpenPortal={handleOpenPortal}
       />
 
       {/* Main Content Viewport */}
@@ -217,6 +283,18 @@ export default function App() {
             onSelectFieldMap={(field) => setActiveMapField(field)}
             onEditGame={(game) => setActiveEditingGame(game)}
             onRegenerateSchedule={handleRegenerateSchedule}
+            onSwitchToPublicPortal={() => handleOpenPortal(false)}
+          />
+        )}
+
+        {currentTab === 'stats' && (
+          <TeamStatisticsPage
+            appData={appData}
+            onUpdateGame={handleUpdateGame}
+            onUpdateBatchGames={handleUpdateBatchGames}
+            onSelectTeamContact={(team, divisionName) => setActiveContactTeam({ team, divisionName })}
+            onSelectFieldMap={(field) => setActiveMapField(field)}
+            onEditGame={(game) => setActiveEditingGame(game)}
           />
         )}
 
@@ -300,6 +378,13 @@ export default function App() {
               className="text-blue-600 hover:underline"
             >
               Export / Import
+            </button>
+            <span aria-hidden="true">·</span>
+            <button
+              onClick={() => handleOpenPortal(false)}
+              className="text-emerald-700 hover:underline font-medium"
+            >
+              Coach & Parent Portal ↗
             </button>
           </div>
         </div>

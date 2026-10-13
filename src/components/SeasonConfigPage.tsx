@@ -150,7 +150,7 @@ export const SeasonConfigPage: React.FC<SeasonConfigPageProps> = ({
                 required
               />
               <p className="text-[11px] text-slate-400 mt-1">
-                Final cutoff date for regular season fixtures (~{getWeeksCount()} weeks)
+                Final cutoff date for regular season games (~{getWeeksCount()} weeks)
               </p>
             </div>
           </div>

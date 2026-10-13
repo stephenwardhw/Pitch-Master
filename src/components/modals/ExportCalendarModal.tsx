@@ -67,7 +67,7 @@ export const ExportCalendarModal: React.FC<ExportCalendarModalProps> = ({
       return `${selectedTeam.name} - Match Schedule`;
     }
     if (scope === 'division' && selectedDivision) {
-      return `${selectedDivision.name} - Fixture Calendar`;
+      return `${selectedDivision.name} - Game Calendar`;
     }
     return appData.seasonConfig?.seasonName || 'PitchMaster Soccer Schedule';
   }, [scope, selectedTeam, selectedDivision, appData.seasonConfig]);
@@ -122,7 +122,7 @@ export const ExportCalendarModal: React.FC<ExportCalendarModalProps> = ({
                 Export Schedule to Calendar
               </h3>
               <p className="text-xs text-slate-500">
-                Sync fixtures with Google Calendar, Microsoft Outlook, or iCal (.ics)
+                Sync games with Google Calendar, Microsoft Outlook, or iCal (.ics)
               </p>
             </div>
           </div>

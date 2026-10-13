@@ -296,7 +296,7 @@ export const HomeAwayBalancePage: React.FC<HomeAwayBalancePageProps> = ({
                                 Scheduled Matches for {stat.team.name} ({expandedTeamGames.length})
                               </h4>
                               <span className="text-xs text-slate-500">
-                                Click "Swap Home / Away" on any fixture below to re-balance
+                                Click "Swap Home / Away" on any game below to re-balance
                               </span>
                             </div>
 

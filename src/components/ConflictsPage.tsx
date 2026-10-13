@@ -213,7 +213,7 @@ export const ConflictsPage: React.FC<ConflictsPageProps> = ({
                   {/* Conflicting Games details */}
                   <div className="space-y-1.5 bg-slate-50 p-3 rounded-lg border border-slate-200 text-xs">
                     <span className="font-semibold text-slate-600 uppercase text-[10px] tracking-wider block">
-                      Involved Fixture(s):
+                      Involved Game(s):
                     </span>
                     <div className="space-y-1.5">
                       {affectedGames.map((g) => {

@@ -1,0 +1,6 @@
+{
+  "name": "PitchMaster Soccer Scheduler",
+  "description": "Cross-platform soccer league and tournament scheduling application with round-robin generation, field conflict resolution, home/away balancing, and cookie-tracked dataset management.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -1,0 +1,292 @@
+import React, { useState, useRef } from 'react';
+import { AppData } from '../../types';
+import { COOKIE_NAME, getCookie, setCookie, getInitialAppData } from '../../utils/cookieStorage';
+import { X, Download, Upload, RefreshCw, FileText, CheckCircle2, Cookie, AlertCircle } from 'lucide-react';
+
+interface DatasetModalProps {
+  appData: AppData;
+  onUpdateData: (newData: AppData) => void;
+  onClose: () => void;
+}
+
+export const DatasetModal: React.FC<DatasetModalProps> = ({
+  appData,
+  onUpdateData,
+  onClose,
+}) => {
+  const [fileNameInput, setFileNameInput] = useState(appData.fileName || 'soccer_schedule.json');
+  const [statusMessage, setStatusMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const currentCookieVal = getCookie(COOKIE_NAME);
+
+  // Handle Export / Download
+  const handleExport = () => {
+    try {
+      const cleanName = fileNameInput.trim().endsWith('.json')
+        ? fileNameInput.trim()
+        : `${fileNameInput.trim()}.json`;
+
+      const exportData: AppData = {
+        ...appData,
+        fileName: cleanName,
+        lastModified: new Date().toISOString(),
+      };
+
+      const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(exportData, null, 2));
+      const downloadAnchor = document.createElement('a');
+      downloadAnchor.setAttribute('href', dataStr);
+      downloadAnchor.setAttribute('download', cleanName);
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+
+      // Update cookie and app state
+      setCookie(COOKIE_NAME, cleanName);
+      onUpdateData(exportData);
+      setStatusMessage({
+        text: `Exported successfully as "${cleanName}". Client cookie updated to remember this file on page load.`,
+        type: 'success',
+      });
+    } catch {
+      setStatusMessage({ text: 'Failed to generate JSON export file.', type: 'error' });
+    }
+  };
+
+  // Handle Import
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const text = event.target?.result as string;
+        const parsed = JSON.parse(text);
+
+        if (!parsed.divisions || !parsed.teams || !parsed.fields) {
+          throw new Error('Invalid format: Missing divisions, teams, or fields array in JSON.');
+        }
+
+        const importedName = file.name || parsed.fileName || 'imported_soccer_schedule.json';
+        parsed.fileName = importedName;
+
+        // Update cookie
+        setCookie(COOKIE_NAME, importedName);
+        onUpdateData(parsed);
+
+        setStatusMessage({
+          text: `Successfully imported "${importedName}" (${parsed.teams.length} teams, ${parsed.divisions.length} divisions, ${parsed.games?.length || 0} games). Cookie updated!`,
+          type: 'success',
+        });
+        setFileNameInput(importedName);
+      } catch (err: any) {
+        setStatusMessage({
+          text: `Import error: ${err.message || 'Invalid JSON file structure.'}`,
+          type: 'error',
+        });
+      }
+    };
+    reader.readAsText(file);
+    // Reset input
+    e.target.value = '';
+  };
+
+  // Handle Rename / Save As
+  const handleRename = (e: React.FormEvent) => {
+    e.preventDefault();
+    const cleanName = fileNameInput.trim().endsWith('.json')
+      ? fileNameInput.trim()
+      : `${fileNameInput.trim()}.json`;
+
+    const updatedData: AppData = {
+      ...appData,
+      fileName: cleanName,
+      lastModified: new Date().toISOString(),
+    };
+
+    setCookie(COOKIE_NAME, cleanName);
+    onUpdateData(updatedData);
+    setStatusMessage({
+      text: `File name changed to "${cleanName}". Stored in cookie for subsequent sessions.`,
+      type: 'success',
+    });
+  };
+
+  // Handle Reset to Demo
+  const handleResetDemo = () => {
+    if (window.confirm('Reset all schedule, teams, and field data to the initial Metro League sample dataset?')) {
+      const demoData = getInitialAppData();
+      setCookie(COOKIE_NAME, demoData.fileName);
+      onUpdateData(demoData);
+      setFileNameInput(demoData.fileName);
+      setStatusMessage({
+        text: 'Dataset successfully restored to Spring Metro Youth Soccer Championship.',
+        type: 'success',
+      });
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs">
+      <div className="bg-white rounded-xl shadow-xl border border-slate-200 w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 bg-slate-50">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-sm">
+              <FileText className="w-4 h-4" />
+            </div>
+            <div>
+              <h3 className="text-base font-semibold text-slate-900 leading-tight">
+                Dataset & File Manager
+              </h3>
+              <p className="text-xs text-slate-500">
+                Client-side cookie tracking & backup file export / import
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-200 transition-colors"
+            aria-label="Close"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="p-6 space-y-5 max-h-[75vh] overflow-y-auto">
+          {/* Status Message */}
+          {statusMessage && (
+            <div
+              className={`p-3 rounded-lg text-xs flex items-start gap-2 ${
+                statusMessage.type === 'success'
+                  ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                  : 'bg-rose-50 text-rose-800 border border-rose-200'
+              }`}
+            >
+              {statusMessage.type === 'success' ? (
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+              ) : (
+                <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+              )}
+              <span className="leading-relaxed">{statusMessage.text}</span>
+            </div>
+          )}
+
+          {/* Cookie Tracking Badge */}
+          <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-lg space-y-2">
+            <div className="flex items-center gap-2 text-xs font-semibold text-slate-700">
+              <Cookie className="w-4 h-4 text-amber-600" />
+              <span>Browser Cookie State</span>
+            </div>
+            <div className="text-xs text-slate-600 space-y-1">
+              <div>
+                Cookie Name: <code className="font-mono text-slate-900 bg-white px-1.5 py-0.5 rounded border border-slate-200">{COOKIE_NAME}</code>
+              </div>
+              <div>
+                Last Used File in Cookie: <strong className="font-mono text-slate-900">{currentCookieVal || 'None'}</strong>
+              </div>
+              <p className="text-[11px] text-slate-500 pt-0.5">
+                On page load, the application inspects this cookie to automatically reload your last exported or active schedule file.
+              </p>
+            </div>
+          </div>
+
+          {/* Active File Name & Rename */}
+          <form onSubmit={handleRename} className="space-y-2">
+            <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider">
+              Active Data File Name
+            </label>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={fileNameInput}
+                onChange={(e) => setFileNameInput(e.target.value)}
+                placeholder="e.g. spring_league_2026.json"
+                className="flex-1 text-sm rounded-lg border border-slate-300 bg-white px-3 py-2 text-slate-900 font-mono focus:outline-hidden focus:ring-2 focus:ring-slate-900"
+                required
+              />
+              <button
+                type="submit"
+                className="px-3.5 py-2 text-xs font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-100 transition-colors whitespace-nowrap"
+              >
+                Set File Name
+              </button>
+            </div>
+          </form>
+
+          {/* Export & Import actions */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+            {/* Export */}
+            <div className="p-4 rounded-lg border border-slate-200 bg-white space-y-2.5">
+              <div className="flex items-center gap-2">
+                <Download className="w-4 h-4 text-emerald-600" />
+                <h4 className="text-sm font-semibold text-slate-900">Export Dataset</h4>
+              </div>
+              <p className="text-xs text-slate-500 leading-relaxed">
+                Download current divisions, teams, pitches, and schedule as a JSON file.
+              </p>
+              <button
+                type="button"
+                onClick={handleExport}
+                className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 transition-colors"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>Export & Download JSON</span>
+              </button>
+            </div>
+
+            {/* Import */}
+            <div className="p-4 rounded-lg border border-slate-200 bg-white space-y-2.5">
+              <div className="flex items-center gap-2">
+                <Upload className="w-4 h-4 text-blue-600" />
+                <h4 className="text-sm font-semibold text-slate-900">Import Dataset</h4>
+              </div>
+              <p className="text-xs text-slate-500 leading-relaxed">
+                Load a previously exported JSON dataset into the scheduler.
+              </p>
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileChange}
+                accept=".json,application/json"
+                className="hidden"
+              />
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium text-slate-700 bg-slate-100 border border-slate-300 rounded-lg hover:bg-slate-200 transition-colors"
+              >
+                <Upload className="w-3.5 h-3.5" />
+                <span>Choose JSON File</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Reset button */}
+          <div className="pt-2 border-t border-slate-200">
+            <button
+              type="button"
+              onClick={handleResetDemo}
+              className="inline-flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-800 transition-colors"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+              <span>Reset to default sample league dataset</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="flex items-center justify-end px-6 py-3.5 border-t border-slate-200 bg-slate-50">
+          <button
+            onClick={onClose}
+            className="px-4 py-1.5 text-xs font-medium text-white bg-slate-900 rounded-lg hover:bg-slate-800 transition-colors"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};

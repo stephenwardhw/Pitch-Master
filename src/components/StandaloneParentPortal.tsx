@@ -238,9 +238,9 @@ export const StandaloneParentPortal: React.FC<StandaloneParentPortalProps> = ({
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col text-slate-900 font-sans">
+    <div className={`min-h-screen bg-slate-50 flex flex-col text-slate-900 font-sans ${isPrintViewOpen ? 'print:p-0 print:m-0 print:bg-white print:block' : ''}`}>
       {/* ================= STANDALONE PORTAL TOP HEADER ================= */}
-      <header className="sticky top-0 z-40 bg-white border-b border-slate-200 shadow-2xs">
+      <header className="sticky top-0 z-40 bg-white border-b border-slate-200 shadow-2xs no-print">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between gap-3 h-16">
             {/* Wordmark & Portal Branding */}
@@ -356,9 +356,31 @@ export const StandaloneParentPortal: React.FC<StandaloneParentPortalProps> = ({
       </header>
 
       {/* ================= STANDALONE PORTAL MAIN CONTENT ================= */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+      <main className={`flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6 ${isPrintViewOpen ? 'no-print' : ''}`}>
+        {/* Printable Portal Header (Displayed only when printing /portal directly) */}
+        <div className="hidden print-only mb-6 border-b-2 border-slate-900 pb-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="font-bold text-lg text-slate-900">PitchMaster Soccer</span>
+                <span className="text-xs uppercase font-semibold text-slate-500">Coach & Parent Portal</span>
+              </div>
+              <h1 className="text-xl font-black text-slate-900 mt-1">
+                {activeData.seasonConfig.seasonName || 'Official League Schedule'}
+              </h1>
+              <p className="text-xs text-slate-600 mt-0.5">
+                {selectedTeamId !== 'all' ? `Filtered by Team: ${teamMap.get(selectedTeamId)?.name}` : 'Full Season League Schedule'}
+              </p>
+            </div>
+            <div className="text-right text-xs font-mono text-slate-500">
+              <div>Printed: {new Date().toLocaleDateString()}</div>
+              <div>{filteredGames.length} Scheduled Games</div>
+            </div>
+          </div>
+        </div>
+
         {/* Hero Welcome Banner */}
-        <div className="bg-emerald-900 text-white rounded-2xl p-6 sm:p-8 shadow-md relative overflow-hidden">
+        <div className="bg-emerald-900 text-white rounded-2xl p-6 sm:p-8 shadow-md relative overflow-hidden no-print">
           <div className="relative z-10 space-y-4 max-w-3xl">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-800/80 border border-emerald-700/60 text-emerald-200 text-xs font-semibold">
               <Users className="w-3.5 h-3.5" />
@@ -443,7 +465,7 @@ export const StandaloneParentPortal: React.FC<StandaloneParentPortalProps> = ({
         </div>
 
         {/* Quick Team & Division Selector Card */}
-        <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-xs space-y-4">
+        <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-xs space-y-4 no-print">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
             <div>
               <h2 className="text-base font-bold text-slate-900 tracking-tight">
@@ -653,9 +675,9 @@ export const StandaloneParentPortal: React.FC<StandaloneParentPortalProps> = ({
                 const gamesOnDate = groupedByDate[dateStr];
 
                 return (
-                  <div key={dateStr} className="space-y-3">
+                  <div key={dateStr} className="space-y-3 print-game-week game-week match-group" data-game-week={dateStr}>
                     {/* Date Heading */}
-                    <div className="flex items-center justify-between px-1">
+                    <div className="flex items-center justify-between px-1 print-date-header">
                       <div className="flex items-center gap-2">
                         <Calendar className="w-4 h-4 text-emerald-600" />
                         <h3 className="text-sm font-bold text-slate-900">
@@ -688,7 +710,7 @@ export const StandaloneParentPortal: React.FC<StandaloneParentPortalProps> = ({
                         return (
                           <div
                             key={game.id}
-                            className={`bg-white rounded-xl border p-4 sm:p-5 transition-shadow shadow-xs hover:border-slate-300 ${
+                            className={`bg-white rounded-xl border p-4 sm:p-5 transition-shadow shadow-xs hover:border-slate-300 print-match-card break-inside-avoid ${
                               isSelectedTeamHome || isSelectedTeamAway
                                 ? 'border-emerald-300 ring-1 ring-emerald-200'
                                 : 'border-slate-200'

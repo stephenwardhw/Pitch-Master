@@ -1,0 +1,170 @@
+/**
+ * print.css - Dedicated Stylesheet for Print Media Query
+ * Specifically targets printing schedules, game weeks, match groups, and team directories from /portal.
+ * Enforces page breaks between game weeks or specific match groups to prevent truncated content.
+ */
+
+@media print {
+  /* ==========================================================================
+     1. Page Box & Root Layout Unlocking
+     ========================================================================== */
+  @page {
+    size: auto;
+    margin: 12mm 10mm 12mm 10mm;
+  }
+
+  /* Critical: Reset HTML, body, and root containers so multi-page printing
+     can paginate naturally across page 2, 3, etc. without viewport clipping */
+  html,
+  body,
+  #root,
+  .print-root {
+    background: #ffffff !important;
+    color: #0f172a !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    height: auto !important;
+    min-height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+    overflow-y: visible !important;
+    position: static !important;
+    width: 100% !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* ==========================================================================
+     2. Visibility Controls
+     ========================================================================== */
+  /* Hide interactive controls, buttons, toolbars, and background elements */
+  .no-print,
+  .print\:hidden,
+  button,
+  .btn,
+  input[type="text"],
+  input[type="search"],
+  select {
+    display: none !important;
+  }
+
+  /* Display elements intended exclusively for printed schedules */
+  .print-only,
+  .print\:block {
+    display: block !important;
+  }
+
+  .print\:inline-block {
+    display: inline-block !important;
+  }
+
+  .print\:flex {
+    display: flex !important;
+  }
+
+  /* ==========================================================================
+     3. Anti-Truncation Rules (Prevent sliced cards and split match rows)
+     ========================================================================== */
+  /* Never split a match card, table row, directory entry, or card container */
+  .break-inside-avoid,
+  .break-inside-avoid-page,
+  .print-avoid-break,
+  .print-match-card,
+  .match-card,
+  .match-item,
+  .game-card,
+  tr,
+  td,
+  th,
+  figure,
+  blockquote {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+
+  /* Prevent headings from being orphaned at the bottom of a page */
+  h1, h2, h3, h4, h5, h6,
+  .print-header,
+  .date-heading,
+  .print-date-header {
+    break-after: avoid !important;
+    page-break-after: avoid !important;
+  }
+
+  /* Robust table layout for multi-page schedule lists */
+  table {
+    border-collapse: collapse !important;
+    width: 100% !important;
+  }
+
+  thead {
+    display: table-header-group !important; /* Re-renders table column header on every printed page */
+  }
+
+  tfoot {
+    display: table-footer-group !important;
+  }
+
+  /* ==========================================================================
+     4. Forced Page Breaks Between Game Weeks & Match Groups
+     ========================================================================== */
+  /* Force clean page breaks between game weeks or specific match groups */
+  .print-game-week + .print-game-week,
+  .game-week + .game-week,
+  .match-group + .match-group,
+  .date-group + .date-group,
+  .game-date-group + .game-date-group,
+  [data-game-week] + [data-game-week],
+  .print-break-before,
+  .force-page-break,
+  .page-break-before,
+  .break-before-page {
+    break-before: page !important;
+    page-break-before: always !important;
+  }
+
+  /* Directory appendices (Team Contacts, Pitches) force a dedicated new page */
+  .print-section-break,
+  .print-directory-section,
+  .team-contacts-section,
+  .pitch-directory-section {
+    break-before: page !important;
+    page-break-before: always !important;
+  }
+
+  /* Ensure the very first game week / match group doesn't cause an empty page 1 */
+  .print-game-week:first-child,
+  .game-week:first-child,
+  .match-group:first-child,
+  .date-group:first-child,
+  .print-section:first-child,
+  [data-game-week]:first-of-type {
+    break-before: auto !important;
+    page-break-before: auto !important;
+  }
+
+  /* Allows toggling off forced week breaks if compact layout is preferred */
+  .no-force-week-breaks .print-game-week + .print-game-week,
+  .no-force-week-breaks .game-week + .game-week,
+  .no-force-week-breaks .match-group + .match-group,
+  .no-force-week-breaks [data-game-week] + [data-game-week] {
+    break-before: auto !important;
+    page-break-before: auto !important;
+  }
+
+  /* ==========================================================================
+     5. Contrast & Monochrome Cleanliness for Printing / PDF
+     ========================================================================== */
+  body, p, span, td, th {
+    color: #0f172a !important;
+  }
+
+  .border, [class*="border-"] {
+    border-color: #cbd5e1 !important;
+  }
+
+  * {
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+}

@@ -32,6 +32,7 @@ export const PrintScheduleView: React.FC<PrintScheduleViewProps> = ({
   const [includeTeamContacts, setIncludeTeamContacts] = useState<boolean>(true);
   const [includePitchDirectory, setIncludePitchDirectory] = useState<boolean>(true);
   const [includePracticeSessions, setIncludePracticeSessions] = useState<boolean>(true);
+  const [forceWeekPageBreaks, setForceWeekPageBreaks] = useState<boolean>(true);
   const [tableDensity, setTableDensity] = useState<'compact' | 'comfortable'>('compact');
 
   const teamMap = useMemo(() => new Map(appData.teams.map((t) => [t.id, t])), [appData.teams]);
@@ -112,7 +113,7 @@ export const PrintScheduleView: React.FC<PrintScheduleViewProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex flex-col justify-start overflow-y-auto">
+    <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex flex-col justify-start overflow-y-auto print:static print:inset-auto print:z-auto print:bg-white print:overflow-visible print:h-auto print:min-h-0 print:block">
       {/* Interactive Toolbar (Hidden during print) */}
       <div className="sticky top-0 z-50 bg-white border-b border-slate-200 px-4 sm:px-6 py-3 shadow-md no-print">
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-3">
@@ -190,6 +191,16 @@ export const PrintScheduleView: React.FC<PrintScheduleViewProps> = ({
               <span>Pitch Directory</span>
             </label>
 
+            <label className="flex items-center gap-1.5 px-2 py-1 rounded bg-slate-50 border border-slate-200 text-slate-700 cursor-pointer" title="Enforce page breaks between game weeks or specific match groups">
+              <input
+                type="checkbox"
+                checked={forceWeekPageBreaks}
+                onChange={(e) => setForceWeekPageBreaks(e.target.checked)}
+                className="rounded border-slate-300 text-slate-900"
+              />
+              <span>Page Break Per Week</span>
+            </label>
+
             {/* Print Primary Action */}
             <button
               type="button"
@@ -214,8 +225,8 @@ export const PrintScheduleView: React.FC<PrintScheduleViewProps> = ({
       </div>
 
       {/* Printable Sheet Viewport */}
-      <div className="flex-1 py-8 px-4 sm:px-6">
-        <div className="max-w-5xl mx-auto bg-white rounded-xl shadow-xl p-8 sm:p-12 print:shadow-none print:p-0 print:m-0 print:max-w-none print:w-full text-slate-900 font-sans">
+      <div className={`flex-1 py-8 px-4 sm:px-6 print:p-0 print:m-0 print:overflow-visible print:block ${!forceWeekPageBreaks ? 'no-force-week-breaks' : ''}`}>
+        <div className="max-w-5xl mx-auto bg-white rounded-xl shadow-xl p-8 sm:p-12 print:shadow-none print:p-0 print:m-0 print:max-w-none print:w-full print:block print:overflow-visible text-slate-900 font-sans print-root">
           {/* Document Header */}
           <div className="border-b-2 border-slate-900 pb-5 mb-6">
             <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
@@ -293,7 +304,8 @@ export const PrintScheduleView: React.FC<PrintScheduleViewProps> = ({
                   return (
                     <div
                       key={dateStr}
-                      className="border border-slate-300 rounded-lg overflow-hidden break-inside-avoid print:border-slate-400"
+                      className="border border-slate-300 rounded-lg overflow-hidden break-inside-avoid print:border-slate-400 print-game-week game-week match-group"
+                      data-game-week={dateStr}
                     >
                       {/* Date Header Strip */}
                       <div className="bg-slate-100 px-4 py-2 border-b border-slate-300 flex items-center justify-between print:bg-slate-200">
@@ -381,7 +393,7 @@ export const PrintScheduleView: React.FC<PrintScheduleViewProps> = ({
 
           {/* 2. Team Contacts & Notes Directory (Requested in user brief) */}
           {includeTeamContacts && printableTeams.length > 0 && (
-            <div className="space-y-4 mb-10 break-before-auto">
+            <div className="space-y-4 mb-10 print-section print-directory-section team-contacts-section">
               <div className="border-b border-slate-300 pb-2 flex items-center justify-between">
                 <h2 className="text-base font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
                   <Users className="w-4 h-4 text-slate-700" />
@@ -442,7 +454,7 @@ export const PrintScheduleView: React.FC<PrintScheduleViewProps> = ({
 
           {/* 3. Pitch & Facilities Directory */}
           {includePitchDirectory && printableFields.length > 0 && (
-            <div className="space-y-4 mb-6 break-inside-avoid">
+            <div className="space-y-4 mb-6 print-section print-directory-section pitch-directory-section">
               <div className="border-b border-slate-300 pb-2 flex items-center justify-between">
                 <h2 className="text-base font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
                   <MapPin className="w-4 h-4 text-slate-700" />

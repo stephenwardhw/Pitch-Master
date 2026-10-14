@@ -36,6 +36,7 @@ import { fetchServerLeagueSchedule } from '../utils/serverSync';
 import { ExportCalendarModal } from './modals/ExportCalendarModal';
 import { PrintScheduleView } from './PrintScheduleView';
 import { TeamContactModal } from './modals/TeamContactModal';
+import { MatchContactModal } from './modals/MatchContactModal';
 import { FieldMapModal } from './modals/FieldMapModal';
 import { AdminAccessModal } from './modals/AdminAccessModal';
 
@@ -61,6 +62,13 @@ export const StandaloneParentPortal: React.FC<StandaloneParentPortalProps> = ({
   const [isExportCalendarModalOpen, setIsExportCalendarModalOpen] = useState(false);
   const [isPrintViewOpen, setIsPrintViewOpen] = useState(false);
   const [activeContactTeam, setActiveContactTeam] = useState<{ team: Team; divisionName?: string } | null>(null);
+  const [activeMatchContacts, setActiveMatchContacts] = useState<{
+    game: Game;
+    homeTeam?: Team;
+    awayTeam?: Team;
+    divisionName?: string;
+    field?: Field;
+  } | null>(null);
   const [activeMapField, setActiveMapField] = useState<Field | null>(null);
   const [activeCalDropdownGameId, setActiveCalDropdownGameId] = useState<string | null>(null);
   const [copyLinkNotice, setCopyLinkNotice] = useState(false);
@@ -807,21 +815,22 @@ export const StandaloneParentPortal: React.FC<StandaloneParentPortalProps> = ({
 
                               {/* Right: Quick actions for this game */}
                               <div className="flex items-center gap-2 shrink-0 pt-2 lg:pt-0 border-t lg:border-t-0 border-slate-100">
-                                {/* Coach Contact Info */}
+                                {/* Coach Contact Info for Both Teams */}
                                 <button
                                   onClick={() => {
-                                    const teamToShow = homeTeam || awayTeam;
-                                    if (teamToShow) {
-                                      setActiveContactTeam({
-                                        team: teamToShow,
-                                        divisionName: division?.name,
-                                      });
-                                    }
+                                    setActiveMatchContacts({
+                                      game,
+                                      homeTeam,
+                                      awayTeam,
+                                      divisionName: division?.name,
+                                      field,
+                                    });
                                   }}
-                                  className="px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:text-slate-900 bg-slate-50 hover:bg-slate-100 rounded-lg border border-slate-200 transition-colors"
-                                  title="View coach contact details"
+                                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:text-slate-900 bg-slate-50 hover:bg-slate-100 rounded-lg border border-slate-200 transition-colors shadow-2xs"
+                                  title="View coach contact details for both teams"
                                 >
-                                  Coach Contacts
+                                  <Phone className="w-3.5 h-3.5 text-emerald-600" />
+                                  <span>Coach Contacts</span>
                                 </button>
 
                                 {/* Field Map */}
@@ -1028,7 +1037,20 @@ export const StandaloneParentPortal: React.FC<StandaloneParentPortalProps> = ({
         />
       )}
 
-      {/* 4. Team Contact Modal */}
+      {/* 4. Match Coach Contacts Modal (Both Teams) */}
+      {activeMatchContacts && (
+        <MatchContactModal
+          game={activeMatchContacts.game}
+          homeTeam={activeMatchContacts.homeTeam}
+          awayTeam={activeMatchContacts.awayTeam}
+          divisionName={activeMatchContacts.divisionName}
+          field={activeMatchContacts.field}
+          fields={activeData.fields}
+          onClose={() => setActiveMatchContacts(null)}
+        />
+      )}
+
+      {/* 5. Single Team Contact Modal (Spotlight Profile) */}
       {activeContactTeam && (
         <TeamContactModal
           team={activeContactTeam.team}

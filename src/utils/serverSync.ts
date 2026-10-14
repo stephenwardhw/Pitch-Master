@@ -98,19 +98,18 @@ export async function publishScheduleToServer(
   return result;
 }
 
+import { saveOrExportJson } from './fileExport';
+
 /**
- * Helper to download the current AppData as a ready-to-deploy league_schedule.json file.
+ * Helper to download or directly overwrite the current AppData as a ready-to-deploy league_schedule.json file.
+ * If preferOverwrite is true and supported (Chrome/Edge), it prompts the browser's native file picker
+ * allowing the user to select the existing file and overwrite it in-place without appending (1).
  */
-export function downloadLeagueScheduleJson(data: AppData, fileName = 'league_schedule.json') {
-  const jsonStr = JSON.stringify(data, null, 2);
-  const blob = new Blob([jsonStr], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = fileName;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+export async function downloadLeagueScheduleJson(
+  data: AppData,
+  fileName = 'league_schedule.json',
+  preferOverwrite = true
+) {
+  return saveOrExportJson(data, fileName, { preferOverwrite });
 }
 

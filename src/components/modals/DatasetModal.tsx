@@ -2,7 +2,21 @@ import React, { useState, useRef } from 'react';
 import { AppData } from '../../types';
 import { COOKIE_NAME, getCookie, setCookie, getInitialAppData } from '../../utils/cookieStorage';
 import { publishScheduleToServer, downloadLeagueScheduleJson } from '../../utils/serverSync';
-import { X, Download, Upload, RefreshCw, FileText, CheckCircle2, Cookie, AlertCircle, Globe, FileDown } from 'lucide-react';
+import { saveOrExportJson, isFileSystemAccessSupported } from '../../utils/fileExport';
+import {
+  X,
+  Download,
+  Upload,
+  RefreshCw,
+  FileText,
+  CheckCircle2,
+  Cookie,
+  AlertCircle,
+  Globe,
+  FileDown,
+  Save,
+  Info,
+} from 'lucide-react';
 
 interface DatasetModalProps {
   appData: AppData;
@@ -19,6 +33,8 @@ export const DatasetModal: React.FC<DatasetModalProps> = ({
   const [statusMessage, setStatusMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isPublishing, setIsPublishing] = useState(false);
+  const fsSupported = isFileSystemAccessSupported();
+  const [overwriteMode, setOverwriteMode] = useState<boolean>(true);
 
   const currentCookieVal = getCookie(COOKIE_NAME);
 
@@ -44,8 +60,8 @@ export const DatasetModal: React.FC<DatasetModalProps> = ({
     }
   };
 
-  // Handle Export / Download
-  const handleExport = () => {
+  // Handle Export / Download / In-Place Overwrite
+  const handleExport = async (forceStandardDownload: boolean = false) => {
     try {
       const cleanName = fileNameInput.trim().endsWith('.json')
         ? fileNameInput.trim()
@@ -57,21 +73,21 @@ export const DatasetModal: React.FC<DatasetModalProps> = ({
         lastModified: new Date().toISOString(),
       };
 
-      const dataStr = 'data:text/json;charset=utf-8,' + encodeURIComponent(JSON.stringify(exportData, null, 2));
-      const downloadAnchor = document.createElement('a');
-      downloadAnchor.setAttribute('href', dataStr);
-      downloadAnchor.setAttribute('download', cleanName);
-      document.body.appendChild(downloadAnchor);
-      downloadAnchor.click();
-      downloadAnchor.remove();
-
-      // Update cookie and app state
-      setCookie(COOKIE_NAME, cleanName);
-      onUpdateData(exportData);
-      setStatusMessage({
-        text: `Exported successfully as "${cleanName}". Client cookie updated to remember this file on page load.`,
-        type: 'success',
+      const result = await saveOrExportJson(exportData, cleanName, {
+        preferOverwrite: forceStandardDownload ? false : overwriteMode,
       });
+
+      if (result.success) {
+        // Update cookie and app state
+        setCookie(COOKIE_NAME, cleanName);
+        onUpdateData(exportData);
+        setStatusMessage({
+          text: result.message,
+          type: 'success',
+        });
+      } else if (result.method !== 'cancelled') {
+        setStatusMessage({ text: result.message || 'Failed to generate JSON export file.', type: 'error' });
+      }
     } catch {
       setStatusMessage({ text: 'Failed to generate JSON export file.', type: 'error' });
     }
@@ -243,33 +259,84 @@ export const DatasetModal: React.FC<DatasetModalProps> = ({
           {/* Export & Import actions */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
             {/* Export */}
-            <div className="p-4 rounded-lg border border-slate-200 bg-white space-y-2.5">
-              <div className="flex items-center gap-2">
-                <Download className="w-4 h-4 text-emerald-600" />
-                <h4 className="text-sm font-semibold text-slate-900">Export Dataset</h4>
+            <div className="p-4 rounded-lg border border-slate-200 bg-white space-y-3 flex flex-col justify-between">
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Download className="w-4 h-4 text-emerald-600" />
+                    <h4 className="text-sm font-semibold text-slate-900">Export Dataset</h4>
+                  </div>
+                  {fsSupported && (
+                    <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                      Direct Overwrite API
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-slate-500 leading-relaxed">
+                  Save current divisions, teams, pitches, and schedule as a JSON file.
+                </p>
+
+                {/* Overwrite option toggle */}
+                <div className="p-2.5 rounded-md bg-slate-50 border border-slate-200 space-y-1.5">
+                  <label className="flex items-start gap-2 text-xs text-slate-700 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={overwriteMode}
+                      onChange={(e) => setOverwriteMode(e.target.checked)}
+                      className="mt-0.5 rounded text-emerald-600 focus:ring-emerald-500 border-slate-300"
+                    />
+                    <div>
+                      <span className="font-semibold text-slate-800">
+                        Prompt to replace / overwrite file directly
+                      </span>
+                      <p className="text-[11px] text-slate-500 font-normal leading-tight mt-0.5">
+                        Overwrites existing file in-place instead of browser auto-incrementing <code className="text-[10px] bg-slate-200 px-1 py-0.5 rounded">(1).json</code>.
+                      </p>
+                    </div>
+                  </label>
+                  {!fsSupported && (
+                    <div className="flex items-center gap-1.5 text-[10px] text-amber-700 bg-amber-50 p-1.5 rounded border border-amber-200">
+                      <Info className="w-3 h-3 shrink-0" />
+                      <span>Direct overwrite requires Chrome, Edge, or Brave. In this browser, standard downloads are used.</span>
+                    </div>
+                  )}
+                </div>
               </div>
-              <p className="text-xs text-slate-500 leading-relaxed">
-                Download current divisions, teams, pitches, and schedule as a JSON file.
-              </p>
-              <button
-                type="button"
-                onClick={handleExport}
-                className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 transition-colors"
-              >
-                <Download className="w-3.5 h-3.5" />
-                <span>Export & Download JSON</span>
-              </button>
+
+              <div className="space-y-1.5 pt-1">
+                <button
+                  type="button"
+                  onClick={() => handleExport(false)}
+                  className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 transition-colors shadow-2xs"
+                >
+                  <Save className="w-3.5 h-3.5" />
+                  <span>
+                    {overwriteMode && fsSupported ? 'Save & Overwrite JSON' : 'Export & Download JSON'}
+                  </span>
+                </button>
+                {overwriteMode && fsSupported && (
+                  <button
+                    type="button"
+                    onClick={() => handleExport(true)}
+                    className="w-full text-center text-[11px] text-slate-500 hover:text-slate-800 underline transition-colors"
+                  >
+                    Or standard download (allow (1) numbering)
+                  </button>
+                )}
+              </div>
             </div>
 
             {/* Import */}
-            <div className="p-4 rounded-lg border border-slate-200 bg-white space-y-2.5">
-              <div className="flex items-center gap-2">
-                <Upload className="w-4 h-4 text-blue-600" />
-                <h4 className="text-sm font-semibold text-slate-900">Import Dataset</h4>
+            <div className="p-4 rounded-lg border border-slate-200 bg-white space-y-2.5 flex flex-col justify-between">
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Upload className="w-4 h-4 text-blue-600" />
+                  <h4 className="text-sm font-semibold text-slate-900">Import Dataset</h4>
+                </div>
+                <p className="text-xs text-slate-500 leading-relaxed">
+                  Load a previously exported JSON dataset into the scheduler.
+                </p>
               </div>
-              <p className="text-xs text-slate-500 leading-relaxed">
-                Load a previously exported JSON dataset into the scheduler.
-              </p>
               <input
                 type="file"
                 ref={fileInputRef}
@@ -313,12 +380,21 @@ export const DatasetModal: React.FC<DatasetModalProps> = ({
             </button>
             <button
               type="button"
-              onClick={() => downloadLeagueScheduleJson(appData)}
+              onClick={async () => {
+                const res = await downloadLeagueScheduleJson(appData, 'league_schedule.json', overwriteMode);
+                if (res.success) {
+                  setStatusMessage({ text: res.message, type: 'success' });
+                } else if (res.method !== 'cancelled') {
+                  setStatusMessage({ text: res.message, type: 'error' });
+                }
+              }}
               className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-medium text-purple-900 bg-purple-100/80 hover:bg-purple-200/80 border border-purple-200 rounded-lg transition-colors"
-              title="Download league_schedule.json directly to upload or copy into your Apache DocumentRoot (/var/www/pitchmaster/)"
+              title="Save or download league_schedule.json directly to place into your Apache DocumentRoot (/var/www/pitchmaster/)"
             >
               <FileDown className="w-3.5 h-3.5 text-purple-700" />
-              <span>Download league_schedule.json (For Static Host / Manual Upload)</span>
+              <span>
+                {overwriteMode && fsSupported ? 'Save & Overwrite league_schedule.json' : 'Download league_schedule.json'} (For Static Host / Manual Upload)
+              </span>
             </button>
           </div>
 

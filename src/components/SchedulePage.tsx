@@ -292,11 +292,18 @@ export const SchedulePage: React.FC<SchedulePageProps> = ({
               {publishResult.type === 'error' && (
                 <button
                   type="button"
-                  onClick={() => downloadLeagueScheduleJson(appData)}
+                  onClick={async () => {
+                    const res = await downloadLeagueScheduleJson(appData, 'league_schedule.json', true);
+                    if (res.success) {
+                      setPublishResult({ type: 'success', message: res.message });
+                    } else if (res.method !== 'cancelled') {
+                      setPublishResult({ type: 'error', message: res.message });
+                    }
+                  }}
                   className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-rose-900 bg-white border border-rose-300 rounded shadow-2xs hover:bg-rose-50 transition-colors"
                 >
                   <Download className="w-3 h-3 text-rose-700" />
-                  <span>Download league_schedule.json</span>
+                  <span>Save / Download league_schedule.json</span>
                 </button>
               )}
               <button

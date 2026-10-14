@@ -108,12 +108,11 @@
   /* ==========================================================================
      4. Forced Page Breaks Between Game Weeks & Match Groups
      ========================================================================== */
-  /* Force clean page breaks between game weeks or specific match groups */
+  /* Force clean page breaks exclusively between Game Weeks */
   .print-game-week + .print-game-week,
   .game-week + .game-week,
-  .match-group + .match-group,
-  .date-group + .date-group,
-  .game-date-group + .game-date-group,
+  .match-week + .match-week,
+  .week-group + .week-group,
   [data-game-week] + [data-game-week],
   .print-break-before,
   .force-page-break,
@@ -121,6 +120,16 @@
   .break-before-page {
     break-before: page !important;
     page-break-before: always !important;
+  }
+
+  /* Days within a game week must NOT force page breaks, but keep day tables unified */
+  .print-day-block,
+  .day-group,
+  .date-group {
+    break-before: auto !important;
+    page-break-before: auto !important;
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
   }
 
   /* Directory appendices (Team Contacts, Pitches) force a dedicated new page */
@@ -135,8 +144,8 @@
   /* Ensure the very first game week / match group doesn't cause an empty page 1 */
   .print-game-week:first-child,
   .game-week:first-child,
-  .match-group:first-child,
-  .date-group:first-child,
+  .match-week:first-child,
+  .week-group:first-child,
   .print-section:first-child,
   [data-game-week]:first-of-type {
     break-before: auto !important;
@@ -146,7 +155,8 @@
   /* Allows toggling off forced week breaks if compact layout is preferred */
   .no-force-week-breaks .print-game-week + .print-game-week,
   .no-force-week-breaks .game-week + .game-week,
-  .no-force-week-breaks .match-group + .match-group,
+  .no-force-week-breaks .match-week + .match-week,
+  .no-force-week-breaks .week-group + .week-group,
   .no-force-week-breaks [data-game-week] + [data-game-week] {
     break-before: auto !important;
     page-break-before: auto !important;

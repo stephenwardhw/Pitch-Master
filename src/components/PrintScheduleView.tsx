@@ -61,7 +61,70 @@ export const PrintScheduleView: React.FC<PrintScheduleViewProps> = ({
       });
   }, [appData.games, selectedDivisionId, selectedTeamId, includePracticeSessions]);
 
-  // Group games by date
+  // Helper to determine the Monday of the calendar week for any given date string
+  const getMondayOfDate = (dateStr: string) => {
+    try {
+      const [y, m, d] = dateStr.split('-').map(Number);
+      const dt = new Date(y, m - 1, d);
+      const day = dt.getDay(); // 0 is Sunday, 1 is Monday, ..., 6 is Saturday
+      const diffToMonday = (day + 6) % 7;
+      const monday = new Date(y, m - 1, d - diffToMonday);
+      const year = monday.getFullYear();
+      const month = String(monday.getMonth() + 1).padStart(2, '0');
+      const date = String(monday.getDate()).padStart(2, '0');
+      return `${year}-${month}-${date}`;
+    } catch {
+      return dateStr;
+    }
+  };
+
+  // Group games into distinct Game Weeks (Monday to Sunday cycle)
+  const groupedWeeks = useMemo(() => {
+    const weekMap = new Map<string, { daysMap: Map<string, Game[]>; totalGames: number }>();
+
+    for (const game of printableGames) {
+      const monday = getMondayOfDate(game.date);
+      if (!weekMap.has(monday)) {
+        weekMap.set(monday, { daysMap: new Map(), totalGames: 0 });
+      }
+      const weekEntry = weekMap.get(monday)!;
+      weekEntry.totalGames++;
+      if (!weekEntry.daysMap.has(game.date)) {
+        weekEntry.daysMap.set(game.date, []);
+      }
+      weekEntry.daysMap.get(game.date)!.push(game);
+    }
+
+    const sortedMondays = Array.from(weekMap.keys()).sort();
+
+    return sortedMondays.map((monday, index) => {
+      const weekEntry = weekMap.get(monday)!;
+      const sortedDatesInWeek = Array.from(weekEntry.daysMap.keys()).sort();
+      const days = sortedDatesInWeek.map((dateStr) => ({
+        dateStr,
+        formattedDate: formatDateFriendly(dateStr),
+        games: weekEntry.daysMap.get(dateStr)!,
+      }));
+
+      const firstDateFriendly = formatDateFriendly(sortedDatesInWeek[0]);
+      const lastDateFriendly = formatDateFriendly(sortedDatesInWeek[sortedDatesInWeek.length - 1]);
+      const dateRangeFormatted =
+        sortedDatesInWeek.length === 1
+          ? firstDateFriendly
+          : `${firstDateFriendly} – ${lastDateFriendly}`;
+
+      return {
+        weekKey: monday,
+        weekNumber: index + 1,
+        label: `Game Week ${index + 1}`,
+        dateRangeFormatted,
+        days,
+        totalGames: weekEntry.totalGames,
+      };
+    });
+  }, [printableGames]);
+
+  // Retain day grouping for backwards compatibility
   const groupedByDate = useMemo(() => {
     const map: { [date: string]: Game[] } = {};
     for (const game of printableGames) {
@@ -266,6 +329,11 @@ export const PrintScheduleView: React.FC<PrintScheduleViewProps> = ({
                 </div>
                 <div className="h-6 w-px bg-slate-200" />
                 <div className="text-center px-2">
+                  <span className="block text-slate-400 uppercase font-mono text-[10px]">Game Weeks</span>
+                  <span className="font-bold text-base font-mono tabular-nums">{groupedWeeks.length}</span>
+                </div>
+                <div className="h-6 w-px bg-slate-200" />
+                <div className="text-center px-2">
                   <span className="block text-slate-400 uppercase font-mono text-[10px]">Teams</span>
                   <span className="font-bold text-base font-mono tabular-nums">{printableTeams.length}</span>
                 </div>
@@ -283,7 +351,7 @@ export const PrintScheduleView: React.FC<PrintScheduleViewProps> = ({
             <div className="flex items-center justify-between border-b border-slate-300 pb-2">
               <h2 className="text-base font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
                 <Calendar className="w-4 h-4 text-slate-700" />
-                <span>Scheduled Games ({printableGames.length} Games)</span>
+                <span>Scheduled Games ({printableGames.length} Games across {groupedWeeks.length} Game Weeks)</span>
               </h2>
               {selectedDivisionId !== 'all' && (
                 <span className="text-xs font-semibold text-slate-600">
@@ -292,101 +360,123 @@ export const PrintScheduleView: React.FC<PrintScheduleViewProps> = ({
               )}
             </div>
 
-            {sortedDates.length === 0 ? (
+            {groupedWeeks.length === 0 ? (
               <div className="py-8 text-center text-sm text-slate-500 italic">
                 No games scheduled matching the current filters.
               </div>
             ) : (
-              <div className="space-y-6">
-                {sortedDates.map((dateStr) => {
-                  const gamesOnDate = groupedByDate[dateStr];
-
-                  return (
-                    <div
-                      key={dateStr}
-                      className="border border-slate-300 rounded-lg overflow-hidden break-inside-avoid print:border-slate-400 print-game-week game-week match-group"
-                      data-game-week={dateStr}
-                    >
-                      {/* Date Header Strip */}
-                      <div className="bg-slate-100 px-4 py-2 border-b border-slate-300 flex items-center justify-between print:bg-slate-200">
-                        <span className="font-bold text-xs uppercase tracking-wide text-slate-900">
-                          {formatDateFriendly(dateStr)}
+              <div className="space-y-8">
+                {groupedWeeks.map((week) => (
+                  <div
+                    key={week.weekKey}
+                    className="print-game-week game-week match-week week-group space-y-4"
+                    data-game-week={week.weekKey}
+                  >
+                    {/* Game Week Header Banner */}
+                    <div className="bg-slate-900 text-white px-4 py-2.5 rounded-lg flex items-center justify-between shadow-xs print:bg-slate-900 print:text-white print-avoid-break">
+                      <div className="flex flex-wrap items-center gap-2.5">
+                        <span className="font-extrabold text-sm uppercase tracking-wider text-emerald-400">
+                          {week.label}
                         </span>
-                        <span className="text-xs font-mono text-slate-600 tabular-nums">
-                          {gamesOnDate.length} {gamesOnDate.length === 1 ? 'match' : 'matches'}
+                        <span className="text-slate-400 text-xs hidden sm:inline">·</span>
+                        <span className="text-xs text-slate-200 font-medium">
+                          {week.dateRangeFormatted}
                         </span>
                       </div>
+                      <span className="text-xs font-mono text-emerald-300 font-bold tabular-nums">
+                        {week.totalGames} {week.totalGames === 1 ? 'match' : 'matches'}
+                      </span>
+                    </div>
 
-                      {/* Games Table for this date */}
-                      <table className="w-full text-left text-xs">
-                        <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold print:bg-white">
-                          <tr>
-                            <th className="py-2 px-3 w-20">Time</th>
-                            <th className="py-2 px-3 w-32">Division</th>
-                            <th className="py-2 px-3">Home Team</th>
-                            <th className="py-2 px-3">Away Team</th>
-                            <th className="py-2 px-3">Pitch / Facility</th>
-                            <th className="py-2 px-3 w-36">Pitch Address</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-200">
-                          {gamesOnDate.map((g) => {
-                            const home = teamMap.get(g.homeTeamId);
-                            const away = teamMap.get(g.awayTeamId);
-                            const div = divisionMap.get(g.divisionId);
-                            const field = fieldMap.get(g.fieldId);
+                    {/* Day Tables in this week */}
+                    <div className="space-y-4">
+                      {week.days.map((day) => (
+                        <div
+                          key={day.dateStr}
+                          className="border border-slate-300 rounded-lg overflow-hidden break-inside-avoid print-day-block day-group print:border-slate-400"
+                        >
+                          {/* Date Header Strip */}
+                          <div className="bg-slate-100 px-4 py-2 border-b border-slate-300 flex items-center justify-between print:bg-slate-200">
+                            <span className="font-bold text-xs uppercase tracking-wide text-slate-900">
+                              {day.formattedDate}
+                            </span>
+                            <span className="text-xs font-mono text-slate-600 tabular-nums">
+                              {day.games.length} {day.games.length === 1 ? 'match' : 'matches'}
+                            </span>
+                          </div>
 
-                            return (
-                              <tr key={g.id} className="hover:bg-slate-50">
-                                <td className="py-2 px-3 font-mono font-bold text-slate-900 whitespace-nowrap">
-                                  {g.time}
-                                </td>
-                                <td className="py-2 px-3 text-slate-700 whitespace-nowrap">
-                                  {div?.name || 'League'}
-                                </td>
-                                <td className="py-2 px-3 font-semibold text-slate-900">
-                                  {home?.name || 'TBD'}
-                                  {home?.jerseyColor && (
-                                    <span className="text-[10px] text-slate-500 font-normal block">
-                                      Jersey: {home.jerseyColor}
-                                    </span>
-                                  )}
-                                </td>
-                                <td className="py-2 px-3 font-semibold text-slate-900">
-                                  {g.isByePractice ? (
-                                    <span className="text-amber-800 font-medium italic">
-                                      Practice Session (Bye Round)
-                                    </span>
-                                  ) : (
-                                    <>
-                                      {away?.name || 'TBD'}
-                                      {away?.jerseyColor && (
+                          {/* Games Table for this date */}
+                          <table className="w-full text-left text-xs">
+                            <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold print:bg-white">
+                              <tr>
+                                <th className="py-2 px-3 w-20">Time</th>
+                                <th className="py-2 px-3 w-32">Division</th>
+                                <th className="py-2 px-3">Home Team</th>
+                                <th className="py-2 px-3">Away Team</th>
+                                <th className="py-2 px-3">Pitch / Facility</th>
+                                <th className="py-2 px-3 w-36">Pitch Address</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-200">
+                              {day.games.map((g) => {
+                                const home = teamMap.get(g.homeTeamId);
+                                const away = teamMap.get(g.awayTeamId);
+                                const div = divisionMap.get(g.divisionId);
+                                const field = fieldMap.get(g.fieldId);
+
+                                return (
+                                  <tr key={g.id} className="hover:bg-slate-50 break-inside-avoid">
+                                    <td className="py-2 px-3 font-mono font-bold text-slate-900 whitespace-nowrap">
+                                      {g.time}
+                                    </td>
+                                    <td className="py-2 px-3 text-slate-700 whitespace-nowrap">
+                                      {div?.name || 'League'}
+                                    </td>
+                                    <td className="py-2 px-3 font-semibold text-slate-900">
+                                      {home?.name || 'TBD'}
+                                      {home?.jerseyColor && (
                                         <span className="text-[10px] text-slate-500 font-normal block">
-                                          Jersey: {away.jerseyColor}
+                                          Jersey: {home.jerseyColor}
                                         </span>
                                       )}
-                                    </>
-                                  )}
-                                </td>
-                                <td className="py-2 px-3 text-slate-800 font-medium">
-                                  {field?.name || 'Unassigned'}
-                                  {field?.size && (
-                                    <span className="text-[10px] text-slate-500 font-normal block">
-                                      Format: {field.size}
-                                    </span>
-                                  )}
-                                </td>
-                                <td className="py-2 px-3 text-[11px] text-slate-600">
-                                  {field?.address || '—'}
-                                </td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
+                                    </td>
+                                    <td className="py-2 px-3 font-semibold text-slate-900">
+                                      {g.isByePractice ? (
+                                        <span className="text-amber-800 font-medium italic">
+                                          Practice Session (Bye Round)
+                                        </span>
+                                      ) : (
+                                        <>
+                                          {away?.name || 'TBD'}
+                                          {away?.jerseyColor && (
+                                            <span className="text-[10px] text-slate-500 font-normal block">
+                                              Jersey: {away.jerseyColor}
+                                            </span>
+                                          )}
+                                        </>
+                                      )}
+                                    </td>
+                                    <td className="py-2 px-3 text-slate-800 font-medium">
+                                      {field?.name || 'Unassigned'}
+                                      {field?.size && (
+                                        <span className="text-[10px] text-slate-500 font-normal block">
+                                          Format: {field.size}
+                                        </span>
+                                      )}
+                                    </td>
+                                    <td className="py-2 px-3 text-[11px] text-slate-600">
+                                      {field?.address || '—'}
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      ))}
                     </div>
-                  );
-                })}
+                  </div>
+                ))}
               </div>
             )}
           </div>

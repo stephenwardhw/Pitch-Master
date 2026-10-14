@@ -675,7 +675,7 @@ export const StandaloneParentPortal: React.FC<StandaloneParentPortalProps> = ({
                 const gamesOnDate = groupedByDate[dateStr];
 
                 return (
-                  <div key={dateStr} className="space-y-3 print-game-week game-week match-group" data-game-week={dateStr}>
+                  <div key={dateStr} className="space-y-3 print-day-block day-group">
                     {/* Date Heading */}
                     <div className="flex items-center justify-between px-1 print-date-header">
                       <div className="flex items-center gap-2">

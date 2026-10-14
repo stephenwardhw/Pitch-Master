@@ -11,7 +11,6 @@ import {
   ExternalLink,
   Phone,
   Mail,
-  Shield,
   Share2,
   ChevronDown,
   Download,
@@ -38,11 +37,10 @@ import { PrintScheduleView } from './PrintScheduleView';
 import { TeamContactModal } from './modals/TeamContactModal';
 import { MatchContactModal } from './modals/MatchContactModal';
 import { FieldMapModal } from './modals/FieldMapModal';
-import { AdminAccessModal } from './modals/AdminAccessModal';
 
 interface StandaloneParentPortalProps {
   appData?: AppData;
-  onSwitchToAdmin: () => void;
+  onSwitchToAdmin?: () => void;
   onGoToHome?: () => void;
 }
 
@@ -58,7 +56,6 @@ export const StandaloneParentPortal: React.FC<StandaloneParentPortalProps> = ({
   const [serverFileLoadedAt, setServerFileLoadedAt] = useState<string | null>(null);
 
   // Modals & Popups
-  const [isAdminModalOpen, setIsAdminModalOpen] = useState(false);
   const [isExportCalendarModalOpen, setIsExportCalendarModalOpen] = useState(false);
   const [isPrintViewOpen, setIsPrintViewOpen] = useState(false);
   const [activeContactTeam, setActiveContactTeam] = useState<{ team: Team; divisionName?: string } | null>(null);
@@ -314,7 +311,7 @@ export const StandaloneParentPortal: React.FC<StandaloneParentPortalProps> = ({
               </button>
             </div>
 
-            {/* Action Buttons: Home, Print, Calendar, Share, Admin Access */}
+            {/* Action Buttons: Home, Print, Calendar, Share */}
             <div className="flex items-center gap-2 shrink-0">
               {onGoToHome && (
                 <button
@@ -352,16 +349,6 @@ export const StandaloneParentPortal: React.FC<StandaloneParentPortalProps> = ({
               >
                 <Share2 className="w-3.5 h-3.5" />
                 <span className="hidden lg:inline">{copyLinkNotice ? 'Copied!' : 'Share'}</span>
-              </button>
-
-              {/* Discrete Admin Console Link */}
-              <button
-                onClick={() => setIsAdminModalOpen(true)}
-                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors border border-transparent hover:border-slate-200"
-                title="Access League Administrator Console"
-              >
-                <Shield className="w-3.5 h-3.5 text-slate-400" />
-                <span className="hidden xl:inline">Admin Access</span>
               </button>
             </div>
           </div>
@@ -445,13 +432,6 @@ export const StandaloneParentPortal: React.FC<StandaloneParentPortalProps> = ({
               >
                 <Share2 className="w-3.5 h-3.5" />
                 <span>{copyLinkNotice ? 'Link Copied!' : 'Share Portal Link'}</span>
-              </button>
-
-              <button
-                onClick={() => setIsAdminModalOpen(true)}
-                className="text-xs text-emerald-200/80 hover:text-white underline ml-2"
-              >
-                League Admin Console
               </button>
             </div>
           </div>
@@ -998,27 +978,12 @@ export const StandaloneParentPortal: React.FC<StandaloneParentPortalProps> = ({
             >
               Share Portal Link
             </button>
-            <span aria-hidden="true">·</span>
-            <button
-              onClick={() => setIsAdminModalOpen(true)}
-              className="text-slate-500 hover:text-slate-900 flex items-center gap-1.5"
-            >
-              <Shield className="w-3.5 h-3.5 text-slate-400" />
-              <span>League Administrator Login</span>
-            </button>
           </div>
         </div>
       </footer>
 
       {/* ================= MODALS ================= */}
-      {/* 1. Admin Access Modal */}
-      <AdminAccessModal
-        isOpen={isAdminModalOpen}
-        onClose={() => setIsAdminModalOpen(false)}
-        onConfirmSwitchToAdmin={onSwitchToAdmin}
-      />
-
-      {/* 2. Export Calendar Modal */}
+      {/* 1. Export Calendar Modal */}
       {isExportCalendarModalOpen && (
         <ExportCalendarModal
           appData={activeData}

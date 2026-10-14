@@ -23,6 +23,7 @@ import {
   Database,
   Lock,
   ArrowRight,
+  Home,
 } from 'lucide-react';
 import {
   buildEventPayload,
@@ -41,11 +42,13 @@ import { AdminAccessModal } from './modals/AdminAccessModal';
 interface StandaloneParentPortalProps {
   appData?: AppData;
   onSwitchToAdmin: () => void;
+  onGoToHome?: () => void;
 }
 
 export const StandaloneParentPortal: React.FC<StandaloneParentPortalProps> = ({
   appData,
   onSwitchToAdmin,
+  onGoToHome,
 }) => {
   // State for server-hosted league_schedule.json
   const [serverData, setServerData] = useState<AppData | null>(null);
@@ -303,8 +306,19 @@ export const StandaloneParentPortal: React.FC<StandaloneParentPortalProps> = ({
               </button>
             </div>
 
-            {/* Action Buttons: Print, Calendar, Share, Admin Access */}
+            {/* Action Buttons: Home, Print, Calendar, Share, Admin Access */}
             <div className="flex items-center gap-2 shrink-0">
+              {onGoToHome && (
+                <button
+                  onClick={onGoToHome}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors shadow-2xs"
+                  title="Return to Main Landing Page (/)"
+                >
+                  <Home className="w-3.5 h-3.5 text-slate-500" />
+                  <span className="hidden sm:inline">Home</span>
+                </button>
+              )}
+
               <button
                 onClick={() => setIsPrintViewOpen(true)}
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors shadow-2xs"

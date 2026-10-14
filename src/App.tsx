@@ -14,6 +14,7 @@ import { FieldsPage } from './components/FieldsPage';
 import { SeasonConfigPage } from './components/SeasonConfigPage';
 import { StandaloneParentPortal } from './components/StandaloneParentPortal';
 import { TeamStatisticsPage } from './components/TeamStatisticsPage';
+import { LandingPage } from './components/LandingPage';
 
 import { TeamContactModal } from './components/modals/TeamContactModal';
 import { FieldMapModal } from './components/modals/FieldMapModal';
@@ -21,38 +22,53 @@ import { EditGameModal } from './components/modals/EditGameModal';
 import { DatasetModal } from './components/modals/DatasetModal';
 import { ManageTeamSizesModal } from './components/modals/ManageTeamSizesModal';
 
-function checkIsPortalRoute(): boolean {
+export type AppMode = 'landing' | 'admin' | 'portal';
+
+function checkRouteMode(): AppMode {
   try {
     const pathname = window.location.pathname.toLowerCase();
     const search = window.location.search.toLowerCase();
     const hash = window.location.hash.toLowerCase();
-    return (
-      pathname.includes('/portal') ||
-      pathname.includes('/parents') ||
-      pathname.includes('/public') ||
-      pathname.includes('/coach') ||
-      search.includes('portal') ||
-      search.includes('view=public') ||
+
+    // 1. Coach & Parent Portal routes
+    if (
+      pathname.startsWith('/portal') ||
+      pathname.startsWith('/parents') ||
+      pathname.startsWith('/public') ||
+      pathname.startsWith('/coach') ||
       search.includes('view=portal') ||
+      search.includes('view=public') ||
       hash.includes('portal') ||
       hash.includes('public')
-    );
+    ) {
+      return 'portal';
+    }
+
+    // 2. League Admin route
+    if (
+      pathname.startsWith('/admin') ||
+      search.includes('view=admin') ||
+      hash.includes('admin')
+    ) {
+      return 'admin';
+    }
+
+    // 3. Root and default is the Landing Page
+    return 'landing';
   } catch {
-    return false;
+    return 'landing';
   }
 }
 
 export default function App() {
   const [appData, setAppData] = useState<AppData>(() => loadAppData());
   const [currentTab, setCurrentTab] = useState<NavTab>('schedule');
-  const [appMode, setAppMode] = useState<'admin' | 'portal'>(() =>
-    checkIsPortalRoute() ? 'portal' : 'admin'
-  );
+  const [appMode, setAppMode] = useState<AppMode>(() => checkRouteMode());
 
   // Sync mode with browser back/forward buttons
   useEffect(() => {
     const handlePopState = () => {
-      setAppMode(checkIsPortalRoute() ? 'portal' : 'admin');
+      setAppMode(checkRouteMode());
     };
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
@@ -71,6 +87,13 @@ export default function App() {
 
   const handleSwitchToAdmin = useCallback(() => {
     setAppMode('admin');
+    try {
+      window.history.pushState(null, '', '/admin');
+    } catch {}
+  }, []);
+
+  const handleGoToLanding = useCallback(() => {
+    setAppMode('landing');
     try {
       window.history.pushState(null, '', '/');
     } catch {}
@@ -246,21 +269,33 @@ export default function App() {
     }
   }, [appData, updateAndSaveAppData]);
 
-  // ================= STANDALONE PORTAL MODE =================
+  // ================= 1. ROOT LANDING PAGE (/) =================
+  if (appMode === 'landing') {
+    return (
+      <LandingPage
+        appData={appData}
+        onSelectAdmin={handleSwitchToAdmin}
+        onSelectPortal={() => handleOpenPortal(false)}
+      />
+    );
+  }
+
+  // ================= 2. STANDALONE PORTAL MODE (/portal) =================
   // If in portal mode, render exclusively the Standalone Parent & Coach Portal
   if (appMode === 'portal') {
     return (
       <StandaloneParentPortal
         appData={appData}
         onSwitchToAdmin={handleSwitchToAdmin}
+        onGoToHome={handleGoToLanding}
       />
     );
   }
 
-  // ================= LEAGUE ADMIN MODE =================
+  // ================= 3. LEAGUE ADMIN MODE (/admin) =================
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col text-slate-900 font-sans">
-      {/* Top Navigation Bar with Cookie Tracked File Indicator & Portal Launcher */}
+      {/* Top Navigation Bar with Cookie Tracked File Indicator, Home button & Portal Launcher */}
       <Navbar
         currentTab={currentTab}
         onSelectTab={setCurrentTab}
@@ -268,6 +303,7 @@ export default function App() {
         conflicts={conflicts}
         onOpenDatasetModal={() => setIsDatasetModalOpen(true)}
         onOpenPortal={handleOpenPortal}
+        onGoToHome={handleGoToLanding}
       />
 
       {/* Main Content Viewport */}

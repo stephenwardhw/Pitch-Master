@@ -1,0 +1,25 @@
+# PitchMaster Soccer League Scheduler - Apache .htaccess Configuration
+# Place this file in the DocumentRoot (/var/www/pitchmaster)
+
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /
+
+  # 1. Allow existing files and directories to be served directly
+  RewriteCond %{REQUEST_FILENAME} -f [OR]
+  RewriteCond %{REQUEST_FILENAME} -d
+  RewriteRule ^ - [L]
+
+  # 2. Never rewrite static assets (JS, CSS, JSON, images, fonts) to index.html
+  # If a JSON or asset file is missing, return a true 404 rather than the HTML page
+  RewriteRule \.(?:json|js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot|map|webmanifest)$ - [R=404,L,NC]
+
+  # 3. SPA Fallback: Rewrite all other client-side routes (/admin, /portal, etc.) to index.html
+  RewriteRule ^ index.html [L]
+</IfModule>
+
+# Ensure proper MIME type for JSON files
+<IfModule mod_mime.c>
+  AddType application/json .json
+  AddType application/javascript .js
+</IfModule>

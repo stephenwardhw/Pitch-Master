@@ -30,7 +30,7 @@ import {
 } from 'lucide-react';
 import { ExportCalendarModal } from './modals/ExportCalendarModal';
 import { PrintScheduleView } from './PrintScheduleView';
-import { publishScheduleToServer } from '../utils/serverSync';
+import { publishScheduleToServer, downloadLeagueScheduleJson } from '../utils/serverSync';
 import {
   buildEventPayload,
   createGoogleCalendarUrl,
@@ -274,26 +274,39 @@ export const SchedulePage: React.FC<SchedulePageProps> = ({
         {/* Publish Banner Notification */}
         {publishResult && (
           <div
-            className={`p-3 rounded-lg text-xs flex items-center justify-between gap-2 animate-in fade-in ${
+            className={`p-3 rounded-lg text-xs flex flex-wrap items-center justify-between gap-2 animate-in fade-in ${
               publishResult.type === 'success'
                 ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
                 : 'bg-rose-50 text-rose-800 border border-rose-200'
             }`}
           >
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-1 min-w-[240px]">
               {publishResult.type === 'success' ? (
                 <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
               ) : (
                 <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
               )}
-              <span className="font-medium">{publishResult.message}</span>
+              <span className="font-medium leading-relaxed">{publishResult.message}</span>
             </div>
-            <button
-              onClick={() => setPublishResult(null)}
-              className="text-xs opacity-60 hover:opacity-100"
-            >
-              ✕
-            </button>
+            <div className="flex items-center gap-2">
+              {publishResult.type === 'error' && (
+                <button
+                  type="button"
+                  onClick={() => downloadLeagueScheduleJson(appData)}
+                  className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-rose-900 bg-white border border-rose-300 rounded shadow-2xs hover:bg-rose-50 transition-colors"
+                >
+                  <Download className="w-3 h-3 text-rose-700" />
+                  <span>Download league_schedule.json</span>
+                </button>
+              )}
+              <button
+                onClick={() => setPublishResult(null)}
+                className="text-xs opacity-60 hover:opacity-100 p-1"
+                aria-label="Dismiss notification"
+              >
+                ✕
+              </button>
+            </div>
           </div>
         )}
 

@@ -1,8 +1,8 @@
 import React, { useState, useRef } from 'react';
 import { AppData } from '../../types';
 import { COOKIE_NAME, getCookie, setCookie, getInitialAppData } from '../../utils/cookieStorage';
-import { publishScheduleToServer } from '../../utils/serverSync';
-import { X, Download, Upload, RefreshCw, FileText, CheckCircle2, Cookie, AlertCircle, Globe } from 'lucide-react';
+import { publishScheduleToServer, downloadLeagueScheduleJson } from '../../utils/serverSync';
+import { X, Download, Upload, RefreshCw, FileText, CheckCircle2, Cookie, AlertCircle, Globe, FileDown } from 'lucide-react';
 
 interface DatasetModalProps {
   appData: AppData;
@@ -310,6 +310,15 @@ export const DatasetModal: React.FC<DatasetModalProps> = ({
             >
               <Globe className={`w-3.5 h-3.5 ${isPublishing ? 'animate-spin' : ''}`} />
               <span>{isPublishing ? 'Publishing to Server...' : 'Publish to Server (league_schedule.json)'}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => downloadLeagueScheduleJson(appData)}
+              className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-medium text-purple-900 bg-purple-100/80 hover:bg-purple-200/80 border border-purple-200 rounded-lg transition-colors"
+              title="Download league_schedule.json directly to upload or copy into your Apache DocumentRoot (/var/www/pitchmaster/)"
+            >
+              <FileDown className="w-3.5 h-3.5 text-purple-700" />
+              <span>Download league_schedule.json (For Static Host / Manual Upload)</span>
             </button>
           </div>
 

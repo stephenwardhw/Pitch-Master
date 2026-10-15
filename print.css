@@ -18,7 +18,9 @@
   html,
   body,
   #root,
-  .print-root {
+  .print-root,
+  .print-modal-container,
+  .print-modal-overlay {
     background: #ffffff !important;
     color: #0f172a !important;
     margin: 0 !important;
@@ -29,7 +31,14 @@
     overflow: visible !important;
     overflow-y: visible !important;
     position: static !important;
+    inset: auto !important;
+    top: auto !important;
+    bottom: auto !important;
+    left: auto !important;
+    right: auto !important;
     width: 100% !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
     -webkit-print-color-adjust: exact !important;
     print-color-adjust: exact !important;
   }

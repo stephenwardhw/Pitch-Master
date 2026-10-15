@@ -34,6 +34,7 @@ import {
 import { fetchServerLeagueSchedule } from '../utils/serverSync';
 import { ExportCalendarModal } from './modals/ExportCalendarModal';
 import { PrintScheduleView } from './PrintScheduleView';
+import { ErrorBoundary } from './ErrorBoundary';
 import { TeamContactModal } from './modals/TeamContactModal';
 import { MatchContactModal } from './modals/MatchContactModal';
 import { FieldMapModal } from './modals/FieldMapModal';
@@ -1016,12 +1017,14 @@ export const StandaloneParentPortal: React.FC<StandaloneParentPortalProps> = ({
 
       {/* 3. Print View Modal (PDF) */}
       {isPrintViewOpen && (
-        <PrintScheduleView
-          appData={activeData}
-          initialDivisionId={selectedDivisionId}
-          initialTeamId={selectedTeamId}
-          onClose={() => setIsPrintViewOpen(false)}
-        />
+        <ErrorBoundary fallbackTitle="Print Preview Error" onReset={() => setIsPrintViewOpen(false)}>
+          <PrintScheduleView
+            appData={activeData}
+            initialDivisionId={selectedDivisionId}
+            initialTeamId={selectedTeamId}
+            onClose={() => setIsPrintViewOpen(false)}
+          />
+        </ErrorBoundary>
       )}
 
       {/* 4. Match Coach Contacts Modal (Both Teams) */}

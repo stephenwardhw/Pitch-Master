@@ -21,6 +21,43 @@ interface PrintScheduleViewProps {
   onClose: () => void;
 }
 
+// Pure helper to format ISO date string (YYYY-MM-DD) into readable format
+function formatDateFriendly(dateStr: string): string {
+  if (!dateStr) return '';
+  try {
+    const [y, m, d] = dateStr.split('-').map(Number);
+    if (!y || !m || !d) return dateStr;
+    const dt = new Date(y, m - 1, d);
+    return dt.toLocaleDateString('en-US', {
+      weekday: 'long',
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    });
+  } catch {
+    return dateStr;
+  }
+}
+
+// Pure helper to determine the Monday of the calendar week for any given date string
+function getMondayOfDate(dateStr: string): string {
+  if (!dateStr) return '';
+  try {
+    const [y, m, d] = dateStr.split('-').map(Number);
+    if (!y || !m || !d) return dateStr;
+    const dt = new Date(y, m - 1, d);
+    const day = dt.getDay(); // 0 is Sunday, 1 is Monday, ..., 6 is Saturday
+    const diffToMonday = (day + 6) % 7;
+    const monday = new Date(y, m - 1, d - diffToMonday);
+    const year = monday.getFullYear();
+    const month = String(monday.getMonth() + 1).padStart(2, '0');
+    const date = String(monday.getDate()).padStart(2, '0');
+    return `${year}-${month}-${date}`;
+  } catch {
+    return dateStr;
+  }
+}
+
 export const PrintScheduleView: React.FC<PrintScheduleViewProps> = ({
   appData,
   initialDivisionId = 'all',
@@ -60,23 +97,6 @@ export const PrintScheduleView: React.FC<PrintScheduleViewProps> = ({
         return a.time.localeCompare(b.time);
       });
   }, [appData.games, selectedDivisionId, selectedTeamId, includePracticeSessions]);
-
-  // Helper to determine the Monday of the calendar week for any given date string
-  const getMondayOfDate = (dateStr: string) => {
-    try {
-      const [y, m, d] = dateStr.split('-').map(Number);
-      const dt = new Date(y, m - 1, d);
-      const day = dt.getDay(); // 0 is Sunday, 1 is Monday, ..., 6 is Saturday
-      const diffToMonday = (day + 6) % 7;
-      const monday = new Date(y, m - 1, d - diffToMonday);
-      const year = monday.getFullYear();
-      const month = String(monday.getMonth() + 1).padStart(2, '0');
-      const date = String(monday.getDate()).padStart(2, '0');
-      return `${year}-${month}-${date}`;
-    } catch {
-      return dateStr;
-    }
-  };
 
   // Group games into distinct Game Weeks (Monday to Sunday cycle)
   const groupedWeeks = useMemo(() => {
@@ -160,23 +180,8 @@ export const PrintScheduleView: React.FC<PrintScheduleViewProps> = ({
     window.print();
   };
 
-  const formatDateFriendly = (dateStr: string) => {
-    try {
-      const [y, m, d] = dateStr.split('-').map(Number);
-      const dt = new Date(y, m - 1, d);
-      return dt.toLocaleDateString('en-US', {
-        weekday: 'long',
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric',
-      });
-    } catch {
-      return dateStr;
-    }
-  };
-
   return (
-    <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex flex-col justify-start overflow-y-auto print:static print:inset-auto print:z-auto print:bg-white print:overflow-visible print:h-auto print:min-h-0 print:block">
+    <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex flex-col justify-start overflow-y-auto print:static print:inset-auto print:z-auto print:bg-white print:overflow-visible print:h-auto print:min-h-0 print:block print-modal-container print-modal-overlay">
       {/* Interactive Toolbar (Hidden during print) */}
       <div className="sticky top-0 z-50 bg-white border-b border-slate-200 px-4 sm:px-6 py-3 shadow-md no-print">
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-3">

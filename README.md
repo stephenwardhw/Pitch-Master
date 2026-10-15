@@ -178,9 +178,22 @@ This compiles the application into the `dist/` directory:
 - `dist/league_schedule.json`
 - `dist/.htaccess`
 
-Copy the contents of `dist/` to your Apache web root:
+Copy the contents of `dist/` (including hidden files like `.htaccess`) to your Apache web root:
 ```bash
-cp -r dist/* /var/www/pitchmaster/
+# Note the trailing dot '.' to ensure hidden files like .htaccess are copied:
+sudo cp -r dist/. /var/www/pitchmaster/
+
+# Ensure Apache's user (www-data) owns and can read all files:
+sudo chown -R www-data:www-data /var/www/pitchmaster
+sudo chmod -R 755 /var/www/pitchmaster
+sudo find /var/www/pitchmaster -type f -exec chmod 644 {} \;
+```
+
+### Apache Modules Requirement
+Ensure the necessary Apache modules are enabled:
+```bash
+sudo a2enmod rewrite headers mime auth_basic authn_file authz_user
+sudo systemctl restart apache2
 ```
 
 ### Apache VirtualHost Configuration
@@ -193,24 +206,26 @@ Ensure your Apache site configuration (`/etc/apache2/sites-available/pm.ichl.clu
     UseCanonicalName Off
     DocumentRoot /var/www/pitchmaster
 
+    # Enable mod_rewrite
     RewriteEngine On
 
     <Directory /var/www/pitchmaster>
-        Options -Indexes +FollowSymLinks
+        Options -Indexes -MultiViews +FollowSymLinks
         AllowOverride All
         Require all granted
     </Directory>
 
     # Restrict administrative area with Basic Authentication
+    # (Ensure /etc/apache2/.htpasswd exists before enabling)
     <Location /admin>
         AuthType Basic
-        AuthName "Restricted Admin Area"
+        AuthName "PitchMaster Restricted Admin Area"
         AuthUserFile /etc/apache2/.htpasswd
         Require valid-user
     </Location>
 
     # Do not rewrite static build assets (JS, CSS, images, fonts, print.css)
-    RewriteCond %{REQUEST_URI} \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot|json)$ [NC]
+    RewriteCond %{REQUEST_URI} \.(js|mjs|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot|json)$ [NC]
     RewriteRule ^ - [L]
 
     # SPA Fallback for client-side routing (/portal, /admin, etc.)
@@ -225,39 +240,33 @@ Ensure your Apache site configuration (`/etc/apache2/sites-available/pm.ichl.clu
 </VirtualHost>
 ```
 
-### Basic Auth for `/admin` & Security Architecture
+### Troubleshooting: White Page / Blank Screen on Apache
 
-#### Why Client-Side SPAs Require Hard Navigations to Trigger Apache Security
-In standard Single Page Applications (SPAs), clicking an internal link often invokes `window.history.pushState()` and updates React state in memory. While this changes the URL in the browser's address bar to `/admin`, **no HTTP network request is sent to the Apache web server**. As a result, Apache never processes the request and cannot enforce `<Location /admin>` or `.htaccess` security rules.
+If you see a blank white page after updating files, check these 5 common issues:
 
-To guarantee that Apache's security checks are **never bypassed**, all administrator links across PitchMaster (from the root landing page `/`, the portal `/portal`, and navigation bars):
-1. Use direct anchor links: `<a href="/admin">`.
-2. Programmatic switches execute `window.location.assign('/admin')` instead of `pushState`.
-
-This forces the browser to make a real HTTP `GET /admin` network request to the Apache server. Apache immediately intercepts the request, issues an HTTP `401 Unauthorized` challenge, and displays the browser's native login credentials dialog.
-
-#### 1. Server VirtualHost Configuration (Recommended)
-Place in `/etc/apache2/sites-available/pm.ichl.club.conf`:
-```apache
-<Location /admin>
-    AuthType Basic
-    AuthName "PitchMaster Restricted Admin Area"
-    AuthUserFile /etc/apache2/.htpasswd
-    Require valid-user
-</Location>
-```
-
-#### 2. Alternative: Direct `.htaccess` Configuration (Apache 2.4+)
-If you do not have root access to modify VirtualHosts, PitchMaster includes this configuration directly in `public/.htaccess`:
-```apache
-<IfModule mod_authz_core.c>
-  <If "%{REQUEST_URI} =~ m#^/admin#">
-    AuthType Basic
-    AuthName "PitchMaster Restricted Admin Area"
-    AuthUserFile /etc/apache2/.htpasswd
-    Require valid-user
-  </If>
-</IfModule>
+1. **`.htaccess` Was Not Copied (Missing Hidden Files)**:
+   Running `cp -r dist/* ...` in bash skips hidden files like `.htaccess`. Use:
+   ```bash
+   cp -r dist/. /var/www/pitchmaster/
+   ```
+2. **Missing `AllowOverride All` in Apache**:
+   By default, Apache sets `AllowOverride None` in `/etc/apache2/apache2.conf`. If `AllowOverride All` is not set inside your `<Directory /var/www/pitchmaster>`, Apache ignores `.htaccess`, causing client-side routes like `/portal` and `/admin` to fail.
+3. **Missing or Inaccessible `.htpasswd` (HTTP 500 Error)**:
+   If `<Location /admin>` points to an `AuthUserFile` that does not exist or isn't readable by `www-data`, Apache returns a `500 Internal Server Error` (displayed as a blank page in many browsers).
+   Create the credentials file:
+   ```bash
+   sudo htpasswd -c /etc/apache2/.htpasswd admin_username
+   sudo chown www-data:www-data /etc/apache2/.htpasswd
+   sudo chmod 640 /etc/apache2/.htpasswd
+   ```
+4. **Incorrect File Permissions (HTTP 403 Forbidden on JS Assets)**:
+   If `index.html` loads but `/assets/*.js` returns `403 Forbidden`, React cannot mount:
+   ```bash
+   sudo chown -R www-data:www-data /var/www/pitchmaster
+   sudo chmod -R 755 /var/www/pitchmaster
+   ```
+5. **MIME Type for ES Modules**:
+   Ensure `AddType application/javascript .js .mjs` is present in your `.htaccess` so browsers don't reject Vite's module scripts with strict MIME errors.
 ```
 
 #### Generating Credentials (`.htpasswd`)

@@ -1,52 +1,53 @@
 # PitchMaster Soccer League Scheduler - Apache .htaccess Configuration
-# Place this file in your Apache DocumentRoot (e.g. /var/www/pitchmaster)
+# Place this file in your DocumentRoot (/var/www/pitchmaster)
 
 # ----------------------------------------------------------------------
-# 1. Apache Basic Authentication for /admin
+# 1. Directory Options & Indexing
 # ----------------------------------------------------------------------
-# All links to Admin from the Landing Page and Portal Page use hard browser
-# navigations (<a href="/admin">) so that Apache intercepts the HTTP request
-# and presents the login prompt dialog before serving any admin assets.
-#
-# If you configure Basic Auth directly in .htaccess (Apache 2.4+):
-<IfModule mod_authz_core.c>
-  <If "%{REQUEST_URI} =~ m#^/admin#">
-    AuthType Basic
-    AuthName "PitchMaster Restricted Admin Area"
-    AuthUserFile /etc/apache2/.htpasswd
-    Require valid-user
-  </If>
+Options -Indexes -MultiViews +FollowSymLinks
+DirectoryIndex index.html
+
+# ----------------------------------------------------------------------
+# 2. Strict MIME Types (Required for Vite ES Modules)
+# ----------------------------------------------------------------------
+<IfModule mod_mime.c>
+  AddType application/javascript .js .mjs
+  AddType text/css .css
+  AddType application/json .json
+  AddType image/svg+xml .svg
 </IfModule>
 
-# Note: If you instead configured Basic Auth in your VirtualHost config via
-# <Location /admin>, the hard navigation (<a href="/admin">) triggers the
-# <Location /admin> check as well.
-
 # ----------------------------------------------------------------------
-# 2. Mod_Rewrite Rules (SPA Fallback & Asset Routing)
+# 3. Client-Side SPA Routing (mod_rewrite)
 # ----------------------------------------------------------------------
 <IfModule mod_rewrite.c>
   RewriteEngine On
   RewriteBase /
 
-  # Allow existing physical files and directories to be served directly
+  # Serve existing physical files and directories directly without rewriting
   RewriteCond %{REQUEST_FILENAME} -f [OR]
   RewriteCond %{REQUEST_FILENAME} -d
   RewriteRule ^ - [L]
 
-  # Never rewrite static assets (JS, CSS, JSON, images, fonts) to index.html
-  # If a JSON or asset file is missing, return a true 404 rather than the HTML page
-  RewriteRule \.(?:json|js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot|map|webmanifest)$ - [R=404,L,NC]
-
-  # SPA Fallback: Rewrite all other routes (/admin, /portal, etc.) to index.html
+  # Route all other URLs (/portal, /admin, etc.) to /index.html
   RewriteRule ^ index.html [L]
 </IfModule>
 
 # ----------------------------------------------------------------------
-# 3. MIME Types
+# 4. Fallback for Apache 2.4+ (If mod_rewrite is disabled)
 # ----------------------------------------------------------------------
-<IfModule mod_mime.c>
-  AddType application/json .json
-  AddType application/javascript .js
-  AddType text/css .css
+<IfModule mod_dir.c>
+  FallbackResource /index.html
+</IfModule>
+
+# ----------------------------------------------------------------------
+# 5. Cache Control (Prevents Stale index.html Requesting Missing Hashes)
+# ----------------------------------------------------------------------
+<IfModule mod_headers.c>
+  # Never cache HTML so browsers always load the latest bundle
+  <FilesMatch "\.(html|htm)$">
+    Header set Cache-Control "no-cache, no-store, must-revalidate"
+    Header set Pragma "no-cache"
+    Header set Expires 0
+  </FilesMatch>
 </IfModule>

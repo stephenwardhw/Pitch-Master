@@ -304,14 +304,12 @@ export const PublicSchedulePage: React.FC<PublicSchedulePageProps> = ({
               <span>{copyLinkNotice ? 'Link Copied!' : 'Share Portal Link'}</span>
             </button>
 
-            {onSwitchToAdmin && (
-              <button
-                onClick={onSwitchToAdmin}
-                className="text-xs text-emerald-200 hover:text-white underline ml-2"
-              >
-                Switch to League Admin Console
-              </button>
-            )}
+            <a
+              href="/admin"
+              className="text-xs text-emerald-200 hover:text-white underline ml-2"
+            >
+              Switch to League Admin Console
+            </a>
           </div>
         </div>
 

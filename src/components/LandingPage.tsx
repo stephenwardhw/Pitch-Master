@@ -98,13 +98,13 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               <span>Coach & Parent Portal</span>
             </button>
 
-            <button
-              onClick={onSelectAdmin}
+            <a
+              href="/admin"
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-slate-300 hover:text-white bg-slate-800/80 hover:bg-slate-700 border border-slate-700 transition-colors font-medium"
             >
               <Shield className="w-3.5 h-3.5 text-slate-400" />
               <span>Admin Login</span>
-            </button>
+            </a>
           </div>
         </div>
       </header>
@@ -325,13 +325,13 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
             {/* Actions */}
             <div className="pt-4 border-t border-slate-800/80 space-y-3">
-              <button
-                onClick={onSelectAdmin}
+              <a
+                href="/admin"
                 className="w-full inline-flex items-center justify-center gap-2 px-6 py-3.5 text-sm font-bold text-white bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded-xl transition-colors shadow-lg"
               >
                 <span>Enter League Admin Portal</span>
                 <ArrowRight className="w-4 h-4" />
-              </button>
+              </a>
 
               <div className="flex items-center justify-between text-xs text-slate-400 px-1">
                 <span className="font-mono text-[11px] text-slate-500">
@@ -376,12 +376,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               Public Schedule (/portal)
             </button>
             <span className="text-slate-700">·</span>
-            <button
-              onClick={onSelectAdmin}
+            <a
+              href="/admin"
               className="text-slate-400 hover:text-white transition-colors"
             >
               Admin Console (/admin)
-            </button>
+            </a>
           </div>
         </div>
       </main>

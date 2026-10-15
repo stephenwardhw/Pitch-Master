@@ -23,6 +23,7 @@ import {
   Lock,
   ArrowRight,
   Home,
+  Shield,
 } from 'lucide-react';
 import {
   buildEventPayload,
@@ -351,6 +352,15 @@ export const StandaloneParentPortal: React.FC<StandaloneParentPortalProps> = ({
                 <Share2 className="w-3.5 h-3.5" />
                 <span className="hidden lg:inline">{copyLinkNotice ? 'Copied!' : 'Share'}</span>
               </button>
+
+              <a
+                href="/admin"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 hover:text-slate-900 transition-colors shadow-2xs"
+                title="League Administrator Login (/admin)"
+              >
+                <Shield className="w-3.5 h-3.5 text-slate-500" />
+                <span className="hidden sm:inline">Admin Login</span>
+              </a>
             </div>
           </div>
         </div>
@@ -1001,6 +1011,15 @@ export const StandaloneParentPortal: React.FC<StandaloneParentPortalProps> = ({
             >
               Share Portal Link
             </button>
+            <span className="text-slate-300" aria-hidden="true">·</span>
+            <a
+              href="/admin"
+              className="inline-flex items-center gap-1 text-slate-500 hover:text-slate-800 hover:underline font-medium"
+              title="League Administrator Login (Protected)"
+            >
+              <Shield className="w-3.5 h-3.5 text-slate-400" />
+              <span>League Admin</span>
+            </a>
           </div>
         </div>
       </footer>

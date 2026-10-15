@@ -225,7 +225,42 @@ Ensure your Apache site configuration (`/etc/apache2/sites-available/pm.ichl.clu
 </VirtualHost>
 ```
 
-### Basic Auth for `/admin`
+### Basic Auth for `/admin` & Security Architecture
+
+#### Why Client-Side SPAs Require Hard Navigations to Trigger Apache Security
+In standard Single Page Applications (SPAs), clicking an internal link often invokes `window.history.pushState()` and updates React state in memory. While this changes the URL in the browser's address bar to `/admin`, **no HTTP network request is sent to the Apache web server**. As a result, Apache never processes the request and cannot enforce `<Location /admin>` or `.htaccess` security rules.
+
+To guarantee that Apache's security checks are **never bypassed**, all administrator links across PitchMaster (from the root landing page `/`, the portal `/portal`, and navigation bars):
+1. Use direct anchor links: `<a href="/admin">`.
+2. Programmatic switches execute `window.location.assign('/admin')` instead of `pushState`.
+
+This forces the browser to make a real HTTP `GET /admin` network request to the Apache server. Apache immediately intercepts the request, issues an HTTP `401 Unauthorized` challenge, and displays the browser's native login credentials dialog.
+
+#### 1. Server VirtualHost Configuration (Recommended)
+Place in `/etc/apache2/sites-available/pm.ichl.club.conf`:
+```apache
+<Location /admin>
+    AuthType Basic
+    AuthName "PitchMaster Restricted Admin Area"
+    AuthUserFile /etc/apache2/.htpasswd
+    Require valid-user
+</Location>
+```
+
+#### 2. Alternative: Direct `.htaccess` Configuration (Apache 2.4+)
+If you do not have root access to modify VirtualHosts, PitchMaster includes this configuration directly in `public/.htaccess`:
+```apache
+<IfModule mod_authz_core.c>
+  <If "%{REQUEST_URI} =~ m#^/admin#">
+    AuthType Basic
+    AuthName "PitchMaster Restricted Admin Area"
+    AuthUserFile /etc/apache2/.htpasswd
+    Require valid-user
+  </If>
+</IfModule>
+```
+
+#### Generating Credentials (`.htpasswd`)
 To create or update the admin credentials:
 ```bash
 sudo htpasswd -c /etc/apache2/.htpasswd admin_username

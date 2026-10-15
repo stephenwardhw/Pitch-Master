@@ -86,10 +86,10 @@ export default function App() {
   }, []);
 
   const handleSwitchToAdmin = useCallback(() => {
-    setAppMode('admin');
-    try {
-      window.history.pushState(null, '', '/admin');
-    } catch {}
+    // Perform a true browser navigation to /admin so the web server (Apache)
+    // intercepts the HTTP request and enforces Basic Authentication / security rules.
+    // Client-side pushState or React state switching bypasses web server HTTP authentication.
+    window.location.assign('/admin');
   }, []);
 
   const handleGoToLanding = useCallback(() => {

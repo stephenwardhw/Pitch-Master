@@ -17,11 +17,13 @@ import {
   ChevronDown,
   Trophy,
   Home,
+  Grid,
 } from 'lucide-react';
 
 export type NavTab =
   | 'schedule'
   | 'stats'
+  | 'matchups'
   | 'conflicts'
   | 'balance'
   | 'divisions'
@@ -57,6 +59,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   const navItems: { id: NavTab; label: string; icon: React.ReactNode; badge?: number }[] = [
     { id: 'schedule', label: 'Schedule', icon: <Calendar className="w-4 h-4" /> },
     { id: 'stats', label: 'Team Statistics', icon: <Trophy className="w-4 h-4" /> },
+    { id: 'matchups', label: 'Matchup Matrix', icon: <Grid className="w-4 h-4" /> },
     {
       id: 'conflicts',
       label: 'Conflicts',

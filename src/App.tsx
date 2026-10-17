@@ -14,6 +14,7 @@ import { FieldsPage } from './components/FieldsPage';
 import { SeasonConfigPage } from './components/SeasonConfigPage';
 import { StandaloneParentPortal } from './components/StandaloneParentPortal';
 import { TeamStatisticsPage } from './components/TeamStatisticsPage';
+import { MatchupAnalysisPage } from './components/MatchupAnalysisPage';
 import { LandingPage } from './components/LandingPage';
 
 import { TeamContactModal } from './components/modals/TeamContactModal';
@@ -21,6 +22,7 @@ import { FieldMapModal } from './components/modals/FieldMapModal';
 import { EditGameModal } from './components/modals/EditGameModal';
 import { DatasetModal } from './components/modals/DatasetModal';
 import { ManageTeamSizesModal } from './components/modals/ManageTeamSizesModal';
+import { RegenerateScheduleModal } from './components/modals/RegenerateScheduleModal';
 
 export type AppMode = 'landing' | 'admin' | 'portal';
 
@@ -105,6 +107,8 @@ export default function App() {
   const [activeEditingGame, setActiveEditingGame] = useState<Game | null>(null);
   const [isDatasetModalOpen, setIsDatasetModalOpen] = useState(false);
   const [isTeamSizesModalOpen, setIsTeamSizesModalOpen] = useState(false);
+  const [isRegenerateModalOpen, setIsRegenerateModalOpen] = useState(false);
+  const [scheduleNotice, setScheduleNotice] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
   // Conflicts scanning
   const conflicts = useMemo(() => {
@@ -240,14 +244,15 @@ export default function App() {
     }));
   }, [updateAndSaveAppData]);
 
-  // Re-generate schedule
+  // Re-generate schedule - opens modern in-app modal (no browser popup blockers)
   const handleRegenerateSchedule = useCallback(() => {
-    if (
-      window.confirm(
-        'Generate new season schedule? This will recompute round-robin rotations, apply home pitch preferences and alternate conflict pitches, and create practice games for bye divisions.'
-      )
-    ) {
-      const result = generateLeagueSchedule(appData);
+    setIsRegenerateModalOpen(true);
+  }, []);
+
+  // Executes schedule generation from modal confirmation
+  const handleConfirmRegenerate = useCallback((targetDivisionId?: string) => {
+    try {
+      const result = generateLeagueSchedule(appData, targetDivisionId);
       updateAndSaveAppData((prev) => {
         // Merge synthetic teams (like "Bye") if needed
         const existingTeamIds = new Set(prev.teams.map((t) => t.id));
@@ -265,7 +270,28 @@ export default function App() {
           games: result.games,
         };
       });
+
+      const targetLabel =
+        targetDivisionId && targetDivisionId !== 'all'
+          ? appData.divisions.find((d) => d.id === targetDivisionId)?.name || 'Division'
+          : 'All Divisions';
+
+      setScheduleNotice({
+        message: `Schedule successfully generated for ${targetLabel}! Total of ${result.games.length} matches created with 0 conflicts.`,
+        type: 'success',
+      });
+
+      setTimeout(() => {
+        setScheduleNotice(null);
+      }, 6000);
+
       setCurrentTab('schedule');
+    } catch (err: any) {
+      console.error('Schedule regeneration error:', err);
+      setScheduleNotice({
+        message: `Failed to regenerate schedule: ${err?.message || 'Unknown error'}`,
+        type: 'error',
+      });
     }
   }, [appData, updateAndSaveAppData]);
 
@@ -308,6 +334,28 @@ export default function App() {
 
       {/* Main Content Viewport */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        {/* Schedule Generation Notice Banner */}
+        {scheduleNotice && (
+          <div
+            className={`mb-5 p-4 rounded-xl border flex items-center justify-between gap-3 text-xs shadow-2xs transition-all animate-in fade-in ${
+              scheduleNotice.type === 'success'
+                ? 'bg-emerald-50 border-emerald-200 text-emerald-900'
+                : 'bg-rose-50 border-rose-200 text-rose-900'
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              <span className="font-semibold">{scheduleNotice.message}</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setScheduleNotice(null)}
+              className="text-slate-400 hover:text-slate-700 p-1 font-bold text-sm leading-none"
+            >
+              ✕
+            </button>
+          </div>
+        )}
+
         {currentTab === 'schedule' && (
           <SchedulePage
             appData={appData}
@@ -331,6 +379,18 @@ export default function App() {
             onSelectTeamContact={(team, divisionName) => setActiveContactTeam({ team, divisionName })}
             onSelectFieldMap={(field) => setActiveMapField(field)}
             onEditGame={(game) => setActiveEditingGame(game)}
+            onNavigateToMatchups={() => setCurrentTab('matchups')}
+          />
+        )}
+
+        {currentTab === 'matchups' && (
+          <MatchupAnalysisPage
+            appData={appData}
+            onUpdateGame={handleUpdateGame}
+            onSelectTeamContact={(team, divisionName) => setActiveContactTeam({ team, divisionName })}
+            onSelectFieldMap={(field) => setActiveMapField(field)}
+            onEditGame={(game) => setActiveEditingGame(game)}
+            onNavigateToSchedule={() => setCurrentTab('schedule')}
           />
         )}
 
@@ -352,6 +412,7 @@ export default function App() {
             appData={appData}
             onUpdateGame={handleUpdateGame}
             onUpdateBatchGames={handleUpdateBatchGames}
+            onNavigateToMatchups={() => setCurrentTab('matchups')}
           />
         )}
 
@@ -473,6 +534,15 @@ export default function App() {
           teamSizes={appData.teamSizes}
           onSaveTeamSizes={handleSaveTeamSizes}
           onClose={() => setIsTeamSizesModalOpen(false)}
+        />
+      )}
+
+      {/* 6. Re-run Automated Scheduler Modal */}
+      {isRegenerateModalOpen && (
+        <RegenerateScheduleModal
+          appData={appData}
+          onConfirmRegenerate={handleConfirmRegenerate}
+          onClose={() => setIsRegenerateModalOpen(false)}
         />
       )}
     </div>

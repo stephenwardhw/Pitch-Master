@@ -126,13 +126,23 @@ export function getDatesForPlayDays(
 }
 
 // Full automated scheduling generator
-export function generateLeagueSchedule(appData: AppData): {
+export function generateLeagueSchedule(
+  appData: AppData,
+  targetDivisionId?: string
+): {
   games: Game[];
   syntheticTeams: Team[];
   conflictCount: number;
 } {
   const { seasonConfig, divisions, teams, fields } = appData;
-  const newGames: Game[] = [];
+  const isSingleDivision = targetDivisionId && targetDivisionId !== 'all';
+
+  // If targeting a single division, preserve games from other divisions:
+  const preservedGames = isSingleDivision
+    ? appData.games.filter((g) => g.divisionId !== targetDivisionId)
+    : [];
+
+  const newGames: Game[] = [...preservedGames];
   const syntheticTeams: Team[] = [];
 
   // Track global field assignments across all divisions to prevent double booking:
@@ -141,6 +151,14 @@ export function generateLeagueSchedule(appData: AppData): {
   // Track team commitments:
   // key: `${teamId}_${date}_${time}` -> gameId
   const occupiedTeamSlots = new Map<string, string>();
+
+  // Pre-populate occupied slots from preserved games
+  for (const pg of preservedGames) {
+    if (pg.status === 'cancelled') continue;
+    occupiedFieldSlots.set(`${pg.fieldId}_${pg.date}_${pg.time}`, pg.id);
+    occupiedTeamSlots.set(`${pg.homeTeamId}_${pg.date}_${pg.time}`, pg.id);
+    occupiedTeamSlots.set(`${pg.awayTeamId}_${pg.date}_${pg.time}`, pg.id);
+  }
 
   // Map fields by id
   const fieldMap = new Map<string, Field>(fields.map((f) => [f.id, f]));
@@ -167,6 +185,7 @@ export function generateLeagueSchedule(appData: AppData): {
   };
 
   for (const division of divisions) {
+    if (isSingleDivision && division.id !== targetDivisionId) continue;
     const divTeams = teams.filter((t) => t.divisionId === division.id);
     if (divTeams.length === 0) continue;
 

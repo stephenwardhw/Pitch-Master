@@ -26,6 +26,7 @@ import {
   Mail,
   Activity,
   Zap,
+  Grid,
 } from 'lucide-react';
 
 interface TeamStatisticsPageProps {
@@ -35,6 +36,7 @@ interface TeamStatisticsPageProps {
   onSelectTeamContact?: (team: Team, divisionName?: string) => void;
   onSelectFieldMap?: (field: Field) => void;
   onEditGame?: (game: Game) => void;
+  onNavigateToMatchups?: () => void;
 }
 
 type SortField =
@@ -59,6 +61,7 @@ export const TeamStatisticsPage: React.FC<TeamStatisticsPageProps> = ({
   onSelectTeamContact,
   onSelectFieldMap,
   onEditGame,
+  onNavigateToMatchups,
 }) => {
   const [selectedDivision, setSelectedDivision] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -490,6 +493,18 @@ export const TeamStatisticsPage: React.FC<TeamStatisticsPageProps> = ({
               >
                 <RotateCcw className="w-3.5 h-3.5" />
                 <span>Reset Scores</span>
+              </button>
+            )}
+
+            {onNavigateToMatchups && (
+              <button
+                type="button"
+                onClick={onNavigateToMatchups}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors shadow-2xs"
+                title="View Head-to-Head Opponent Frequency Matrix"
+              >
+                <Grid className="w-3.5 h-3.5 text-slate-500" />
+                <span>Matchup Matrix</span>
               </button>
             )}
 

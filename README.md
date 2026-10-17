@@ -14,7 +14,8 @@
    - [3. Divisions & Teams Setup](#3-divisions--teams-setup)
    - [4. Schedule Generation & Round-Robin Balancing](#4-schedule-generation--round-robin-balancing)
    - [5. Conflict Detection & Manual Match Rescheduling](#5-conflict-detection--manual-match-rescheduling)
-   - [6. Publishing & Exporting `league_schedule.json`](#6-publishing--exporting-league_schedulejson)
+   - [6. Head-to-Head Matchup Matrix & Opponent Frequency Analysis](#6-head-to-head-matchup-matrix--opponent-frequency-analysis)
+   - [7. Publishing & Exporting `league_schedule.json`](#7-publishing--exporting-league_schedulejson)
 4. [Public Coach & Parent Portal Guide (`/portal`)](#public-coach--parent-portal-guide-portal)
    - [1. Finding Your Team's Matches](#1-finding-your-teams-matches)
    - [2. Game Details & GPS Field Directions](#2-game-details--gps-field-directions)
@@ -104,7 +105,21 @@ The Admin area provides league administrators with full control over season para
   - Drag or click a match card to change its date, kickoff time, or field assignment.
   - Changes update immediately.
 
-### 6. Publishing & Exporting `league_schedule.json`
+### 6. Head-to-Head Matchup Matrix & Opponent Frequency Analysis
+Navigate to the **Matchup Matrix** tab in the top navigation bar to audit and analyze how many times each team plays each other across the season:
+- **Interactive 2D Grid Matrix**:
+  - Displays every team along rows and columns with cross-tabulated meeting counts (0, 1, 2, 3+).
+  - Color-coded cells with Home/Away badges (e.g. `1H/1A`).
+  - Click any cell to inspect all scheduled match dates, kickoffs, field venues, and scores for that pair.
+- **Round-Robin Health Diagnostics**:
+  - **Opponent Coverage %**: Ratio of scheduled pairings to total possible pairings in the division.
+  - **Format Verification**: Checks whether the schedule is a perfect Single Round-Robin, Double Round-Robin, or has unplayed pairings.
+  - **Unplayed Opponents Alert**: Instantly flags any teams within the same division that never face each other.
+  - **Repeat Series Monitor**: Identifies pairings meeting 3+ times or teams with host venue imbalances (e.g. two home games, zero away).
+- **Team-by-Team Breakdown View**: Switch between the 2D matrix and individual team cards with frequency filters and search.
+- **CSV Export & Print**: 1-click export of the full matchup matrix table to spreadsheet or print-friendly document.
+
+### 7. Publishing & Exporting `league_schedule.json`
 Once the schedule is finalized:
 1. Click **Export / Save Schedule**.
 2. Select **Export as JSON** (`league_schedule.json`).

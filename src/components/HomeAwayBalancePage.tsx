@@ -12,18 +12,21 @@ import {
   Clock,
   MapPin,
   Sparkles,
+  Grid,
 } from 'lucide-react';
 
 interface HomeAwayBalancePageProps {
   appData: AppData;
   onUpdateGame: (updatedGame: Game) => void;
   onUpdateBatchGames: (updatedGames: Game[]) => void;
+  onNavigateToMatchups?: () => void;
 }
 
 export const HomeAwayBalancePage: React.FC<HomeAwayBalancePageProps> = ({
   appData,
   onUpdateGame,
   onUpdateBatchGames,
+  onNavigateToMatchups,
 }) => {
   const [selectedDivision, setSelectedDivision] = useState<string>('all');
   const [expandedTeamId, setExpandedTeamId] = useState<string | null>(null);
@@ -163,10 +166,22 @@ export const HomeAwayBalancePage: React.FC<HomeAwayBalancePageProps> = ({
             </p>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            {onNavigateToMatchups && (
+              <button
+                type="button"
+                onClick={onNavigateToMatchups}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors shadow-2xs"
+                title="View Head-to-Head Opponent Frequency Matrix"
+              >
+                <Grid className="w-3.5 h-3.5 text-slate-500" />
+                <span>Matchup Matrix</span>
+              </button>
+            )}
+
             <button
               onClick={handleAutoRebalance}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-medium text-emerald-800 bg-emerald-50 border border-emerald-200 rounded-lg hover:bg-emerald-100 transition-colors"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-emerald-800 bg-emerald-50 border border-emerald-200 rounded-lg hover:bg-emerald-100 transition-colors shadow-2xs"
             >
               <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
               <span>Auto-Balance Assistant</span>

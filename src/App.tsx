@@ -6,15 +6,12 @@ import { detectConflicts } from './utils/conflictDetector';
 
 import { Navbar, NavTab } from './components/Navbar';
 import { SchedulePage } from './components/SchedulePage';
-import { HomeAwayBalancePage } from './components/HomeAwayBalancePage';
-import { ConflictsPage } from './components/ConflictsPage';
 import { DivisionsPage } from './components/DivisionsPage';
 import { TeamsPage } from './components/TeamsPage';
 import { FieldsPage } from './components/FieldsPage';
 import { SeasonConfigPage } from './components/SeasonConfigPage';
 import { StandaloneParentPortal } from './components/StandaloneParentPortal';
 import { TeamStatisticsPage } from './components/TeamStatisticsPage';
-import { MatchupAnalysisPage } from './components/MatchupAnalysisPage';
 import { LandingPage } from './components/LandingPage';
 
 import { TeamContactModal } from './components/modals/TeamContactModal';
@@ -356,17 +353,34 @@ export default function App() {
           </div>
         )}
 
-        {currentTab === 'schedule' && (
+        {(currentTab === 'schedule' ||
+          currentTab === 'matchups' ||
+          currentTab === 'conflicts' ||
+          currentTab === 'balance') && (
           <SchedulePage
             appData={appData}
             conflicts={conflicts}
+            activeRefinementTab={
+              currentTab === 'matchups' || currentTab === 'conflicts' || currentTab === 'balance'
+                ? currentTab
+                : undefined
+            }
+            onSelectRefinementTab={(subTab) => {
+              if (subTab === 'schedule') {
+                setCurrentTab('schedule');
+              } else {
+                setCurrentTab(subTab as NavTab);
+              }
+            }}
             onUpdateGame={handleUpdateGame}
+            onUpdateBatchGames={handleUpdateBatchGames}
             onDeleteGame={handleDeleteGame}
             onAddGame={handleAddGame}
             onSelectTeamContact={(team, divisionName) => setActiveContactTeam({ team, divisionName })}
             onSelectFieldMap={(field) => setActiveMapField(field)}
             onEditGame={(game) => setActiveEditingGame(game)}
             onRegenerateSchedule={handleRegenerateSchedule}
+            onRecheckConflicts={() => setAppData((prev) => ({ ...prev }))}
             onSwitchToPublicPortal={() => handleOpenPortal(false)}
           />
         )}
@@ -379,39 +393,6 @@ export default function App() {
             onSelectTeamContact={(team, divisionName) => setActiveContactTeam({ team, divisionName })}
             onSelectFieldMap={(field) => setActiveMapField(field)}
             onEditGame={(game) => setActiveEditingGame(game)}
-            onNavigateToMatchups={() => setCurrentTab('matchups')}
-          />
-        )}
-
-        {currentTab === 'matchups' && (
-          <MatchupAnalysisPage
-            appData={appData}
-            onUpdateGame={handleUpdateGame}
-            onSelectTeamContact={(team, divisionName) => setActiveContactTeam({ team, divisionName })}
-            onSelectFieldMap={(field) => setActiveMapField(field)}
-            onEditGame={(game) => setActiveEditingGame(game)}
-            onNavigateToSchedule={() => setCurrentTab('schedule')}
-          />
-        )}
-
-        {currentTab === 'conflicts' && (
-          <ConflictsPage
-            appData={appData}
-            conflicts={conflicts}
-            onUpdateGame={handleUpdateGame}
-            onEditGame={(game) => setActiveEditingGame(game)}
-            onRecheckConflicts={() => {
-              // Trigger state refresh
-              setAppData((prev) => ({ ...prev }));
-            }}
-          />
-        )}
-
-        {currentTab === 'balance' && (
-          <HomeAwayBalancePage
-            appData={appData}
-            onUpdateGame={handleUpdateGame}
-            onUpdateBatchGames={handleUpdateBatchGames}
             onNavigateToMatchups={() => setCurrentTab('matchups')}
           />
         )}

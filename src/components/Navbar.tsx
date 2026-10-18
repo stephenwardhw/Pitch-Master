@@ -57,16 +57,13 @@ export const Navbar: React.FC<NavbarProps> = ({
   const conflictCount = conflicts.length;
 
   const navItems: { id: NavTab; label: string; icon: React.ReactNode; badge?: number }[] = [
-    { id: 'schedule', label: 'Schedule', icon: <Calendar className="w-4 h-4" /> },
-    { id: 'stats', label: 'Team Statistics', icon: <Trophy className="w-4 h-4" /> },
-    { id: 'matchups', label: 'Matchup Matrix', icon: <Grid className="w-4 h-4" /> },
     {
-      id: 'conflicts',
-      label: 'Conflicts',
-      icon: <AlertTriangle className="w-4 h-4" />,
-      badge: conflictCount,
+      id: 'schedule',
+      label: 'Schedule',
+      icon: <Calendar className="w-4 h-4" />,
+      badge: conflictCount > 0 ? conflictCount : undefined,
     },
-    { id: 'balance', label: 'Home/Away Balance', icon: <Scale className="w-4 h-4" /> },
+    { id: 'stats', label: 'Team Statistics', icon: <Trophy className="w-4 h-4" /> },
     { id: 'divisions', label: 'Divisions', icon: <Layers className="w-4 h-4" /> },
     { id: 'teams', label: 'Teams', icon: <Users className="w-4 h-4" /> },
     { id: 'fields', label: 'Fields', icon: <MapPin className="w-4 h-4" /> },
@@ -128,7 +125,10 @@ export const Navbar: React.FC<NavbarProps> = ({
           {/* Zone 2: Navigation links (desktop) */}
           <nav className="hidden lg:flex items-center gap-1">
             {navItems.map((item) => {
-              const isActive = currentTab === item.id;
+              const isActive =
+                currentTab === item.id ||
+                (item.id === 'schedule' &&
+                  ['schedule', 'matchups', 'conflicts', 'balance'].includes(currentTab));
               return (
                 <button
                   key={item.id}
@@ -310,7 +310,10 @@ export const Navbar: React.FC<NavbarProps> = ({
             </button>
 
             {navItems.map((item) => {
-              const isActive = currentTab === item.id;
+              const isActive =
+                currentTab === item.id ||
+                (item.id === 'schedule' &&
+                  ['schedule', 'matchups', 'conflicts', 'balance'].includes(currentTab));
               return (
                 <button
                   key={item.id}

@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { AppData, Field, Game } from '../types';
+import { AppData, Field, Game, DayOfWeek } from '../types';
 import {
   MapPin,
   Plus,

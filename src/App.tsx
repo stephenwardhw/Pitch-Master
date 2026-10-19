@@ -20,6 +20,7 @@ import { EditGameModal } from './components/modals/EditGameModal';
 import { DatasetModal } from './components/modals/DatasetModal';
 import { ManageTeamSizesModal } from './components/modals/ManageTeamSizesModal';
 import { RegenerateScheduleModal } from './components/modals/RegenerateScheduleModal';
+import { Github } from 'lucide-react';
 
 export type AppMode = 'landing' | 'admin' | 'portal';
 
@@ -464,6 +465,17 @@ export default function App() {
             >
               Coach & Parent Portal ↗
             </button>
+            <span aria-hidden="true">·</span>
+            <a
+              href="https://github.com/stephenwardhw/Pitch-Master"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-slate-600 hover:text-slate-900 hover:underline"
+              title="PitchMaster on GitHub"
+            >
+              <Github className="w-3.5 h-3.5" />
+              <span>GitHub</span>
+            </a>
           </div>
         </div>
       </footer>

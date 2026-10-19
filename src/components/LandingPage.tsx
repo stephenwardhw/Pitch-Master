@@ -21,6 +21,7 @@ import {
   CalendarPlus,
   Database,
   Lock,
+  Github,
 } from 'lucide-react';
 
 interface LandingPageProps {
@@ -387,8 +388,19 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       </main>
 
       {/* Subtle Copyright Bar */}
-      <footer className="border-t border-slate-800/50 py-4 bg-slate-950/80 text-center text-[11px] text-slate-500">
-        PitchMaster Soccer Scheduler & Public Portal · Local Server Sync Enabled
+      <footer className="border-t border-slate-800/50 py-4 bg-slate-950/80 text-center text-[11px] text-slate-500 flex flex-wrap items-center justify-center gap-2">
+        <span>PitchMaster Soccer Scheduler & Public Portal · Local Server Sync Enabled</span>
+        <span aria-hidden="true">·</span>
+        <a
+          href="https://github.com/stephenwardhw/Pitch-Master"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1 text-slate-400 hover:text-white transition-colors"
+          title="PitchMaster on GitHub"
+        >
+          <Github className="w-3.5 h-3.5" />
+          <span>GitHub</span>
+        </a>
       </footer>
     </div>
   );

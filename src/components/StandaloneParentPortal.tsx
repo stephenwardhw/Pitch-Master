@@ -24,6 +24,7 @@ import {
   ArrowRight,
   Home,
   Shield,
+  Github,
 } from 'lucide-react';
 import {
   buildEventPayload,
@@ -1011,6 +1012,17 @@ export const StandaloneParentPortal: React.FC<StandaloneParentPortalProps> = ({
             >
               Share Portal Link
             </button>
+            <span className="text-slate-300" aria-hidden="true">·</span>
+            <a
+              href="https://github.com/stephenwardhw/Pitch-Master"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-slate-500 hover:text-slate-800 hover:underline font-medium"
+              title="PitchMaster on GitHub"
+            >
+              <Github className="w-3.5 h-3.5" />
+              <span>GitHub</span>
+            </a>
             <span className="text-slate-300" aria-hidden="true">·</span>
             <a
               href="/admin"

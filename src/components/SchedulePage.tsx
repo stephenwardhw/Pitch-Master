@@ -29,6 +29,7 @@ import {
   X,
   Grid,
   Scale,
+  FileSpreadsheet,
 } from 'lucide-react';
 import { ExportCalendarModal } from './modals/ExportCalendarModal';
 import { PrintScheduleView } from './PrintScheduleView';
@@ -61,6 +62,7 @@ interface SchedulePageProps {
   onRegenerateSchedule: () => void;
   onRecheckConflicts?: () => void;
   onSwitchToPublicPortal?: () => void;
+  onOpenCsvImport?: () => void;
 }
 
 export const SchedulePage: React.FC<SchedulePageProps> = ({
@@ -78,6 +80,7 @@ export const SchedulePage: React.FC<SchedulePageProps> = ({
   onRegenerateSchedule,
   onRecheckConflicts,
   onSwitchToPublicPortal,
+  onOpenCsvImport,
 }) => {
   const [activeSubTab, setActiveSubTab] = useState<ScheduleSubTab>(() => {
     return activeRefinementTab || 'schedule';
@@ -551,6 +554,17 @@ export const SchedulePage: React.FC<SchedulePageProps> = ({
               <Download className="w-3.5 h-3.5 text-slate-500" />
               <span>Export CSV</span>
             </button>
+
+            {onOpenCsvImport && (
+              <button
+                onClick={onOpenCsvImport}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 rounded-lg transition-colors shadow-2xs"
+                title="Import existing match schedule fixtures from CSV"
+              >
+                <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
+                <span>Import Schedule (CSV)</span>
+              </button>
+            )}
 
             <button
               onClick={onRegenerateSchedule}

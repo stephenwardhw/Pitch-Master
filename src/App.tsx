@@ -20,6 +20,7 @@ import { EditGameModal } from './components/modals/EditGameModal';
 import { DatasetModal } from './components/modals/DatasetModal';
 import { ManageTeamSizesModal } from './components/modals/ManageTeamSizesModal';
 import { RegenerateScheduleModal } from './components/modals/RegenerateScheduleModal';
+import { CsvImportModal, CsvImportType } from './components/modals/CsvImportModal';
 import { Github } from 'lucide-react';
 
 export type AppMode = 'landing' | 'admin' | 'portal';
@@ -106,7 +107,14 @@ export default function App() {
   const [isDatasetModalOpen, setIsDatasetModalOpen] = useState(false);
   const [isTeamSizesModalOpen, setIsTeamSizesModalOpen] = useState(false);
   const [isRegenerateModalOpen, setIsRegenerateModalOpen] = useState(false);
+  const [isCsvImportOpen, setIsCsvImportOpen] = useState(false);
+  const [csvImportInitialType, setCsvImportInitialType] = useState<CsvImportType>('teams');
   const [scheduleNotice, setScheduleNotice] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+
+  const handleOpenCsvImport = useCallback((type: CsvImportType = 'teams') => {
+    setCsvImportInitialType(type);
+    setIsCsvImportOpen(true);
+  }, []);
 
   // Conflicts scanning
   const conflicts = useMemo(() => {
@@ -383,6 +391,7 @@ export default function App() {
             onRegenerateSchedule={handleRegenerateSchedule}
             onRecheckConflicts={() => setAppData((prev) => ({ ...prev }))}
             onSwitchToPublicPortal={() => handleOpenPortal(false)}
+            onOpenCsvImport={() => handleOpenCsvImport('schedule')}
           />
         )}
 
@@ -417,6 +426,7 @@ export default function App() {
             onSaveTeam={handleSaveTeam}
             onDeleteTeam={handleDeleteTeam}
             onOpenManageTeamSizes={() => setIsTeamSizesModalOpen(true)}
+            onOpenCsvImport={() => handleOpenCsvImport('teams')}
             onSelectTeamContact={(team, divisionName) => setActiveContactTeam({ team, divisionName })}
             onSelectField={(field) => setActiveMapField(field)}
           />
@@ -457,6 +467,13 @@ export default function App() {
               className="text-blue-600 hover:underline"
             >
               Export / Import
+            </button>
+            <span aria-hidden="true">·</span>
+            <button
+              onClick={() => handleOpenCsvImport('teams')}
+              className="text-emerald-700 hover:underline font-medium"
+            >
+              CSV Migration
             </button>
             <span aria-hidden="true">·</span>
             <button
@@ -518,6 +535,7 @@ export default function App() {
           appData={appData}
           onUpdateData={handleUpdateFullData}
           onClose={() => setIsDatasetModalOpen(false)}
+          onOpenCsvImport={handleOpenCsvImport}
         />
       )}
 
@@ -536,6 +554,16 @@ export default function App() {
           appData={appData}
           onConfirmRegenerate={handleConfirmRegenerate}
           onClose={() => setIsRegenerateModalOpen(false)}
+        />
+      )}
+
+      {/* 7. CSV Importer Modal */}
+      {isCsvImportOpen && (
+        <CsvImportModal
+          appData={appData}
+          initialType={csvImportInitialType}
+          onUpdateAppData={handleUpdateFullData}
+          onClose={() => setIsCsvImportOpen(false)}
         />
       )}
     </div>

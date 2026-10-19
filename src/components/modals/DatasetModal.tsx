@@ -16,18 +16,23 @@ import {
   FileDown,
   Save,
   Info,
+  FileSpreadsheet,
+  Users,
+  Calendar,
 } from 'lucide-react';
 
 interface DatasetModalProps {
   appData: AppData;
   onUpdateData: (newData: AppData) => void;
   onClose: () => void;
+  onOpenCsvImport?: (type?: 'teams' | 'schedule') => void;
 }
 
 export const DatasetModal: React.FC<DatasetModalProps> = ({
   appData,
   onUpdateData,
   onClose,
+  onOpenCsvImport,
 }) => {
   const [fileNameInput, setFileNameInput] = useState(appData.fileName || 'soccer_schedule.json');
   const [statusMessage, setStatusMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
@@ -353,6 +358,48 @@ export const DatasetModal: React.FC<DatasetModalProps> = ({
                 <span>Choose JSON File</span>
               </button>
             </div>
+          </div>
+
+          {/* CSV Migration Section */}
+          <div className="p-4 rounded-xl border border-emerald-200 bg-emerald-50/60 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <FileSpreadsheet className="w-4 h-4 text-emerald-700" />
+                <h4 className="text-sm font-bold text-slate-900">CSV Spreadsheet Migration</h4>
+              </div>
+              <span className="text-[10px] font-semibold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full border border-emerald-200">
+                Excel & Google Sheets
+              </span>
+            </div>
+            <p className="text-xs text-slate-600 leading-relaxed">
+              Quickly migrate existing team directories, coaches, or match schedules from CSV files. Automatically recognizes column headers and resolves divisions and pitches.
+            </p>
+            {onOpenCsvImport && (
+              <div className="flex flex-wrap gap-2 pt-0.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    onClose();
+                    onOpenCsvImport('teams');
+                  }}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-800 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors shadow-2xs"
+                >
+                  <Users className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>Import Teams (CSV)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onClose();
+                    onOpenCsvImport('schedule');
+                  }}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-800 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors shadow-2xs"
+                >
+                  <Calendar className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>Import Schedule (CSV)</span>
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Publish to Server File league_schedule.json */}

@@ -24,6 +24,7 @@ import {
   Info,
   Filter,
   ChevronDown,
+  FileSpreadsheet,
 } from 'lucide-react';
 
 interface TeamsPageProps {
@@ -31,6 +32,7 @@ interface TeamsPageProps {
   onSaveTeam: (team: Team) => void;
   onDeleteTeam: (teamId: string) => void;
   onOpenManageTeamSizes: () => void;
+  onOpenCsvImport?: () => void;
   onSelectTeamContact: (team: Team, divisionName?: string) => void;
   onSelectField: (field: Field) => void;
 }
@@ -43,6 +45,7 @@ export const TeamsPage: React.FC<TeamsPageProps> = ({
   onSaveTeam,
   onDeleteTeam,
   onOpenManageTeamSizes,
+  onOpenCsvImport,
   onSelectTeamContact,
   onSelectField,
 }) => {
@@ -451,6 +454,17 @@ export const TeamsPage: React.FC<TeamsPageProps> = ({
             <Sliders className="w-3.5 h-3.5 text-slate-500" />
             <span>Manage Team Sizes</span>
           </button>
+
+          {onOpenCsvImport && (
+            <button
+              onClick={onOpenCsvImport}
+              className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 rounded-lg transition-colors shadow-2xs"
+              title="Import teams, coaches, and home fields from a CSV file"
+            >
+              <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
+              <span>Import Teams (CSV)</span>
+            </button>
+          )}
 
           <button
             onClick={handleOpenCreate}

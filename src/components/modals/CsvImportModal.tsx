@@ -3,12 +3,20 @@ import { AppData } from '../../types';
 import {
   parseTeamsFromCsv,
   parseScheduleFromCsv,
+  parseFieldsFromCsv,
   applyTeamsImport,
   applyScheduleImport,
+  applyFieldsImport,
   getTeamsCsvTemplate,
   getScheduleCsvTemplate,
+  getFieldsCsvTemplate,
+  exportTeamsToCsv,
+  exportScheduleToCsv,
+  exportFieldsToCsv,
+  downloadCsv,
   TeamImportAnalysis,
   ScheduleImportAnalysis,
+  FieldImportAnalysis,
 } from '../../utils/csvImporter';
 import {
   X,
@@ -30,7 +38,7 @@ import {
   Info,
 } from 'lucide-react';
 
-export type CsvImportType = 'teams' | 'schedule';
+export type CsvImportType = 'teams' | 'fields' | 'schedule';
 
 interface CsvImportModalProps {
   appData: AppData;
@@ -69,6 +77,16 @@ export const CsvImportModal: React.FC<CsvImportModalProps> = ({
     }
   }, [rawCsvText, activeType, appData]);
 
+  const fieldAnalysis: FieldImportAnalysis | null = useMemo(() => {
+    if (activeType !== 'fields' || !rawCsvText.trim()) return null;
+    try {
+      return parseFieldsFromCsv(rawCsvText, appData);
+    } catch (err) {
+      console.error('Error analyzing fields CSV:', err);
+      return null;
+    }
+  }, [rawCsvText, activeType, appData]);
+
   const scheduleAnalysis: ScheduleImportAnalysis | null = useMemo(() => {
     if (activeType !== 'schedule' || !rawCsvText.trim()) return null;
     try {
@@ -97,25 +115,53 @@ export const CsvImportModal: React.FC<CsvImportModalProps> = ({
 
   // Handle template download
   const handleDownloadTemplate = (type: CsvImportType) => {
-    const content = type === 'teams' ? getTeamsCsvTemplate() : getScheduleCsvTemplate();
-    const defaultName = type === 'teams' ? 'pitchmaster_teams_template.csv' : 'pitchmaster_schedule_template.csv';
+    const content =
+      type === 'teams'
+        ? getTeamsCsvTemplate()
+        : type === 'fields'
+        ? getFieldsCsvTemplate()
+        : getScheduleCsvTemplate();
+    const defaultName =
+      type === 'teams'
+        ? 'pitchmaster_teams_template.csv'
+        : type === 'fields'
+        ? 'pitchmaster_fields_template.csv'
+        : 'pitchmaster_schedule_template.csv';
 
-    const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', defaultName);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+    downloadCsv(defaultName, content);
+  };
+
+  // Handle export current data in standard format
+  const handleExportCurrent = (type: CsvImportType) => {
+    const today = new Date().toISOString().slice(0, 10);
+    if (type === 'teams') {
+      const csv = exportTeamsToCsv(appData);
+      downloadCsv(`pitchmaster_teams_${today}.csv`, csv);
+    } else if (type === 'fields') {
+      const csv = exportFieldsToCsv(appData);
+      downloadCsv(`pitchmaster_fields_${today}.csv`, csv);
+    } else {
+      const csv = exportScheduleToCsv(appData);
+      downloadCsv(`pitchmaster_schedule_${today}.csv`, csv);
+    }
   };
 
   // Load sample data directly into preview
   const handleLoadSample = (type: CsvImportType) => {
-    const sample = type === 'teams' ? getTeamsCsvTemplate() : getScheduleCsvTemplate();
+    const sample =
+      type === 'teams'
+        ? getTeamsCsvTemplate()
+        : type === 'fields'
+        ? getFieldsCsvTemplate()
+        : getScheduleCsvTemplate();
     setRawCsvText(sample);
-    setFileName(type === 'teams' ? 'sample_teams.csv' : 'sample_schedule.csv');
+    setFileName(
+      type === 'teams'
+        ? 'sample_teams.csv'
+        : type === 'fields'
+        ? 'sample_fields.csv'
+        : 'sample_schedule.csv'
+    );
     setSuccessReport(null);
   };
 
@@ -139,6 +185,20 @@ export const CsvImportModal: React.FC<CsvImportModalProps> = ({
               : '') +
             (teamAnalysis.newFields.length > 0
               ? ` Created ${teamAnalysis.newFields.length} new pitch(es).`
+              : '')
+        );
+      } else if (activeType === 'fields' && fieldAnalysis) {
+        const updated = applyFieldsImport(appData, fieldAnalysis, {
+          mode: importMode,
+          createMissingDivisions: createDivisions,
+        });
+
+        onUpdateAppData(updated);
+        const importedCount = fieldAnalysis.validCount + fieldAnalysis.warningCount;
+        setSuccessReport(
+          `Successfully imported ${importedCount} pitches/fields (${importMode === 'replace' ? 'replaced existing fields' : 'merged into league'})!` +
+            (fieldAnalysis.newDivisions.length > 0
+              ? ` Created ${fieldAnalysis.newDivisions.length} new division(s).`
               : '')
         );
       } else if (activeType === 'schedule' && scheduleAnalysis) {
@@ -168,7 +228,12 @@ export const CsvImportModal: React.FC<CsvImportModalProps> = ({
     }
   };
 
-  const currentAnalysis = activeType === 'teams' ? teamAnalysis : scheduleAnalysis;
+  const currentAnalysis =
+    activeType === 'teams'
+      ? teamAnalysis
+      : activeType === 'fields'
+      ? fieldAnalysis
+      : scheduleAnalysis;
   const hasRows = currentAnalysis && currentAnalysis.totalRows > 0;
   const canImport = currentAnalysis && currentAnalysis.validCount + currentAnalysis.warningCount > 0;
 
@@ -215,7 +280,25 @@ export const CsvImportModal: React.FC<CsvImportModalProps> = ({
               <Users className="w-4 h-4" />
               <span>Import Teams & Coaches</span>
               <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono bg-slate-100 text-slate-600">
-                {appData.teams.length} in league
+                {appData.teams.length} teams
+              </span>
+            </button>
+
+            <button
+              onClick={() => {
+                setActiveType('fields');
+                setSuccessReport(null);
+              }}
+              className={`inline-flex items-center gap-2 px-4 py-2.5 text-xs font-bold border-b-2 transition-colors ${
+                activeType === 'fields'
+                  ? 'border-emerald-600 text-emerald-800'
+                  : 'border-transparent text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              <MapPin className="w-4 h-4" />
+              <span>Import Pitches & Fields</span>
+              <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono bg-slate-100 text-slate-600">
+                {appData.fields.length} pitches
               </span>
             </button>
 
@@ -240,12 +323,23 @@ export const CsvImportModal: React.FC<CsvImportModalProps> = ({
 
           <div className="hidden sm:flex items-center gap-2 pb-2">
             <button
+              type="button"
+              onClick={() => handleExportCurrent(activeType)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-700 bg-white border border-slate-300 hover:bg-slate-100 transition-colors shadow-2xs"
+              title={`Export current active ${activeType} to a CSV file`}
+            >
+              <Download className="w-3.5 h-3.5 text-slate-500" />
+              <span>Export {activeType === 'teams' ? 'Teams' : activeType === 'fields' ? 'Fields' : 'Schedule'} (CSV)</span>
+            </button>
+
+            <button
+              type="button"
               onClick={() => handleDownloadTemplate(activeType)}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 transition-colors"
               title="Download standard CSV spreadsheet template"
             >
-              <Download className="w-3.5 h-3.5 text-slate-500" />
-              <span>Download {activeType === 'teams' ? 'Teams' : 'Schedule'} Template</span>
+              <FileSpreadsheet className="w-3.5 h-3.5 text-slate-500" />
+              <span>Template</span>
             </button>
           </div>
         </div>
@@ -532,6 +626,90 @@ export const CsvImportModal: React.FC<CsvImportModalProps> = ({
                   </table>
                 )}
 
+                {activeType === 'fields' && fieldAnalysis && (
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead className="bg-slate-100 sticky top-0 z-10 border-b border-slate-200 text-slate-600 font-bold">
+                      <tr>
+                        <th className="px-3 py-2">Row</th>
+                        <th className="px-3 py-2">Pitch / Field Name</th>
+                        <th className="px-3 py-2">Facility Address</th>
+                        <th className="px-3 py-2">Assigned Divisions</th>
+                        <th className="px-3 py-2">Size / Surface</th>
+                        <th className="px-3 py-2">Blackout Dates</th>
+                        <th className="px-3 py-2">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 font-sans">
+                      {fieldAnalysis.rows.map((row) => (
+                        <tr
+                          key={row.rowIndex}
+                          className={`hover:bg-slate-50/80 transition-colors ${
+                            row.status === 'error'
+                              ? 'bg-rose-50/60'
+                              : row.status === 'warning'
+                              ? 'bg-amber-50/40'
+                              : ''
+                          }`}
+                        >
+                          <td className="px-3 py-2 font-mono text-[11px] text-slate-400">
+                            #{row.rowIndex}
+                          </td>
+                          <td className="px-3 py-2 font-bold text-slate-900">
+                            {row.fieldName || <span className="text-rose-500 italic">Empty</span>}
+                            {row.isDuplicate && (
+                              <span className="ml-1.5 px-1.5 py-0.2 bg-amber-100 text-amber-800 rounded text-[10px] font-bold">
+                                Exists
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-3 py-2 text-slate-600 max-w-[150px] truncate">
+                            {row.address}
+                          </td>
+                          <td className="px-3 py-2 text-slate-700">
+                            {row.assignedDivisionNames.join(', ') || <span className="text-slate-400">All Divisions</span>}
+                            {row.newDivisions.length > 0 && (
+                              <span className="ml-1.5 px-1.5 py-0.2 bg-emerald-100 text-emerald-800 rounded text-[10px] font-bold">
+                                +{row.newDivisions.length} Div
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-3 py-2 text-slate-600">
+                            <span className="font-semibold">{row.size}</span>
+                            <span className="text-slate-400 mx-1">·</span>
+                            <span>{row.surfaceType}</span>
+                          </td>
+                          <td className="px-3 py-2 text-slate-600 font-mono text-[11px]">
+                            {row.blackoutDates.length > 0 ? (
+                              `${row.blackoutDates.length} date(s)`
+                            ) : (
+                              <span className="text-slate-400">—</span>
+                            )}
+                          </td>
+                          <td className="px-3 py-2">
+                            {row.status === 'valid' ? (
+                              <span className="text-emerald-700 font-semibold text-[11px]">Ready</span>
+                            ) : row.status === 'warning' ? (
+                              <span
+                                className="text-amber-700 font-semibold text-[11px] cursor-help"
+                                title={row.messages.join(' ')}
+                              >
+                                {row.messages[0]}
+                              </span>
+                            ) : (
+                              <span
+                                className="text-rose-700 font-semibold text-[11px] cursor-help"
+                                title={row.messages.join(' ')}
+                              >
+                                {row.messages[0]}
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+
                 {activeType === 'schedule' && scheduleAnalysis && (
                   <table className="w-full text-left text-xs border-collapse">
                     <thead className="bg-slate-100 sticky top-0 z-10 border-b border-slate-200 text-slate-600 font-bold">
@@ -617,6 +795,8 @@ export const CsvImportModal: React.FC<CsvImportModalProps> = ({
               <p className="text-blue-800 leading-relaxed text-[11px]">
                 {activeType === 'teams'
                   ? 'Column headers like "Team", "Division", "Coach", "Email", "Phone", and "Home Field" are recognized automatically. Divisions and Pitches referenced in the file can be created on-the-fly.'
+                  : activeType === 'fields'
+                  ? 'Column headers like "Field Name", "Address", "Google Maps URL", "Assigned Divisions", "Field Size", "Surface Type", and "Blackout Dates" are recognized automatically.'
                   : 'Column headers like "Date", "Time", "Home Team", "Away Team", "Field", and "Division" are recognized automatically. Dates like 2026-04-11 or 04/11/2026 and kickoff times like 09:00 or 9:00 AM are supported.'}
               </p>
             </div>
@@ -660,7 +840,7 @@ export const CsvImportModal: React.FC<CsvImportModalProps> = ({
                   <span>
                     Commit & Import{' '}
                     {currentAnalysis ? currentAnalysis.validCount + currentAnalysis.warningCount : 0}{' '}
-                    {activeType === 'teams' ? 'Teams' : 'Matches'}
+                    {activeType === 'teams' ? 'Teams' : activeType === 'fields' ? 'Pitches' : 'Matches'}
                   </span>
                 </>
               )}

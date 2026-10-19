@@ -1018,6 +1018,466 @@ export function applyScheduleImport(
 }
 
 // -------------------------------------------------------------
+// FIELDS IMPORT INTERFACES & PARSER
+// -------------------------------------------------------------
+
+export interface ParsedFieldRow {
+  rowIndex: number;
+  raw: Record<string, string>;
+  fieldName: string;
+  address: string;
+  googleMapsUrl: string;
+  assignedDivisionNames: string[];
+  assignedDivisionIds: string[];
+  size: string;
+  surfaceType: 'Natural Grass' | 'Artificial Turf' | 'Indoor / Futsal' | 'Hybrid';
+  blackoutDates: string[];
+  notes: string;
+  isDuplicate: boolean;
+  isNewField: boolean;
+  newDivisions: string[];
+  status: 'valid' | 'warning' | 'error';
+  messages: string[];
+}
+
+export interface FieldImportAnalysis {
+  rows: ParsedFieldRow[];
+  totalRows: number;
+  validCount: number;
+  warningCount: number;
+  errorCount: number;
+  newDivisions: { name: string; id: string }[];
+  duplicateFields: string[];
+  headersDetected: string[];
+  columnMapping: Record<string, string>;
+}
+
+const FIELD_HEADER_ALIASES: Record<string, string[]> = {
+  fieldName: ['field name', 'field', 'pitch', 'pitch name', 'name', 'venue', 'pitch_name', 'field_name'],
+  address: ['address', 'facility address', 'location', 'street address', 'street', 'facility'],
+  googleMapsUrl: ['google maps url', 'maps url', 'map url', 'google maps', 'maps link', 'map link', 'location url', 'maps'],
+  assignedDivisions: ['assigned divisions', 'divisions', 'division', 'age groups', 'assigned division', 'assigned_divisions', 'divisions assigned'],
+  size: ['field size', 'size', 'dimension', 'pitch size', 'format', 'field_size'],
+  surfaceType: ['surface type', 'surface', 'turf', 'pitch surface', 'grass', 'surface_type'],
+  blackoutDates: ['blackout dates', 'blackouts', 'blackout', 'unavailable dates', 'closed dates', 'blackout_dates'],
+  notes: ['notes', 'comments', 'remarks', 'description', 'info'],
+};
+
+function detectFieldHeaderMapping(headers: string[]): Record<string, string> {
+  const mapping: Record<string, string> = {};
+  const normalizedHeaders = headers.map((h) => h.toLowerCase().trim().replace(/[-_]/g, ' '));
+
+  for (const [key, aliases] of Object.entries(FIELD_HEADER_ALIASES)) {
+    const idx = normalizedHeaders.findIndex((h) => aliases.some((alias) => h === alias || h.includes(alias)));
+    if (idx !== -1) {
+      mapping[key] = headers[idx];
+    }
+  }
+
+  return mapping;
+}
+
+export function parseFieldsFromCsv(csvText: string, currentAppData: AppData): FieldImportAnalysis {
+  const rawRows = parseCsv(csvText);
+  if (rawRows.length < 2) {
+    return {
+      rows: [],
+      totalRows: 0,
+      validCount: 0,
+      warningCount: 0,
+      errorCount: 0,
+      newDivisions: [],
+      duplicateFields: [],
+      headersDetected: [],
+      columnMapping: {},
+    };
+  }
+
+  const rawHeaders = rawRows[0];
+  const dataRows = rawRows.slice(1);
+  const columnMapping = detectFieldHeaderMapping(rawHeaders);
+
+  const existingDivMap = new Map<string, Division>();
+  currentAppData.divisions.forEach((d) => {
+    existingDivMap.set(d.id.toLowerCase(), d);
+    existingDivMap.set(d.name.toLowerCase().trim(), d);
+  });
+
+  const existingFieldsSet = new Set(currentAppData.fields.map((f) => f.name.toLowerCase().trim()));
+  const newDivisionsMap = new Map<string, { name: string; id: string }>();
+  const duplicateFields: string[] = [];
+  const parsedRows: ParsedFieldRow[] = [];
+
+  dataRows.forEach((cols, index) => {
+    const raw: Record<string, string> = {};
+    rawHeaders.forEach((h, hIdx) => {
+      raw[h] = cols[hIdx] || '';
+    });
+
+    const getVal = (fieldKey: string): string => {
+      const headerName = columnMapping[fieldKey];
+      return headerName ? (raw[headerName] || '').trim() : '';
+    };
+
+    const fieldName = getVal('fieldName');
+    const address = getVal('address') || 'League Facility';
+    const googleMapsUrl = getVal('googleMapsUrl');
+    const assignedDivisionsInput = getVal('assignedDivisions');
+    const sizeInput = getVal('size') || '11v11 Full';
+    const surfaceInput = getVal('surfaceType').toLowerCase();
+    const blackoutDatesInput = getVal('blackoutDates');
+    const notes = getVal('notes');
+
+    const messages: string[] = [];
+    let status: 'valid' | 'warning' | 'error' = 'valid';
+
+    if (!fieldName) {
+      status = 'error';
+      messages.push('Missing field/pitch name.');
+    }
+
+    const isDuplicate = existingFieldsSet.has(fieldName.toLowerCase());
+    if (isDuplicate) {
+      duplicateFields.push(fieldName);
+      if (status !== 'error') status = 'warning';
+      messages.push('Field already exists in league (will update or append).');
+    }
+
+    // Surface Type resolution
+    let surfaceType: 'Natural Grass' | 'Artificial Turf' | 'Indoor / Futsal' | 'Hybrid' = 'Natural Grass';
+    if (surfaceInput.includes('turf') || surfaceInput.includes('artificial')) {
+      surfaceType = 'Artificial Turf';
+    } else if (surfaceInput.includes('indoor') || surfaceInput.includes('futsal')) {
+      surfaceType = 'Indoor / Futsal';
+    } else if (surfaceInput.includes('hybrid')) {
+      surfaceType = 'Hybrid';
+    }
+
+    // Assigned Divisions resolution
+    const assignedDivisionNames: string[] = [];
+    const assignedDivisionIds: string[] = [];
+    const newDivisions: string[] = [];
+
+    if (assignedDivisionsInput) {
+      const rawDivs = assignedDivisionsInput.split(/[;,]/).map((s) => s.trim()).filter(Boolean);
+      rawDivs.forEach((divName) => {
+        assignedDivisionNames.push(divName);
+        const matched = existingDivMap.get(divName.toLowerCase());
+        if (matched) {
+          assignedDivisionIds.push(matched.id);
+        } else {
+          const slug = `div-${divName.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
+          const divId = newDivisionsMap.get(divName.toLowerCase())?.id || slug;
+          assignedDivisionIds.push(divId);
+          newDivisions.push(divName);
+          newDivisionsMap.set(divName.toLowerCase(), { name: divName, id: divId });
+          messages.push(`New division "${divName}" will be auto-created.`);
+        }
+      });
+    } else {
+      currentAppData.divisions.forEach((d) => {
+        assignedDivisionIds.push(d.id);
+        assignedDivisionNames.push(d.name);
+      });
+    }
+
+    // Blackout dates resolution
+    const blackoutDates: string[] = [];
+    if (blackoutDatesInput) {
+      const rawDates = blackoutDatesInput.split(/[;,]/).map((s) => s.trim()).filter(Boolean);
+      rawDates.forEach((d) => {
+        const norm = normalizeDate(d);
+        if (norm) {
+          blackoutDates.push(norm);
+        }
+      });
+    }
+
+    parsedRows.push({
+      rowIndex: index + 2,
+      raw,
+      fieldName,
+      address,
+      googleMapsUrl,
+      assignedDivisionNames,
+      assignedDivisionIds,
+      size: sizeInput,
+      surfaceType,
+      blackoutDates,
+      notes,
+      isDuplicate,
+      isNewField: !isDuplicate,
+      newDivisions,
+      status,
+      messages,
+    });
+  });
+
+  return {
+    rows: parsedRows,
+    totalRows: parsedRows.length,
+    validCount: parsedRows.filter((r) => r.status === 'valid').length,
+    warningCount: parsedRows.filter((r) => r.status === 'warning').length,
+    errorCount: parsedRows.filter((r) => r.status === 'error').length,
+    newDivisions: Array.from(newDivisionsMap.values()),
+    duplicateFields: Array.from(new Set(duplicateFields)),
+    headersDetected: rawHeaders,
+    columnMapping,
+  };
+}
+
+export function applyFieldsImport(
+  appData: AppData,
+  analysis: FieldImportAnalysis,
+  options: {
+    mode: 'append' | 'replace';
+    createMissingDivisions: boolean;
+  }
+): AppData {
+  const updatedAppData: AppData = {
+    ...appData,
+    divisions: [...appData.divisions],
+    fields: [...appData.fields],
+    lastModified: new Date().toISOString(),
+  };
+
+  // 1. Auto-create divisions if enabled
+  if (options.createMissingDivisions && analysis.newDivisions.length > 0) {
+    const existingDivIds = new Set(updatedAppData.divisions.map((d) => d.id));
+    analysis.newDivisions.forEach((nd) => {
+      if (!existingDivIds.has(nd.id)) {
+        updatedAppData.divisions.push({
+          id: nd.id,
+          name: nd.name,
+          playDays: [6, 0],
+          playTimeSlots: ['09:00', '10:30', '12:00', '13:30', '15:00'],
+          fieldIds: [],
+          matchDurationMinutes: 60,
+          colorTheme: 'blue',
+        });
+        existingDivIds.add(nd.id);
+      }
+    });
+  }
+
+  const validRows = analysis.rows.filter((r) => r.status !== 'error');
+
+  const newFields: Field[] = validRows.map((r) => {
+    const slug = `f-${r.fieldName.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
+    return {
+      id: slug,
+      name: r.fieldName,
+      address: r.address || 'League Facility',
+      googleMapsUrl: r.googleMapsUrl || '',
+      assignedDivisionIds: r.assignedDivisionIds,
+      size: r.size || '11v11 Full',
+      surfaceType: r.surfaceType,
+      blackoutDates: r.blackoutDates,
+      notes: r.notes || '',
+    };
+  });
+
+  if (options.mode === 'replace') {
+    updatedAppData.fields = newFields;
+  } else {
+    const fieldMap = new Map<string, Field>();
+    updatedAppData.fields.forEach((f) => {
+      fieldMap.set(f.name.toLowerCase().trim(), f);
+    });
+
+    newFields.forEach((nf) => {
+      const key = nf.name.toLowerCase().trim();
+      const existing = fieldMap.get(key);
+      if (existing) {
+        Object.assign(existing, {
+          address: nf.address || existing.address,
+          googleMapsUrl: nf.googleMapsUrl || existing.googleMapsUrl,
+          assignedDivisionIds: Array.from(new Set([...existing.assignedDivisionIds, ...nf.assignedDivisionIds])),
+          size: nf.size || existing.size,
+          surfaceType: nf.surfaceType || existing.surfaceType,
+          blackoutDates: Array.from(new Set([...existing.blackoutDates, ...nf.blackoutDates])),
+          notes: nf.notes || existing.notes,
+        });
+      } else {
+        updatedAppData.fields.push(nf);
+        fieldMap.set(key, nf);
+      }
+    });
+  }
+
+  // Ensure divisions include their assigned field IDs
+  updatedAppData.fields.forEach((f) => {
+    f.assignedDivisionIds.forEach((divId) => {
+      const div = updatedAppData.divisions.find((d) => d.id === divId);
+      if (div) {
+        if (!Array.isArray(div.fieldIds)) div.fieldIds = [];
+        if (!div.fieldIds.includes(f.id)) {
+          div.fieldIds.push(f.id);
+        }
+      }
+    });
+  });
+
+  return updatedAppData;
+}
+
+// -------------------------------------------------------------
+// CSV EXPORT FUNCTIONS (1:1 FORMAT PARITY WITH IMPORTERS)
+// -------------------------------------------------------------
+
+export function escapeCsvCell(val: any): string {
+  if (val === null || val === undefined) return '""';
+  const str = String(val).trim();
+  return `"${str.replace(/"/g, '""')}"`;
+}
+
+export function exportTeamsToCsv(appData: AppData, teamsToExport?: Team[]): string {
+  const teams = teamsToExport || appData.teams;
+  const divisionMap = new Map(appData.divisions.map((d) => [d.id, d.name]));
+  const fieldMap = new Map(appData.fields.map((f) => [f.id, f.name]));
+  const teamSizeMap = new Map(appData.teamSizes.map((s) => [s.id, s.name]));
+
+  const headers = [
+    'Team Name',
+    'Division',
+    'Coach Name',
+    'Contact Email',
+    'Contact Phone',
+    'Home Field',
+    'Alternate Home Fields',
+    'Jersey Color',
+    'Team Size',
+    'Notes',
+  ];
+
+  const rows = teams
+    .filter((t) => !t.isBye)
+    .map((t) => {
+      const divName = divisionMap.get(t.divisionId) || '';
+      const homeFieldName = fieldMap.get(t.primaryHomeFieldId) || '';
+      const altFieldNames = (t.alternateHomeFieldIds || [])
+        .map((id) => fieldMap.get(id) || id)
+        .filter(Boolean)
+        .join('; ');
+      const sizeName = teamSizeMap.get(t.sizeId) || t.sizeId || '';
+
+      return [
+        escapeCsvCell(t.name),
+        escapeCsvCell(divName),
+        escapeCsvCell(t.contactName || ''),
+        escapeCsvCell(t.contactEmail || ''),
+        escapeCsvCell(t.contactPhone || ''),
+        escapeCsvCell(homeFieldName),
+        escapeCsvCell(altFieldNames),
+        escapeCsvCell(t.jerseyColor || ''),
+        escapeCsvCell(sizeName),
+        escapeCsvCell(t.notes || ''),
+      ].join(',');
+    });
+
+  return [headers.join(','), ...rows].join('\n');
+}
+
+export function exportScheduleToCsv(appData: AppData, gamesToExport?: Game[]): string {
+  const games = gamesToExport || appData.games;
+  const divisionMap = new Map(appData.divisions.map((d) => [d.id, d.name]));
+  const teamMap = new Map(appData.teams.map((t) => [t.id, t.name]));
+  const fieldMap = new Map(appData.fields.map((f) => [f.id, f.name]));
+
+  const headers = [
+    'Date',
+    'Time',
+    'Division',
+    'Home Team',
+    'Away Team',
+    'Field',
+    'Round',
+    'Status',
+    'Match Type',
+    'Home Score',
+    'Away Score',
+    'Notes',
+  ];
+
+  const rows = games.map((g) => {
+    const divName = divisionMap.get(g.divisionId) || '';
+    const homeName = teamMap.get(g.homeTeamId) || (g.isByePractice ? 'Bye / Practice' : 'TBD');
+    const awayName = teamMap.get(g.awayTeamId) || (g.isByePractice ? 'Practice / Solo' : 'TBD');
+    const fieldName = fieldMap.get(g.fieldId) || '';
+    const matchType = g.isByePractice ? 'Bye Practice' : 'Regular Match';
+    const homeScore = g.score !== undefined ? g.score.home : '';
+    const awayScore = g.score !== undefined ? g.score.away : '';
+
+    return [
+      escapeCsvCell(g.date),
+      escapeCsvCell(g.time),
+      escapeCsvCell(divName),
+      escapeCsvCell(homeName),
+      escapeCsvCell(awayName),
+      escapeCsvCell(fieldName),
+      escapeCsvCell(g.roundNumber || 1),
+      escapeCsvCell(g.status || 'scheduled'),
+      escapeCsvCell(matchType),
+      escapeCsvCell(homeScore),
+      escapeCsvCell(awayScore),
+      escapeCsvCell(g.notes || ''),
+    ].join(',');
+  });
+
+  return [headers.join(','), ...rows].join('\n');
+}
+
+export function exportFieldsToCsv(appData: AppData, fieldsToExport?: Field[]): string {
+  const fields = fieldsToExport || appData.fields;
+  const divisionMap = new Map(appData.divisions.map((d) => [d.id, d.name]));
+
+  const headers = [
+    'Field Name',
+    'Address',
+    'Google Maps URL',
+    'Assigned Divisions',
+    'Field Size',
+    'Surface Type',
+    'Blackout Dates',
+    'Notes',
+  ];
+
+  const rows = fields.map((f) => {
+    const assignedDivNames = (f.assignedDivisionIds || [])
+      .map((id) => divisionMap.get(id) || id)
+      .filter(Boolean)
+      .join('; ');
+    const blackout = (f.blackoutDates || []).join('; ');
+
+    return [
+      escapeCsvCell(f.name),
+      escapeCsvCell(f.address || ''),
+      escapeCsvCell(f.googleMapsUrl || ''),
+      escapeCsvCell(assignedDivNames),
+      escapeCsvCell(f.size || ''),
+      escapeCsvCell(f.surfaceType || ''),
+      escapeCsvCell(blackout),
+      escapeCsvCell(f.notes || ''),
+    ].join(',');
+  });
+
+  return [headers.join(','), ...rows].join('\n');
+}
+
+export function downloadCsv(filename: string, csvContent: string): void {
+  const cleanName = filename.endsWith('.csv') ? filename : `${filename}.csv`;
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.setAttribute('download', cleanName);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
+// -------------------------------------------------------------
 // SAMPLE TEMPLATES
 // -------------------------------------------------------------
 
@@ -1038,5 +1498,15 @@ export function getScheduleCsvTemplate(): string {
     '"2026-04-11","10:30","U12 Boys Premier","Bay City Storm","Valley United","Memorial Park - Field 1 (South)",1,"scheduled",,,"Referee assigned: Johnson"',
     '"2026-04-11","09:00","U10 Girls Classic","Golden Eagles","Coastal Thunder","Clover Field - Pitch A",1,"scheduled",,,"Small-sided pitch 7v7"',
     '"2026-04-18","09:00","U12 Boys Premier","Canyon Rapids","Bay City Storm","Memorial Park - Field 2 (North)",2,"scheduled",,,"Round 2 clash"',
+  ].join('\n');
+}
+
+export function getFieldsCsvTemplate(): string {
+  return [
+    'Field Name,Address,Google Maps URL,Assigned Divisions,Field Size,Surface Type,Blackout Dates,Notes',
+    '"Memorial Park - Field 1 (South)","1401 Olympic Blvd, Santa Monica, CA","https://maps.google.com/?q=Memorial+Park+Santa+Monica","U12 Boys Premier; U14 Coed Metro","11v11 Full","Natural Grass","2026-04-19; 2026-05-10","Main stadium pitch with floodlights"',
+    '"Memorial Park - Field 2 (North)","1401 Olympic Blvd, Santa Monica, CA","https://maps.google.com/?q=Memorial+Park+Santa+Monica","U12 Boys Premier; U10 Girls Classic","11v11 Full","Artificial Turf","","Regulation artificial turf field"',
+    '"Clover Field - Pitch A","2600 Ocean Park Blvd, Santa Monica, CA","https://maps.google.com/?q=Clover+Park+Santa+Monica","U10 Girls Classic","7v7 Small","Natural Grass","2026-04-26","Small-sided field for U10 matches"',
+    '"Westside Sports Complex - Turf 1","11301 Wilshire Blvd, Los Angeles, CA","https://maps.google.com/?q=Westside+Complex","U14 Coed Metro","11v11 Full","Artificial Turf","","All-weather turf facility"',
   ].join('\n');
 }

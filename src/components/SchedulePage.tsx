@@ -44,6 +44,7 @@ import {
   downloadIcsFile,
   generateIcsContent,
 } from '../utils/calendarExport';
+import { exportScheduleToCsv, downloadCsv } from '../utils/csvImporter';
 
 export type ScheduleSubTab = 'schedule' | 'matchups' | 'balance' | 'conflicts';
 
@@ -212,50 +213,11 @@ export const SchedulePage: React.FC<SchedulePageProps> = ({
     });
   };
 
-  // Export CSV
+  // Export CSV (in standard format recognized by CSV Importer)
   const handleExportCSV = () => {
-    const headers = [
-      'Date',
-      'Time',
-      'Division',
-      'Home Team',
-      'Away Team',
-      'Match Type',
-      'Field Name',
-      'Field Address',
-      'Status',
-      'Round',
-    ];
-
-    const rows = filteredGames.map((g) => {
-      const home = teamMap.get(g.homeTeamId)?.name || 'TBD';
-      const away = teamMap.get(g.awayTeamId)?.name || 'TBD';
-      const div = divisionMap.get(g.divisionId)?.name || '';
-      const field = fieldMap.get(g.fieldId);
-      const matchType = g.isByePractice ? 'Bye Practice Game' : 'Regular League Match';
-
-      return [
-        `"${g.date}"`,
-        `"${g.time}"`,
-        `"${div}"`,
-        `"${home}"`,
-        `"${away}"`,
-        `"${matchType}"`,
-        `"${field?.name || ''}"`,
-        `"${field?.address || ''}"`,
-        `"${g.status}"`,
-        `"${g.roundNumber}"`,
-      ].join(',');
-    });
-
-    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows].join('\n');
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `soccer_schedule_${new Date().toISOString().slice(0, 10)}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
+    const csv = exportScheduleToCsv(appData, filteredGames);
+    const fileName = `pitchmaster_schedule_${new Date().toISOString().slice(0, 10)}.csv`;
+    downloadCsv(fileName, csv);
   };
 
   // Print schedule

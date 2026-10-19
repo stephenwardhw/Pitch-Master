@@ -19,13 +19,20 @@ import {
   FileSpreadsheet,
   Users,
   Calendar,
+  MapPin,
 } from 'lucide-react';
+import {
+  exportTeamsToCsv,
+  exportScheduleToCsv,
+  exportFieldsToCsv,
+  downloadCsv,
+} from '../../utils/csvImporter';
 
 interface DatasetModalProps {
   appData: AppData;
   onUpdateData: (newData: AppData) => void;
   onClose: () => void;
-  onOpenCsvImport?: (type?: 'teams' | 'schedule') => void;
+  onOpenCsvImport?: (type?: 'teams' | 'fields' | 'schedule') => void;
 }
 
 export const DatasetModal: React.FC<DatasetModalProps> = ({
@@ -365,39 +372,109 @@ export const DatasetModal: React.FC<DatasetModalProps> = ({
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <FileSpreadsheet className="w-4 h-4 text-emerald-700" />
-                <h4 className="text-sm font-bold text-slate-900">CSV Spreadsheet Migration</h4>
+                <h4 className="text-sm font-bold text-slate-900">CSV Spreadsheet Migration & Export</h4>
               </div>
               <span className="text-[10px] font-semibold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full border border-emerald-200">
                 Excel & Google Sheets
               </span>
             </div>
             <p className="text-xs text-slate-600 leading-relaxed">
-              Quickly migrate existing team directories, coaches, or match schedules from CSV files. Automatically recognizes column headers and resolves divisions and pitches.
+              Export and import datasets in standard CSV format with full format symmetry between import and export.
             </p>
+
+            {/* Export Section */}
+            <div className="space-y-1.5 pt-1 border-t border-emerald-200/60">
+              <span className="text-[11px] font-bold text-emerald-950 uppercase tracking-wider block">
+                Export Current Data to CSV:
+              </span>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const csv = exportTeamsToCsv(appData);
+                    const today = new Date().toISOString().slice(0, 10);
+                    downloadCsv(`pitchmaster_teams_${today}.csv`, csv);
+                  }}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-800 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors shadow-2xs"
+                  title="Export teams, rosters, and coaches to CSV"
+                >
+                  <Download className="w-3.5 h-3.5 text-slate-500" />
+                  <span>Export Teams CSV ({appData.teams.length})</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    const csv = exportFieldsToCsv(appData);
+                    const today = new Date().toISOString().slice(0, 10);
+                    downloadCsv(`pitchmaster_fields_${today}.csv`, csv);
+                  }}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-800 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors shadow-2xs"
+                  title="Export pitches, venues, and availability to CSV"
+                >
+                  <Download className="w-3.5 h-3.5 text-slate-500" />
+                  <span>Export Fields CSV ({appData.fields.length})</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    const csv = exportScheduleToCsv(appData);
+                    const today = new Date().toISOString().slice(0, 10);
+                    downloadCsv(`pitchmaster_schedule_${today}.csv`, csv);
+                  }}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-800 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors shadow-2xs"
+                  title="Export match schedule and fixtures to CSV"
+                >
+                  <Download className="w-3.5 h-3.5 text-slate-500" />
+                  <span>Export Schedule CSV ({appData.games.length})</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Import Section */}
             {onOpenCsvImport && (
-              <div className="flex flex-wrap gap-2 pt-0.5">
-                <button
-                  type="button"
-                  onClick={() => {
-                    onClose();
-                    onOpenCsvImport('teams');
-                  }}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-800 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors shadow-2xs"
-                >
-                  <Users className="w-3.5 h-3.5 text-emerald-600" />
-                  <span>Import Teams (CSV)</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    onClose();
-                    onOpenCsvImport('schedule');
-                  }}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-800 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors shadow-2xs"
-                >
-                  <Calendar className="w-3.5 h-3.5 text-emerald-600" />
-                  <span>Import Schedule (CSV)</span>
-                </button>
+              <div className="space-y-1.5 pt-2 border-t border-emerald-200/60">
+                <span className="text-[11px] font-bold text-emerald-950 uppercase tracking-wider block">
+                  Import New or Migrated Data from CSV:
+                </span>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onClose();
+                      onOpenCsvImport('teams');
+                    }}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-emerald-900 bg-emerald-100/70 border border-emerald-300 rounded-lg hover:bg-emerald-100 transition-colors shadow-2xs"
+                  >
+                    <Users className="w-3.5 h-3.5 text-emerald-700" />
+                    <span>Import Teams (CSV)</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onClose();
+                      onOpenCsvImport('fields');
+                    }}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-emerald-900 bg-emerald-100/70 border border-emerald-300 rounded-lg hover:bg-emerald-100 transition-colors shadow-2xs"
+                  >
+                    <MapPin className="w-3.5 h-3.5 text-emerald-700" />
+                    <span>Import Fields (CSV)</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onClose();
+                      onOpenCsvImport('schedule');
+                    }}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-emerald-900 bg-emerald-100/70 border border-emerald-300 rounded-lg hover:bg-emerald-100 transition-colors shadow-2xs"
+                  >
+                    <Calendar className="w-3.5 h-3.5 text-emerald-700" />
+                    <span>Import Schedule (CSV)</span>
+                  </button>
+                </div>
               </div>
             )}
           </div>

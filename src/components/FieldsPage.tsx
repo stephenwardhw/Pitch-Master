@@ -24,13 +24,17 @@ import {
   Filter,
   Sparkles,
   Shield,
+  Download,
+  FileSpreadsheet,
 } from 'lucide-react';
+import { exportFieldsToCsv, downloadCsv } from '../utils/csvImporter';
 
 interface FieldsPageProps {
   appData: AppData;
   onSaveField: (field: Field) => void;
   onDeleteField: (fieldId: string) => void;
   onSelectFieldMap: (field: Field) => void;
+  onOpenCsvImport?: (type?: 'fields') => void;
 }
 
 type ViewMode = 'matrix' | 'calendar' | 'cards';
@@ -64,6 +68,7 @@ export const FieldsPage: React.FC<FieldsPageProps> = ({
   onSaveField,
   onDeleteField,
   onSelectFieldMap,
+  onOpenCsvImport,
 }) => {
   // Primary View Mode
   const [viewMode, setViewMode] = useState<ViewMode>('matrix');
@@ -467,6 +472,30 @@ export const FieldsPage: React.FC<FieldsPageProps> = ({
               <span>Pitch Directory</span>
             </button>
           </div>
+
+          <button
+            onClick={() => {
+              const csv = exportFieldsToCsv(appData, filteredFields);
+              const fileName = `pitchmaster_fields_${new Date().toISOString().slice(0, 10)}.csv`;
+              downloadCsv(fileName, csv);
+            }}
+            className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 rounded-lg transition-colors shadow-2xs"
+            title="Export current pitches and field locations in standard CSV format"
+          >
+            <Download className="w-3.5 h-3.5 text-slate-500" />
+            <span>Export Fields (CSV)</span>
+          </button>
+
+          {onOpenCsvImport && (
+            <button
+              onClick={() => onOpenCsvImport('fields')}
+              className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 rounded-lg transition-colors shadow-2xs"
+              title="Import pitches and field locations from a CSV file"
+            >
+              <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
+              <span>Import Fields (CSV)</span>
+            </button>
+          )}
 
           <button
             onClick={handleOpenCreate}

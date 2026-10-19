@@ -25,7 +25,9 @@ import {
   Filter,
   ChevronDown,
   FileSpreadsheet,
+  Download,
 } from 'lucide-react';
+import { exportTeamsToCsv, downloadCsv } from '../utils/csvImporter';
 
 interface TeamsPageProps {
   appData: AppData;
@@ -453,6 +455,19 @@ export const TeamsPage: React.FC<TeamsPageProps> = ({
           >
             <Sliders className="w-3.5 h-3.5 text-slate-500" />
             <span>Manage Team Sizes</span>
+          </button>
+
+          <button
+            onClick={() => {
+              const csv = exportTeamsToCsv(appData, filteredTeams);
+              const fileName = `pitchmaster_teams_${new Date().toISOString().slice(0, 10)}.csv`;
+              downloadCsv(fileName, csv);
+            }}
+            className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 rounded-lg transition-colors shadow-2xs"
+            title="Export current teams in standard CSV format compatible with CSV Importer"
+          >
+            <Download className="w-3.5 h-3.5 text-slate-500" />
+            <span>Export Teams (CSV)</span>
           </button>
 
           {onOpenCsvImport && (

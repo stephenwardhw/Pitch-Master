@@ -438,6 +438,7 @@ export default function App() {
             onSaveField={handleSaveField}
             onDeleteField={handleDeleteField}
             onSelectFieldMap={(field) => setActiveMapField(field)}
+            onOpenCsvImport={() => handleOpenCsvImport('fields')}
           />
         )}
 

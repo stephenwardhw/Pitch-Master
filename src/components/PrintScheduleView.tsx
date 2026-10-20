@@ -300,7 +300,7 @@ export const PrintScheduleView: React.FC<PrintScheduleViewProps> = ({
             <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
               <div>
                 <div className="flex items-center gap-2">
-                  <div className="w-7 h-7 rounded bg-slate-900 text-white flex items-center justify-center font-bold text-sm print:border print:border-black">
+                  <div className="w-7 h-7 rounded bg-slate-900 text-white flex items-center justify-center font-bold text-sm print:border print:border-slate-400">
                     ⚽
                   </div>
                   <h1 className="text-2xl font-black tracking-tight text-slate-900 uppercase">
@@ -378,17 +378,17 @@ export const PrintScheduleView: React.FC<PrintScheduleViewProps> = ({
                     data-game-week={week.weekKey}
                   >
                     {/* Game Week Header Banner */}
-                    <div className="bg-slate-900 text-white px-4 py-2.5 rounded-lg flex items-center justify-between shadow-xs print:bg-slate-900 print:text-white print-avoid-break">
+                    <div className="bg-slate-900 text-white px-4 py-2.5 rounded-lg flex items-center justify-between shadow-xs print:bg-slate-100 print:text-slate-900 print:border print:border-slate-300 print:border-l-4 print:border-l-emerald-600 print-avoid-break print-game-week-header">
                       <div className="flex flex-wrap items-center gap-2.5">
-                        <span className="font-extrabold text-sm uppercase tracking-wider text-emerald-400">
+                        <span className="font-extrabold text-sm uppercase tracking-wider text-emerald-400 print:text-emerald-800 week-label">
                           {week.label}
                         </span>
-                        <span className="text-slate-400 text-xs hidden sm:inline">·</span>
-                        <span className="text-xs text-slate-200 font-medium">
+                        <span className="text-slate-400 text-xs hidden sm:inline print:text-slate-400">·</span>
+                        <span className="text-xs text-slate-200 font-medium print:text-slate-700">
                           {week.dateRangeFormatted}
                         </span>
                       </div>
-                      <span className="text-xs font-mono text-emerald-300 font-bold tabular-nums">
+                      <span className="text-xs font-mono text-emerald-300 font-bold tabular-nums print:text-slate-700">
                         {week.totalGames} {week.totalGames === 1 ? 'match' : 'matches'}
                       </span>
                     </div>

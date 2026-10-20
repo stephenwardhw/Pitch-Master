@@ -864,6 +864,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({
       <footer className="border-t border-slate-800/50 py-4 bg-slate-950/80 text-center text-[11px] text-slate-500 flex flex-wrap items-center justify-center gap-2">
         <span>PitchMaster Soccer Scheduler & Public Portal · Local Server File: <code className="font-mono text-slate-400">league_schedule.json</code></span>
         <span aria-hidden="true">·</span>
+        <span>Open Source (<span className="text-slate-400">MIT License</span>)</span>
+        <span aria-hidden="true">·</span>
         <a
           href="https://github.com/stephenwardhw/Pitch-Master"
           target="_blank"

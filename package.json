@@ -2,6 +2,7 @@
   "name": "react-example",
   "private": true,
   "version": "0.0.0",
+  "license": "MIT",
   "type": "module",
   "scripts": {
     "build": "vite build && cp dist/assets/index.js dist/assets/index-8ijPEWd7.js 2>/dev/null && cp dist/assets/index.css dist/assets/index-Cjgd3LhC.css 2>/dev/null || true",

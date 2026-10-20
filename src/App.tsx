@@ -494,6 +494,8 @@ export default function App() {
               <Github className="w-3.5 h-3.5" />
               <span>GitHub</span>
             </a>
+            <span aria-hidden="true">·</span>
+            <span className="text-slate-500 font-mono text-[11px]">MIT License</span>
           </div>
         </div>
       </footer>

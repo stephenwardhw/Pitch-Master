@@ -324,3 +324,10 @@ Key capabilities:
 | `https://pm.ichl.club/admin` | Full League Administration (Teams, fields, round-robin generator, conflict editor) | **Protected** (Basic Auth) |
 | `https://pm.ichl.club/league_schedule.json` | Live JSON data payload served statically | **Public** (Read-only) |
 | `https://pm.ichl.club/print.css` | Dedicated print media stylesheet | **Public** (Static asset) |
+
+---
+
+## License
+
+This project is licensed under the [MIT License](LICENSE) — free to copy, modify, distribute, merge, and use in commercial and non-commercial projects.
+

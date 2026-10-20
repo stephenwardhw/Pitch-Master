@@ -305,7 +305,7 @@ export default function App() {
   if (appMode === 'landing') {
     return (
       <LandingPage
-        appData={appData}
+        fallbackAppData={appData}
         onSelectAdmin={handleSwitchToAdmin}
         onSelectPortal={() => handleOpenPortal(false)}
       />

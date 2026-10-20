@@ -424,7 +424,7 @@ export const DatasetModal: React.FC<DatasetModalProps> = ({
                     downloadCsv(`pitchmaster_schedule_${today}.csv`, csv);
                   }}
                   className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-800 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors shadow-2xs"
-                  title="Export match schedule and fixtures to CSV"
+                  title="Export match schedule and games to CSV"
                 >
                   <Download className="w-3.5 h-3.5 text-slate-500" />
                   <span>Export Schedule CSV ({appData.games.length})</span>

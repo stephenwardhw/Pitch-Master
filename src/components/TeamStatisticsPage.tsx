@@ -547,7 +547,7 @@ export const TeamStatisticsPage: React.FC<TeamStatisticsPageProps> = ({
             <div className="text-lg font-bold text-slate-900 mt-0.5 font-mono">
               {summaryTotals.totalScheduledGames}
             </div>
-            <span className="text-[10px] text-slate-400">Total match fixtures</span>
+            <span className="text-[10px] text-slate-400">Total match games</span>
           </div>
 
           <div className="bg-slate-50 p-3 rounded-lg border border-slate-200/80">

@@ -179,7 +179,7 @@ export const TeamsPage: React.FC<TeamsPageProps> = ({
       setEmailSubject(`[${leagueTitle}] Pitch Conditions & Match Day Weather Advisory`);
       setEmailBody(
         `Attention Coaches & Team Managers,\n\n` +
-        `Please take note of the following pitch conditions and weather guidance for upcoming league fixtures.\n\n` +
+        `Please take note of the following pitch conditions and weather guidance for upcoming league games.\n\n` +
         `• All games will proceed as scheduled unless field closures are announced via official league notice.\n` +
         `• Please remind parents and players to dress warmly and bring ample hydration.\n` +
         `• In the event of lightning or field unplayability, referee and park official decisions are final.\n\n` +
@@ -1025,7 +1025,7 @@ export const TeamsPage: React.FC<TeamsPageProps> = ({
                     type="text"
                     value={emailSubject}
                     onChange={(e) => setEmailSubject(e.target.value)}
-                    placeholder="e.g. [Youth Soccer League] Schedule Update and Fixtures"
+                    placeholder="e.g. [Youth Soccer League] Schedule Update and Games"
                     className="w-full text-xs rounded-lg border border-slate-300 p-2.5 bg-white text-slate-900 font-medium focus:ring-2 focus:ring-blue-600 focus:outline-hidden"
                   />
                 </div>

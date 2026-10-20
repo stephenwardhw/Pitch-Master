@@ -52,7 +52,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   const [copiedLink, setCopiedLink] = useState<string | null>(null);
   const [isRawJsonModalOpen, setIsRawJsonModalOpen] = useState(false);
   const [copiedJson, setCopiedJson] = useState(false);
-  const [activeTab, setActiveTab] = useState<'fixtures' | 'divisions' | 'fields'>('fixtures');
+  const [activeTab, setActiveTab] = useState<'games' | 'divisions' | 'fields'>('games');
   const [selectedDivisionId, setSelectedDivisionId] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
 
@@ -234,7 +234,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
           </h1>
 
           <p className="text-base sm:text-lg text-slate-300 leading-relaxed max-w-2xl mx-auto">
-            Viewing official league data directly from the local <code className="font-mono text-emerald-300 bg-emerald-950/80 px-1 py-0.5 rounded">league_schedule.json</code> file. Parents and coaches can view real-time fixtures, pitch directions, and calendar exports.
+            Viewing official league data directly from the local <code className="font-mono text-emerald-300 bg-emerald-950/80 px-1 py-0.5 rounded">league_schedule.json</code> file. Parents and coaches can view real-time games, pitch directions, and calendar exports.
           </p>
 
           {/* Active Season Information Banner with Local File Sync Status */}
@@ -557,19 +557,19 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             </div>
           </div>
 
-          {/* Sub-Tabs: Fixtures vs Divisions vs Pitches */}
+          {/* Sub-Tabs: Games vs Divisions vs Pitches */}
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800 text-xs">
               <button
                 type="button"
-                onClick={() => setActiveTab('fixtures')}
+                onClick={() => setActiveTab('games')}
                 className={`px-3 py-1.5 rounded-lg font-medium transition-colors ${
-                  activeTab === 'fixtures'
+                  activeTab === 'games'
                     ? 'bg-emerald-600 text-white shadow-xs'
                     : 'text-slate-400 hover:text-white'
                 }`}
               >
-                Fixtures & Matches ({filteredGames.length})
+                Games & Matches ({filteredGames.length})
               </button>
               <button
                 type="button"
@@ -596,7 +596,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             </div>
 
             {/* Quick search and filter */}
-            {activeTab === 'fixtures' && (
+            {activeTab === 'games' && (
               <div className="flex flex-wrap items-center gap-2 text-xs">
                 <div className="relative">
                   <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
@@ -634,8 +634,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             )}
           </div>
 
-          {/* TAB 1: FIXTURES LIST */}
-          {activeTab === 'fixtures' && (
+          {/* TAB 1: GAMES LIST */}
+          {activeTab === 'games' && (
             <div className="space-y-3">
               {filteredGames.length === 0 ? (
                 <div className="p-8 text-center rounded-2xl border border-dashed border-slate-800 text-slate-400 space-y-2">
@@ -735,7 +735,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                     onClick={onSelectPortal}
                     className="inline-flex items-center gap-2 text-xs font-semibold text-emerald-400 hover:text-emerald-300 transition-colors"
                   >
-                    <span>View all {filteredGames.length} fixtures in the Coach & Parent Portal</span>
+                    <span>View all {filteredGames.length} games in the Coach & Parent Portal</span>
                     <ArrowRight className="w-3.5 h-3.5" />
                   </button>
                 </div>

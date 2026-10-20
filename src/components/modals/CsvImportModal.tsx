@@ -212,7 +212,7 @@ export const CsvImportModal: React.FC<CsvImportModalProps> = ({
         onUpdateAppData(updated);
         const importedCount = scheduleAnalysis.validCount + scheduleAnalysis.warningCount;
         setSuccessReport(
-          `Successfully imported ${importedCount} match fixtures (${importMode === 'replace' ? 'replaced existing schedule' : 'merged into league'})!` +
+          `Successfully imported ${importedCount} match games (${importMode === 'replace' ? 'replaced existing schedule' : 'merged into league'})!` +
             (scheduleAnalysis.newTeams.length > 0
               ? ` Auto-created ${scheduleAnalysis.newTeams.length} new team(s).`
               : '') +

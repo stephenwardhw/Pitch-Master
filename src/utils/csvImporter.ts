@@ -1494,7 +1494,7 @@ export function getTeamsCsvTemplate(): string {
 export function getScheduleCsvTemplate(): string {
   return [
     'Date,Time,Division,Home Team,Away Team,Field,Round,Status,Home Score,Away Score,Notes',
-    '"2026-04-11","09:00","U12 Boys Premier","Pacific Strikers","Canyon Rapids","Memorial Park - Field 1 (South)",1,"scheduled",,,"Opening weekend fixture"',
+    '"2026-04-11","09:00","U12 Boys Premier","Pacific Strikers","Canyon Rapids","Memorial Park - Field 1 (South)",1,"scheduled",,,"Opening weekend game"',
     '"2026-04-11","10:30","U12 Boys Premier","Bay City Storm","Valley United","Memorial Park - Field 1 (South)",1,"scheduled",,,"Referee assigned: Johnson"',
     '"2026-04-11","09:00","U10 Girls Classic","Golden Eagles","Coastal Thunder","Clover Field - Pitch A",1,"scheduled",,,"Small-sided pitch 7v7"',
     '"2026-04-18","09:00","U12 Boys Premier","Canyon Rapids","Bay City Storm","Memorial Park - Field 2 (North)",2,"scheduled",,,"Round 2 clash"',

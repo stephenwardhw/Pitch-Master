@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
-import { Division, Field, Game, Team } from '../../types';
-import { X, Calendar, Clock, MapPin, ArrowRightLeft } from 'lucide-react';
+import { Division, Field, Game, Referee, Team } from '../../types';
+import { X, Calendar, Clock, MapPin, ArrowRightLeft, UserCheck, Shield } from 'lucide-react';
 
 interface EditGameModalProps {
   game: Game | null;
   divisions: Division[];
   teams: Team[];
   fields: Field[];
+  referees?: Referee[];
   onSave: (updatedGame: Game) => void;
   onClose: () => void;
 }
@@ -16,6 +17,7 @@ export const EditGameModal: React.FC<EditGameModalProps> = ({
   divisions,
   teams,
   fields,
+  referees = [],
   onSave,
   onClose,
 }) => {
@@ -28,6 +30,9 @@ export const EditGameModal: React.FC<EditGameModalProps> = ({
   const [awayTeamId, setAwayTeamId] = useState(game.awayTeamId);
   const [isByePractice, setIsByePractice] = useState(game.isByePractice);
   const [status, setStatus] = useState<Game['status']>(game.status);
+  const [refereeId, setRefereeId] = useState<string>(game.refereeId || '');
+  const [assistantReferee1Id, setAssistantReferee1Id] = useState<string>(game.assistantReferee1Id || '');
+  const [assistantReferee2Id, setAssistantReferee2Id] = useState<string>(game.assistantReferee2Id || '');
   const [homeScore, setHomeScore] = useState<string>(
     game.score?.home !== undefined ? String(game.score.home) : ''
   );
@@ -76,6 +81,9 @@ export const EditGameModal: React.FC<EditGameModalProps> = ({
       status: finalStatus,
       score: scoreObj,
       notes,
+      refereeId: refereeId || undefined,
+      assistantReferee1Id: assistantReferee1Id || undefined,
+      assistantReferee2Id: assistantReferee2Id || undefined,
     });
     onClose();
   };
@@ -288,6 +296,98 @@ export const EditGameModal: React.FC<EditGameModalProps> = ({
                   onChange={(e) => setAwayScore(e.target.value)}
                   className="w-full text-sm rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-slate-900 font-mono text-center"
                 />
+              </div>
+            </div>
+          </div>
+
+          {/* Match Officials / Referees */}
+          <div className="bg-slate-50 p-4 rounded-lg border border-slate-200 space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
+                <UserCheck className="w-3.5 h-3.5 text-emerald-600" />
+                <span>Match Officials (Referee Assignment)</span>
+              </span>
+              {(refereeId || assistantReferee1Id || assistantReferee2Id) && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setRefereeId('');
+                    setAssistantReferee1Id('');
+                    setAssistantReferee2Id('');
+                  }}
+                  className="text-xs text-rose-600 hover:text-rose-800 underline"
+                >
+                  Clear All Officials
+                </button>
+              )}
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {/* Center Referee */}
+              <div>
+                <label className="block text-xs font-medium text-slate-700 mb-1">
+                  Center / Main Referee
+                </label>
+                <select
+                  value={refereeId}
+                  onChange={(e) => setRefereeId(e.target.value)}
+                  className="w-full text-xs rounded-lg border border-slate-300 bg-white px-2.5 py-2 text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-slate-900"
+                >
+                  <option value="">-- Unassigned --</option>
+                  {referees
+                    .filter((r) => r.isActive)
+                    .map((r) => {
+                      const isBlackout = r.blackoutDates && r.blackoutDates.includes(date);
+                      const isPreferred = r.preferredDivisionIds.length === 0 || r.preferredDivisionIds.includes(game.divisionId);
+                      return (
+                        <option key={r.id} value={r.id}>
+                          {r.name} ({r.certificationLevel}){isBlackout ? ' [Unavailable on date]' : ''}{isPreferred ? ' ★' : ''}
+                        </option>
+                      );
+                    })}
+                </select>
+              </div>
+
+              {/* Assistant Referee 1 */}
+              <div>
+                <label className="block text-xs font-medium text-slate-700 mb-1">
+                  Assistant Ref 1 (AR1)
+                </label>
+                <select
+                  value={assistantReferee1Id}
+                  onChange={(e) => setAssistantReferee1Id(e.target.value)}
+                  className="w-full text-xs rounded-lg border border-slate-300 bg-white px-2.5 py-2 text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-slate-900"
+                >
+                  <option value="">-- None / Optional --</option>
+                  {referees
+                    .filter((r) => r.isActive && r.id !== refereeId)
+                    .map((r) => (
+                      <option key={r.id} value={r.id}>
+                        {r.name} ({r.certificationLevel})
+                      </option>
+                    ))}
+                </select>
+              </div>
+
+              {/* Assistant Referee 2 */}
+              <div>
+                <label className="block text-xs font-medium text-slate-700 mb-1">
+                  Assistant Ref 2 (AR2)
+                </label>
+                <select
+                  value={assistantReferee2Id}
+                  onChange={(e) => setAssistantReferee2Id(e.target.value)}
+                  className="w-full text-xs rounded-lg border border-slate-300 bg-white px-2.5 py-2 text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-slate-900"
+                >
+                  <option value="">-- None / Optional --</option>
+                  {referees
+                    .filter((r) => r.isActive && r.id !== refereeId && r.id !== assistantReferee1Id)
+                    .map((r) => (
+                      <option key={r.id} value={r.id}>
+                        {r.name} ({r.certificationLevel})
+                      </option>
+                    ))}
+                </select>
               </div>
             </div>
           </div>

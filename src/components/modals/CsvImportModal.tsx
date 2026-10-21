@@ -4,19 +4,24 @@ import {
   parseTeamsFromCsv,
   parseScheduleFromCsv,
   parseFieldsFromCsv,
+  parseRefereesFromCsv,
   applyTeamsImport,
   applyScheduleImport,
   applyFieldsImport,
+  applyRefereesImport,
   getTeamsCsvTemplate,
   getScheduleCsvTemplate,
   getFieldsCsvTemplate,
+  getRefereesCsvTemplate,
   exportTeamsToCsv,
   exportScheduleToCsv,
   exportFieldsToCsv,
+  exportRefereesToCsv,
   downloadCsv,
   TeamImportAnalysis,
   ScheduleImportAnalysis,
   FieldImportAnalysis,
+  RefereeImportAnalysis,
 } from '../../utils/csvImporter';
 import {
   X,
@@ -36,9 +41,10 @@ import {
   ArrowRight,
   ShieldAlert,
   Info,
+  UserCheck,
 } from 'lucide-react';
 
-export type CsvImportType = 'teams' | 'fields' | 'schedule';
+export type CsvImportType = 'teams' | 'fields' | 'schedule' | 'referees';
 
 interface CsvImportModalProps {
   appData: AppData;
@@ -97,6 +103,16 @@ export const CsvImportModal: React.FC<CsvImportModalProps> = ({
     }
   }, [rawCsvText, activeType, appData]);
 
+  const refereeAnalysis: RefereeImportAnalysis | null = useMemo(() => {
+    if (activeType !== 'referees' || !rawCsvText.trim()) return null;
+    try {
+      return parseRefereesFromCsv(rawCsvText, appData);
+    } catch (err) {
+      console.error('Error analyzing referees CSV:', err);
+      return null;
+    }
+  }, [rawCsvText, activeType, appData]);
+
   // Handle file selection
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -120,13 +136,17 @@ export const CsvImportModal: React.FC<CsvImportModalProps> = ({
         ? getTeamsCsvTemplate()
         : type === 'fields'
         ? getFieldsCsvTemplate()
-        : getScheduleCsvTemplate();
+        : type === 'schedule'
+        ? getScheduleCsvTemplate()
+        : getRefereesCsvTemplate();
     const defaultName =
       type === 'teams'
         ? 'pitchmaster_teams_template.csv'
         : type === 'fields'
         ? 'pitchmaster_fields_template.csv'
-        : 'pitchmaster_schedule_template.csv';
+        : type === 'schedule'
+        ? 'pitchmaster_schedule_template.csv'
+        : 'pitchmaster_referees_template.csv';
 
     downloadCsv(defaultName, content);
   };
@@ -140,9 +160,12 @@ export const CsvImportModal: React.FC<CsvImportModalProps> = ({
     } else if (type === 'fields') {
       const csv = exportFieldsToCsv(appData);
       downloadCsv(`pitchmaster_fields_${today}.csv`, csv);
-    } else {
+    } else if (type === 'schedule') {
       const csv = exportScheduleToCsv(appData);
       downloadCsv(`pitchmaster_schedule_${today}.csv`, csv);
+    } else {
+      const csv = exportRefereesToCsv(appData);
+      downloadCsv(`pitchmaster_referees_${today}.csv`, csv);
     }
   };
 
@@ -153,14 +176,18 @@ export const CsvImportModal: React.FC<CsvImportModalProps> = ({
         ? getTeamsCsvTemplate()
         : type === 'fields'
         ? getFieldsCsvTemplate()
-        : getScheduleCsvTemplate();
+        : type === 'schedule'
+        ? getScheduleCsvTemplate()
+        : getRefereesCsvTemplate();
     setRawCsvText(sample);
     setFileName(
       type === 'teams'
         ? 'sample_teams.csv'
         : type === 'fields'
         ? 'sample_fields.csv'
-        : 'sample_schedule.csv'
+        : type === 'schedule'
+        ? 'sample_schedule.csv'
+        : 'sample_referees.csv'
     );
     setSuccessReport(null);
   };
@@ -220,6 +247,16 @@ export const CsvImportModal: React.FC<CsvImportModalProps> = ({
               ? ` Auto-created ${scheduleAnalysis.newFields.length} new pitch(es).`
               : '')
         );
+      } else if (activeType === 'referees' && refereeAnalysis) {
+        const updated = applyRefereesImport(appData, refereeAnalysis, {
+          mode: importMode,
+        });
+
+        onUpdateAppData(updated);
+        const importedCount = refereeAnalysis.validCount + refereeAnalysis.warningCount;
+        setSuccessReport(
+          `Successfully imported ${importedCount} match officials/referees (${importMode === 'replace' ? 'replaced existing referee directory' : 'merged into directory'})!`
+        );
       }
     } catch (err: any) {
       alert(`Import error: ${err.message || 'Failed to process dataset import.'}`);
@@ -233,7 +270,9 @@ export const CsvImportModal: React.FC<CsvImportModalProps> = ({
       ? teamAnalysis
       : activeType === 'fields'
       ? fieldAnalysis
-      : scheduleAnalysis;
+      : activeType === 'schedule'
+      ? scheduleAnalysis
+      : refereeAnalysis;
   const hasRows = currentAnalysis && currentAnalysis.totalRows > 0;
   const canImport = currentAnalysis && currentAnalysis.validCount + currentAnalysis.warningCount > 0;
 
@@ -319,6 +358,24 @@ export const CsvImportModal: React.FC<CsvImportModalProps> = ({
                 {appData.games.length} games
               </span>
             </button>
+
+            <button
+              onClick={() => {
+                setActiveType('referees');
+                setSuccessReport(null);
+              }}
+              className={`inline-flex items-center gap-2 px-4 py-2.5 text-xs font-bold border-b-2 transition-colors ${
+                activeType === 'referees'
+                  ? 'border-emerald-600 text-emerald-800'
+                  : 'border-transparent text-slate-500 hover:text-slate-800'
+              }`}
+            >
+              <UserCheck className="w-4 h-4" />
+              <span>Import Referees</span>
+              <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono bg-slate-100 text-slate-600">
+                {(appData.referees || []).length} refs
+              </span>
+            </button>
           </div>
 
           <div className="hidden sm:flex items-center gap-2 pb-2">
@@ -329,7 +386,9 @@ export const CsvImportModal: React.FC<CsvImportModalProps> = ({
               title={`Export current active ${activeType} to a CSV file`}
             >
               <Download className="w-3.5 h-3.5 text-slate-500" />
-              <span>Export {activeType === 'teams' ? 'Teams' : activeType === 'fields' ? 'Fields' : 'Schedule'} (CSV)</span>
+              <span>
+                Export {activeType === 'teams' ? 'Teams' : activeType === 'fields' ? 'Fields' : activeType === 'schedule' ? 'Schedule' : 'Referees'} (CSV)
+              </span>
             </button>
 
             <button
@@ -783,6 +842,90 @@ export const CsvImportModal: React.FC<CsvImportModalProps> = ({
                     </tbody>
                   </table>
                 )}
+
+                {activeType === 'referees' && refereeAnalysis && (
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead className="bg-slate-100 sticky top-0 z-10 border-b border-slate-200 text-slate-600 font-bold">
+                      <tr>
+                        <th className="px-3 py-2">Row</th>
+                        <th className="px-3 py-2">Official Name</th>
+                        <th className="px-3 py-2">Certification</th>
+                        <th className="px-3 py-2">Contact Info</th>
+                        <th className="px-3 py-2">Badge #</th>
+                        <th className="px-3 py-2">Status</th>
+                        <th className="px-3 py-2">Blackout Dates</th>
+                        <th className="px-3 py-2">Import State</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 font-sans">
+                      {refereeAnalysis.rows.map((row) => (
+                        <tr
+                          key={row.rowIndex}
+                          className={`hover:bg-slate-50/80 transition-colors ${
+                            row.rowStatus === 'error'
+                              ? 'bg-rose-50/60'
+                              : row.rowStatus === 'warning'
+                              ? 'bg-amber-50/40'
+                              : ''
+                          }`}
+                        >
+                          <td className="px-3 py-2 font-mono text-[11px] text-slate-400">
+                            #{row.rowIndex}
+                          </td>
+                          <td className="px-3 py-2 font-bold text-slate-900">
+                            {row.name || <span className="text-rose-500 italic">Missing Name</span>}
+                          </td>
+                          <td className="px-3 py-2 text-slate-700 font-medium">
+                            {row.certificationLevel}
+                          </td>
+                          <td className="px-3 py-2 text-slate-600">
+                            {row.email || row.phone || <span className="text-slate-400">—</span>}
+                          </td>
+                          <td className="px-3 py-2 font-mono text-slate-600">
+                            {row.badgeNumber || <span className="text-slate-400">—</span>}
+                          </td>
+                          <td className="px-3 py-2">
+                            <span
+                              className={`px-1.5 py-0.2 rounded text-[10px] font-bold ${
+                                row.isActive
+                                  ? 'bg-emerald-100 text-emerald-800'
+                                  : 'bg-slate-100 text-slate-600'
+                              }`}
+                            >
+                              {row.isActive ? 'Active' : 'Inactive'}
+                            </span>
+                          </td>
+                          <td className="px-3 py-2 text-slate-600 text-[11px]">
+                            {row.blackoutDates.length > 0 ? (
+                              <span className="font-mono">{row.blackoutDates.join(', ')}</span>
+                            ) : (
+                              <span className="text-slate-400">None</span>
+                            )}
+                          </td>
+                          <td className="px-3 py-2">
+                            {row.rowStatus === 'valid' ? (
+                              <span className="text-emerald-700 font-semibold text-[11px]">Ready</span>
+                            ) : row.rowStatus === 'warning' ? (
+                              <span
+                                className="text-amber-700 font-semibold text-[11px] cursor-help"
+                                title={row.messages.join(' ')}
+                              >
+                                {row.messages[0]}
+                              </span>
+                            ) : (
+                              <span
+                                className="text-rose-700 font-semibold text-[11px] cursor-help"
+                                title={row.messages.join(' ')}
+                              >
+                                {row.messages[0]}
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
               </div>
             </div>
           )}
@@ -797,7 +940,9 @@ export const CsvImportModal: React.FC<CsvImportModalProps> = ({
                   ? 'Column headers like "Team", "Division", "Coach", "Email", "Phone", and "Home Field" are recognized automatically. Divisions and Pitches referenced in the file can be created on-the-fly.'
                   : activeType === 'fields'
                   ? 'Column headers like "Field Name", "Address", "Google Maps URL", "Assigned Divisions", "Field Size", "Surface Type", and "Blackout Dates" are recognized automatically.'
-                  : 'Column headers like "Date", "Time", "Home Team", "Away Team", "Field", and "Division" are recognized automatically. Dates like 2026-04-11 or 04/11/2026 and kickoff times like 09:00 or 9:00 AM are supported.'}
+                  : activeType === 'schedule'
+                  ? 'Column headers like "Date", "Time", "Home Team", "Away Team", "Field", and "Division" are recognized automatically. Dates like 2026-04-11 or 04/11/2026 and kickoff times like 09:00 or 9:00 AM are supported.'
+                  : 'Column headers like "Name", "Email", "Phone", "Certification Level", "Badge Number", "Experience Years", "Max Games/Day", "Preferred Divisions", and "Blackout Dates" match the export format 1:1 and are imported seamlessly.'}
               </p>
             </div>
           </div>

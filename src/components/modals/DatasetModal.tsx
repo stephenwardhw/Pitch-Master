@@ -20,11 +20,13 @@ import {
   Users,
   Calendar,
   MapPin,
+  UserCheck,
 } from 'lucide-react';
 import {
   exportTeamsToCsv,
   exportScheduleToCsv,
   exportFieldsToCsv,
+  exportRefereesToCsv,
   downloadCsv,
 } from '../../utils/csvImporter';
 
@@ -32,7 +34,7 @@ interface DatasetModalProps {
   appData: AppData;
   onUpdateData: (newData: AppData) => void;
   onClose: () => void;
-  onOpenCsvImport?: (type?: 'teams' | 'fields' | 'schedule') => void;
+  onOpenCsvImport?: (type?: 'teams' | 'fields' | 'schedule' | 'referees') => void;
 }
 
 export const DatasetModal: React.FC<DatasetModalProps> = ({
@@ -429,6 +431,20 @@ export const DatasetModal: React.FC<DatasetModalProps> = ({
                   <Download className="w-3.5 h-3.5 text-slate-500" />
                   <span>Export Schedule CSV ({appData.games.length})</span>
                 </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    const csv = exportRefereesToCsv(appData);
+                    const today = new Date().toISOString().slice(0, 10);
+                    downloadCsv(`pitchmaster_referees_${today}.csv`, csv);
+                  }}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-800 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors shadow-2xs"
+                  title="Export referees and match officials roster to CSV"
+                >
+                  <Download className="w-3.5 h-3.5 text-slate-500" />
+                  <span>Export Referees CSV ({(appData.referees || []).length})</span>
+                </button>
               </div>
             </div>
 
@@ -473,6 +489,18 @@ export const DatasetModal: React.FC<DatasetModalProps> = ({
                   >
                     <Calendar className="w-3.5 h-3.5 text-emerald-700" />
                     <span>Import Schedule (CSV)</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onClose();
+                      onOpenCsvImport('referees');
+                    }}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-emerald-900 bg-emerald-100/70 border border-emerald-300 rounded-lg hover:bg-emerald-100 transition-colors shadow-2xs"
+                  >
+                    <UserCheck className="w-3.5 h-3.5 text-emerald-700" />
+                    <span>Import Referees (CSV)</span>
                   </button>
                 </div>
               </div>

@@ -1,4 +1,4 @@
-import { AppData, Conflict, Field, Game } from '../types';
+import { AppData, Conflict, Field, Game, Referee } from '../types';
 
 export function detectConflicts(appData: AppData, gamesToInspect?: Game[]): Conflict[] {
   const games = gamesToInspect || appData.games;
@@ -102,6 +102,28 @@ export function detectConflicts(appData: AppData, gamesToInspect?: Game[]): Conf
         suggestedFieldIds: division.fieldIds,
       });
     }
+
+    // 6. Check Referee Blackout dates
+    if (appData.referees) {
+      const refMap = new Map(appData.referees.map((r) => [r.id, r]));
+      const assignedRefIds = [game.refereeId, game.assistantReferee1Id, game.assistantReferee2Id].filter(Boolean) as string[];
+      for (const rId of assignedRefIds) {
+        const ref = refMap.get(rId);
+        if (ref && ref.blackoutDates && ref.blackoutDates.includes(game.date)) {
+          conflicts.push({
+            id: `c-ref-blackout-${rId}-${game.id}`,
+            type: 'referee_blackout',
+            severity: 'error',
+            title: `Referee Unavailable (Blackout Date)`,
+            description: `Referee ${ref.name} is scheduled on ${game.date}, which is marked on their unavailable blackout calendar.`,
+            gameIds: [game.id],
+            date: game.date,
+            time: game.time,
+            suggestedResolution: `Reassign match official in the Referee Directory or Match Editor.`,
+          });
+        }
+      }
+    }
   }
 
   // 1. Process Field double booking
@@ -162,6 +184,44 @@ export function detectConflicts(appData: AppData, gamesToInspect?: Game[]): Conf
     }
   });
 
+  // 3. Process Referee double booking
+  if (appData.referees) {
+    const refMap = new Map(appData.referees.map((r) => [r.id, r]));
+    const refSlotMap = new Map<string, Game[]>();
+
+    for (const game of games) {
+      if (game.status === 'cancelled') continue;
+      const assigned = [game.refereeId, game.assistantReferee1Id, game.assistantReferee2Id].filter(Boolean) as string[];
+      for (const rId of assigned) {
+        const slotKey = `${rId}_${game.date}_${game.time}`;
+        if (!refSlotMap.has(slotKey)) {
+          refSlotMap.set(slotKey, []);
+        }
+        refSlotMap.get(slotKey)!.push(game);
+      }
+    }
+
+    refSlotMap.forEach((bookedGames, key) => {
+      if (bookedGames.length > 1) {
+        const [refId, date, time] = key.split('_');
+        const ref = refMap.get(refId);
+        const refName = ref ? ref.name : 'Referee';
+
+        conflicts.push({
+          id: `c-ref-double-${key}`,
+          type: 'referee_double_booked',
+          severity: 'error',
+          title: `Referee Double Booked`,
+          description: `Referee ${refName} is assigned to ${bookedGames.length} simultaneous games on ${date} at ${time}.`,
+          gameIds: bookedGames.map((g) => g.id),
+          date,
+          time,
+          suggestedResolution: `Reassign one of the games to another available official in the Referee Directory.`,
+        });
+      }
+    });
+  }
+
   return conflicts;
 }
 
@@ -192,5 +252,38 @@ export function getAvailableFieldsAtSlot(
     // Check if booked
     if (bookedFieldIds.has(field.id)) return false;
     return true;
+  });
+}
+
+// Find available certified referees at a specific date and time slot
+export function getAvailableRefereesAtSlot(
+  appData: AppData,
+  date: string,
+  time: string,
+  divisionId?: string,
+  excludeGameId?: string
+): { referee: Referee; isBusy: boolean; isBlackout: boolean; isPreferred: boolean }[] {
+  if (!appData.referees || appData.referees.length === 0) return [];
+
+  const bookedRefIds = new Set<string>();
+  for (const game of appData.games) {
+    if (game.id === excludeGameId || game.status === 'cancelled') continue;
+    if (game.date === date && game.time === time) {
+      if (game.refereeId) bookedRefIds.add(game.refereeId);
+      if (game.assistantReferee1Id) bookedRefIds.add(game.assistantReferee1Id);
+      if (game.assistantReferee2Id) bookedRefIds.add(game.assistantReferee2Id);
+    }
+  }
+
+  return appData.referees.map((ref) => {
+    const isBusy = bookedRefIds.has(ref.id);
+    const isBlackout = !!(ref.blackoutDates && ref.blackoutDates.includes(date));
+    const isPreferred = !divisionId || ref.preferredDivisionIds.length === 0 || ref.preferredDivisionIds.includes(divisionId);
+    return {
+      referee: ref,
+      isBusy,
+      isBlackout,
+      isPreferred,
+    };
   });
 }

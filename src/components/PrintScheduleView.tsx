@@ -12,6 +12,7 @@ import {
   Mail,
   Filter,
   Download,
+  UserCheck,
 } from 'lucide-react';
 
 interface PrintScheduleViewProps {
@@ -68,6 +69,7 @@ export const PrintScheduleView: React.FC<PrintScheduleViewProps> = ({
   const [selectedTeamId, setSelectedTeamId] = useState<string>(initialTeamId);
   const [includeTeamContacts, setIncludeTeamContacts] = useState<boolean>(true);
   const [includePitchDirectory, setIncludePitchDirectory] = useState<boolean>(true);
+  const [includeRefereeDirectory, setIncludeRefereeDirectory] = useState<boolean>(false);
   const [includePracticeSessions, setIncludePracticeSessions] = useState<boolean>(true);
   const [forceWeekPageBreaks, setForceWeekPageBreaks] = useState<boolean>(true);
   const [tableDensity, setTableDensity] = useState<'compact' | 'comfortable'>('compact');
@@ -75,6 +77,8 @@ export const PrintScheduleView: React.FC<PrintScheduleViewProps> = ({
   const teamMap = useMemo(() => new Map(appData.teams.map((t) => [t.id, t])), [appData.teams]);
   const fieldMap = useMemo(() => new Map(appData.fields.map((f) => [f.id, f])), [appData.fields]);
   const divisionMap = useMemo(() => new Map(appData.divisions.map((d) => [d.id, d])), [appData.divisions]);
+  const refereeMap = useMemo(() => new Map((appData.referees || []).map((r) => [r.id, r])), [appData.referees]);
+  const printableReferees = useMemo(() => (appData.referees || []).filter((r) => r.isActive), [appData.referees]);
 
   // Filtered games
   const printableGames = useMemo(() => {
@@ -259,6 +263,18 @@ export const PrintScheduleView: React.FC<PrintScheduleViewProps> = ({
               <span>Pitch Directory</span>
             </label>
 
+            {printableReferees.length > 0 && (
+              <label className="flex items-center gap-1.5 px-2 py-1 rounded bg-slate-50 border border-slate-200 text-slate-700 cursor-pointer" title="Include referee directory appendix in printout">
+                <input
+                  type="checkbox"
+                  checked={includeRefereeDirectory}
+                  onChange={(e) => setIncludeRefereeDirectory(e.target.checked)}
+                  className="rounded border-slate-300 text-slate-900"
+                />
+                <span>Referee Directory</span>
+              </label>
+            )}
+
             <label className="flex items-center gap-1.5 px-2 py-1 rounded bg-slate-50 border border-slate-200 text-slate-700 cursor-pointer" title="Enforce page breaks between game weeks or specific match groups">
               <input
                 type="checkbox"
@@ -296,7 +312,7 @@ export const PrintScheduleView: React.FC<PrintScheduleViewProps> = ({
       <div className={`flex-1 py-8 px-4 sm:px-6 print:p-0 print:m-0 print:overflow-visible print:block ${!forceWeekPageBreaks ? 'no-force-week-breaks' : ''}`}>
         <div className="max-w-5xl mx-auto bg-white rounded-xl shadow-xl p-8 sm:p-12 print:shadow-none print:p-0 print:m-0 print:max-w-none print:w-full print:block print:overflow-visible text-slate-900 font-sans print-root">
           {/* Document Header */}
-          <div className="border-b-2 border-slate-900 pb-5 mb-6">
+          <div className="border-b-2 border-slate-300 print:border-slate-400 pb-5 mb-6">
             <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
               <div>
                 <div className="flex items-center gap-2">
@@ -378,7 +394,10 @@ export const PrintScheduleView: React.FC<PrintScheduleViewProps> = ({
                     data-game-week={week.weekKey}
                   >
                     {/* Game Week Header Banner */}
-                    <div className="bg-slate-900 text-white px-4 py-2.5 rounded-lg flex items-center justify-between shadow-xs print:bg-slate-100 print:text-slate-900 print:border print:border-slate-300 print:border-l-4 print:border-l-emerald-600 print-avoid-break print-game-week-header">
+                    <div
+                      className="bg-slate-900 text-white px-4 py-2.5 rounded-lg flex items-center justify-between shadow-xs print:bg-slate-50 print:text-slate-900 print:border print:border-slate-300 print-avoid-break print-game-week-header"
+                      style={{ borderColor: '#cbd5e1' }}
+                    >
                       <div className="flex flex-wrap items-center gap-2.5">
                         <span className="font-extrabold text-sm uppercase tracking-wider text-emerald-400 print:text-emerald-800 week-label">
                           {week.label}
@@ -466,6 +485,11 @@ export const PrintScheduleView: React.FC<PrintScheduleViewProps> = ({
                                       {field?.size && (
                                         <span className="text-[10px] text-slate-500 font-normal block">
                                           Format: {field.size}
+                                        </span>
+                                      )}
+                                      {g.refereeId && refereeMap.has(g.refereeId) && (
+                                        <span className="text-[10px] text-emerald-800 font-semibold block print:text-slate-700">
+                                          Ref: {refereeMap.get(g.refereeId)?.name}
                                         </span>
                                       )}
                                     </td>
@@ -584,6 +608,49 @@ export const PrintScheduleView: React.FC<PrintScheduleViewProps> = ({
                         </td>
                         <td className="py-2.5 px-3 text-[11px] text-slate-600 leading-snug">
                           {f.notes || '—'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* 3. Referee Directory Appendix */}
+          {includeRefereeDirectory && printableReferees.length > 0 && (
+            <div className="space-y-4 mb-6 print-section print-directory-section referee-directory-section">
+              <div className="flex items-center justify-between border-b border-slate-300 pb-2">
+                <h2 className="text-base font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                  <UserCheck className="w-4 h-4 text-slate-700" />
+                  <span>Match Officials & Referee Directory ({printableReferees.length} Registered Officials)</span>
+                </h2>
+              </div>
+
+              <div className="border border-slate-300 rounded-lg overflow-hidden print:border-slate-300">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-slate-100 border-b border-slate-300 font-semibold text-slate-700 print:bg-slate-200">
+                    <tr>
+                      <th className="py-2.5 px-3">Official Name</th>
+                      <th className="py-2.5 px-3">Certification Level</th>
+                      <th className="py-2.5 px-3">Badge Number</th>
+                      <th className="py-2.5 px-3">Email Address</th>
+                      <th className="py-2.5 px-3">Phone</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-200">
+                    {printableReferees.map((r) => (
+                      <tr key={r.id} className="hover:bg-slate-50 break-inside-avoid">
+                        <td className="py-2.5 px-3 font-bold text-slate-900 whitespace-nowrap">
+                          {r.name}
+                        </td>
+                        <td className="py-2.5 px-3 text-slate-700">{r.certificationLevel}</td>
+                        <td className="py-2.5 px-3 font-mono text-slate-700">{r.badgeNumber || '—'}</td>
+                        <td className="py-2.5 px-3 text-slate-800 font-medium">
+                          {r.email || '—'}
+                        </td>
+                        <td className="py-2.5 px-3 font-mono text-slate-600">
+                          {r.phone || '—'}
                         </td>
                       </tr>
                     ))}

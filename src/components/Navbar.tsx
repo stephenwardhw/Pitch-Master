@@ -18,6 +18,7 @@ import {
   Trophy,
   Home,
   Grid,
+  UserCheck,
 } from 'lucide-react';
 
 export type NavTab =
@@ -29,6 +30,7 @@ export type NavTab =
   | 'divisions'
   | 'teams'
   | 'fields'
+  | 'referees'
   | 'season';
 
 interface NavbarProps {
@@ -67,6 +69,7 @@ export const Navbar: React.FC<NavbarProps> = ({
     { id: 'divisions', label: 'Divisions', icon: <Layers className="w-4 h-4" /> },
     { id: 'teams', label: 'Teams', icon: <Users className="w-4 h-4" /> },
     { id: 'fields', label: 'Fields', icon: <MapPin className="w-4 h-4" /> },
+    { id: 'referees', label: 'Referees', icon: <UserCheck className="w-4 h-4" /> },
     { id: 'season', label: 'Season Setup', icon: <Settings className="w-4 h-4" /> },
   ];
 

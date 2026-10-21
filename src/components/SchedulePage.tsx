@@ -30,6 +30,7 @@ import {
   Grid,
   Scale,
   FileSpreadsheet,
+  UserCheck,
 } from 'lucide-react';
 import { ExportCalendarModal } from './modals/ExportCalendarModal';
 import { PrintScheduleView } from './PrintScheduleView';
@@ -117,6 +118,7 @@ export const SchedulePage: React.FC<SchedulePageProps> = ({
   const teamMap = useMemo(() => new Map(appData.teams.map((t) => [t.id, t])), [appData.teams]);
   const fieldMap = useMemo(() => new Map(appData.fields.map((f) => [f.id, f])), [appData.fields]);
   const divisionMap = useMemo(() => new Map(appData.divisions.map((d) => [d.id, d])), [appData.divisions]);
+  const refereeMap = useMemo(() => new Map((appData.referees || []).map((r) => [r.id, r])), [appData.referees]);
 
   // Extract all unique dates from games in ascending order
   const allGameDates = useMemo(() => {
@@ -1062,6 +1064,30 @@ export const SchedulePage: React.FC<SchedulePageProps> = ({
                                   <ExternalLink className="w-3 h-3" />
                                   <span className="text-[11px]">Map</span>
                                 </a>
+                              )}
+
+                              {/* Referee Assignment */}
+                              {!game.isByePractice && (
+                                <>
+                                  <span aria-hidden="true" className="text-slate-300">·</span>
+                                  <div className="flex items-center gap-1">
+                                    <UserCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                                    {game.refereeId && refereeMap.has(game.refereeId) ? (
+                                      <span className="font-medium text-slate-800" title="Assigned Match Official">
+                                        Ref: {refereeMap.get(game.refereeId)?.name}
+                                      </span>
+                                    ) : (
+                                      <button
+                                        type="button"
+                                        onClick={() => onEditGame(game)}
+                                        className="text-amber-700 hover:text-amber-900 font-medium hover:underline text-[11px]"
+                                        title="Click to assign match referee in game editor"
+                                      >
+                                        Assign Referee
+                                      </button>
+                                    )}
+                                  </div>
+                                </>
                               )}
                             </div>
                           </div>

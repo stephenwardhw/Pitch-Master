@@ -1,4 +1,4 @@
-import { AppData, Division, Field, Game, Team, TeamSizeOption } from '../types';
+import { AppData, Division, Field, Game, Referee, RefereeCertification, Team, TeamSizeOption } from '../types';
 
 /**
  * Universal RFC 4180 compliant CSV parser.
@@ -1322,6 +1322,329 @@ export function applyFieldsImport(
 }
 
 // -------------------------------------------------------------
+// REFEREE IMPORT INTERFACES & PARSER
+// -------------------------------------------------------------
+
+export interface ParsedRefereeRow {
+  rowIndex: number;
+  raw: Record<string, string>;
+  name: string;
+  email: string;
+  phone: string;
+  certificationLevel: RefereeCertification;
+  badgeNumber: string;
+  experienceYears: number;
+  maxGamesPerDay: number;
+  preferredDivisionNames: string[];
+  preferredDivisionIds: string[];
+  blackoutDates: string[];
+  isActive: boolean;
+  notes: string;
+  rowStatus: 'valid' | 'warning' | 'error';
+  messages: string[];
+  isDuplicateReferee: boolean;
+}
+
+export interface RefereeImportAnalysis {
+  rows: ParsedRefereeRow[];
+  totalRows: number;
+  validCount: number;
+  warningCount: number;
+  errorCount: number;
+  duplicateReferees: string[];
+  headersDetected: string[];
+  columnMapping: Record<string, string>;
+}
+
+const REFEREE_HEADER_ALIASES: Record<string, string[]> = {
+  name: ['name', 'referee name', 'official name', 'official', 'referee', 'ref_name', 'full name', 'referee_name'],
+  email: ['email', 'email address', 'contact email', 'referee email', 'mail', 'email_address'],
+  phone: ['phone', 'phone number', 'contact phone', 'referee phone', 'mobile', 'cell', 'phone_number'],
+  certificationLevel: ['certification level', 'certification', 'grade', 'cert level', 'cert', 'level', 'badge grade', 'certification_level'],
+  badgeNumber: ['badge number', 'badge', 'badge #', 'ussf badge', 'badge_number', 'license #', 'license', 'ussf id', 'ussf_id'],
+  experienceYears: ['experience years', 'experience', 'years of experience', 'years exp', 'yoe', 'years', 'experience_years'],
+  maxGamesPerDay: ['max games/day', 'max games per day', 'max games', 'games per day', 'daily max', 'max_games', 'max_games_per_day'],
+  preferredDivisions: ['preferred divisions', 'divisions', 'preferred divs', 'divisions preferred', 'age groups', 'preferred_divisions'],
+  blackoutDates: ['blackout dates', 'blackouts', 'unavailable dates', 'blackout', 'unavailability', 'off dates', 'blackout_dates'],
+  isActive: ['active status', 'status', 'active', 'is active', 'is_active', 'active_status'],
+  notes: ['notes', 'comments', 'remarks', 'info', 'bio', 'evaluator notes'],
+};
+
+function detectRefereeHeaderMapping(headers: string[]): Record<string, string> {
+  const mapping: Record<string, string> = {};
+  const normalizedHeaders = headers.map((h) => h.toLowerCase().trim().replace(/[-_]/g, ' '));
+
+  for (const [key, aliases] of Object.entries(REFEREE_HEADER_ALIASES)) {
+    const idx = normalizedHeaders.findIndex((h) =>
+      aliases.some((alias) => h === alias || h.includes(alias))
+    );
+    if (idx !== -1) {
+      mapping[key] = headers[idx];
+    }
+  }
+
+  return mapping;
+}
+
+export function normalizeCertificationLevel(input: string): RefereeCertification {
+  if (!input) return 'Grassroots / Grade 8';
+  const s = input.toLowerCase().trim();
+  if (s.includes('pro') || s.includes('fifa')) return 'PRO / FIFA';
+  if (s.includes('national') || s.includes('grade 6') || s.includes('grade6')) return 'National / Grade 6';
+  if (s.includes('regional') || s.includes('grade 7') || s.includes('grade7')) return 'Regional / Grade 7';
+  if (s.includes('junior') || s.includes('apprentice')) return 'Junior Apprentice';
+  if (s.includes('club')) return 'Club Official';
+  if (s.includes('grassroots') || s.includes('grade 8') || s.includes('grade8')) return 'Grassroots / Grade 8';
+  return 'Grassroots / Grade 8';
+}
+
+export function parseRefereesFromCsv(csvText: string, currentAppData: AppData): RefereeImportAnalysis {
+  const rawRows = parseCsv(csvText);
+  if (rawRows.length < 2) {
+    return {
+      rows: [],
+      totalRows: 0,
+      validCount: 0,
+      warningCount: 0,
+      errorCount: 0,
+      duplicateReferees: [],
+      headersDetected: [],
+      columnMapping: {},
+    };
+  }
+
+  const rawHeaders = rawRows[0];
+  const dataRows = rawRows.slice(1);
+  const columnMapping = detectRefereeHeaderMapping(rawHeaders);
+
+  // Existing divisions map
+  const divMap = new Map<string, string>();
+  currentAppData.divisions.forEach((d) => {
+    divMap.set(d.id.toLowerCase(), d.id);
+    divMap.set(d.name.toLowerCase().trim(), d.id);
+  });
+
+  // Existing referees map
+  const existingRefs = currentAppData.referees || [];
+  const existingRefNames = new Set(existingRefs.map((r) => r.name.toLowerCase().trim()));
+  const seenInFile = new Set<string>();
+  const duplicateReferees: string[] = [];
+
+  const parsedRows: ParsedRefereeRow[] = [];
+
+  dataRows.forEach((cols, index) => {
+    const raw: Record<string, string> = {};
+    rawHeaders.forEach((h, hIdx) => {
+      raw[h] = cols[hIdx] || '';
+    });
+
+    const getVal = (fieldKey: string): string => {
+      const headerName = columnMapping[fieldKey];
+      return headerName ? (raw[headerName] || '').trim() : '';
+    };
+
+    const name = getVal('name');
+    const email = getVal('email');
+    const phone = getVal('phone');
+    const certRaw = getVal('certificationLevel');
+    const badgeNumber = getVal('badgeNumber');
+    const expRaw = getVal('experienceYears');
+    const maxGamesRaw = getVal('maxGamesPerDay');
+    const prefDivRaw = getVal('preferredDivisions');
+    const blackoutRaw = getVal('blackoutDates');
+    const activeRaw = getVal('isActive');
+    const notes = getVal('notes');
+
+    const messages: string[] = [];
+    let rowStatus: 'valid' | 'warning' | 'error' = 'valid';
+
+    if (!name) {
+      rowStatus = 'error';
+      messages.push('Official name is required');
+    }
+
+    const lowerName = name.toLowerCase().trim();
+    const isDuplicate = existingRefNames.has(lowerName) || seenInFile.has(lowerName);
+    if (name && isDuplicate) {
+      duplicateReferees.push(name);
+      if (rowStatus !== 'error') {
+        rowStatus = 'warning';
+        messages.push(`Official "${name}" already registered; will update existing record on append`);
+      }
+    }
+    if (name) seenInFile.add(lowerName);
+
+    // Parse certification
+    const certificationLevel = normalizeCertificationLevel(certRaw);
+
+    // Parse experience
+    let experienceYears = 2;
+    if (expRaw) {
+      const parsedExp = parseInt(expRaw, 10);
+      if (!isNaN(parsedExp) && parsedExp >= 0) {
+        experienceYears = parsedExp;
+      }
+    }
+
+    // Parse max games
+    let maxGamesPerDay = 3;
+    if (maxGamesRaw) {
+      const parsedMax = parseInt(maxGamesRaw, 10);
+      if (!isNaN(parsedMax) && parsedMax > 0) {
+        maxGamesPerDay = parsedMax;
+      }
+    }
+
+    // Parse preferred divisions
+    const preferredDivisionNames: string[] = [];
+    const preferredDivisionIds: string[] = [];
+    if (prefDivRaw) {
+      const parts = prefDivRaw.split(/[;,|]/).map((p) => p.trim()).filter(Boolean);
+      parts.forEach((p) => {
+        preferredDivisionNames.push(p);
+        const divId = divMap.get(p.toLowerCase());
+        if (divId) {
+          preferredDivisionIds.push(divId);
+        }
+      });
+    }
+
+    // Parse blackout dates
+    const blackoutDates: string[] = [];
+    if (blackoutRaw) {
+      const bParts = blackoutRaw.split(/[;,|]/).map((b) => b.trim()).filter(Boolean);
+      bParts.forEach((bp) => {
+        const norm = normalizeDate(bp);
+        if (norm) {
+          blackoutDates.push(norm);
+        } else {
+          messages.push(`Unrecognized date format: "${bp}"`);
+          if (rowStatus === 'valid') rowStatus = 'warning';
+        }
+      });
+    }
+
+    // Parse active status
+    let isActive = true;
+    if (activeRaw) {
+      const lower = activeRaw.toLowerCase();
+      if (lower === 'inactive' || lower === 'no' || lower === 'false' || lower === '0' || lower === 'n') {
+        isActive = false;
+      }
+    }
+
+    parsedRows.push({
+      rowIndex: index + 2,
+      raw,
+      name: name || 'Unnamed Official',
+      email,
+      phone,
+      certificationLevel,
+      badgeNumber,
+      experienceYears,
+      maxGamesPerDay,
+      preferredDivisionNames,
+      preferredDivisionIds,
+      blackoutDates,
+      isActive,
+      notes,
+      rowStatus,
+      messages,
+      isDuplicateReferee: isDuplicate,
+    });
+  });
+
+  return {
+    rows: parsedRows,
+    totalRows: parsedRows.length,
+    validCount: parsedRows.filter((r) => r.rowStatus === 'valid').length,
+    warningCount: parsedRows.filter((r) => r.rowStatus === 'warning').length,
+    errorCount: parsedRows.filter((r) => r.rowStatus === 'error').length,
+    duplicateReferees: Array.from(new Set(duplicateReferees)),
+    headersDetected: rawHeaders,
+    columnMapping,
+  };
+}
+
+export function applyRefereesImport(
+  appData: AppData,
+  analysis: RefereeImportAnalysis,
+  options: {
+    mode: 'append' | 'replace';
+  }
+): AppData {
+  const updatedAppData: AppData = {
+    ...appData,
+    referees: [...(appData.referees || [])],
+    games: [...appData.games],
+    lastModified: new Date().toISOString(),
+  };
+
+  const validRows = analysis.rows.filter((r) => r.rowStatus !== 'error');
+
+  const newReferees: Referee[] = validRows.map((r, idx) => ({
+    id: `ref-${Date.now()}-${idx}-${Math.random().toString(36).slice(2, 6)}`,
+    name: r.name,
+    email: r.email || '',
+    phone: r.phone || '',
+    certificationLevel: r.certificationLevel,
+    badgeNumber: r.badgeNumber || '',
+    experienceYears: r.experienceYears,
+    maxGamesPerDay: r.maxGamesPerDay,
+    preferredDivisionIds: r.preferredDivisionIds,
+    blackoutDates: r.blackoutDates,
+    isActive: r.isActive,
+    notes: r.notes || '',
+  }));
+
+  if (options.mode === 'replace') {
+    updatedAppData.referees = newReferees;
+    // Clean up any assigned referee IDs on games that no longer exist
+    const newRefIdSet = new Set(newReferees.map((ref) => ref.id));
+    updatedAppData.games = updatedAppData.games.map((g) => ({
+      ...g,
+      refereeId: g.refereeId && newRefIdSet.has(g.refereeId) ? g.refereeId : undefined,
+      assistantReferee1Id: g.assistantReferee1Id && newRefIdSet.has(g.assistantReferee1Id) ? g.assistantReferee1Id : undefined,
+      assistantReferee2Id: g.assistantReferee2Id && newRefIdSet.has(g.assistantReferee2Id) ? g.assistantReferee2Id : undefined,
+    }));
+  } else {
+    const existingRefMap = new Map<string, Referee>();
+    (updatedAppData.referees || []).forEach((ref) => {
+      existingRefMap.set(ref.name.toLowerCase().trim(), ref);
+      if (ref.email) existingRefMap.set(ref.email.toLowerCase().trim(), ref);
+    });
+
+    newReferees.forEach((newRef) => {
+      const nameKey = newRef.name.toLowerCase().trim();
+      const emailKey = newRef.email ? newRef.email.toLowerCase().trim() : '';
+      const existing = existingRefMap.get(nameKey) || (emailKey ? existingRefMap.get(emailKey) : undefined);
+
+      if (existing) {
+        Object.assign(existing, {
+          email: newRef.email || existing.email,
+          phone: newRef.phone || existing.phone,
+          certificationLevel: newRef.certificationLevel || existing.certificationLevel,
+          badgeNumber: newRef.badgeNumber || existing.badgeNumber,
+          experienceYears: newRef.experienceYears !== undefined ? newRef.experienceYears : existing.experienceYears,
+          maxGamesPerDay: newRef.maxGamesPerDay !== undefined ? newRef.maxGamesPerDay : existing.maxGamesPerDay,
+          preferredDivisionIds: Array.from(new Set([...existing.preferredDivisionIds, ...newRef.preferredDivisionIds])),
+          blackoutDates: Array.from(new Set([...(existing.blackoutDates || []), ...(newRef.blackoutDates || [])])),
+          isActive: newRef.isActive,
+          notes: newRef.notes || existing.notes,
+        });
+      } else {
+        if (!updatedAppData.referees) updatedAppData.referees = [];
+        updatedAppData.referees.push(newRef);
+        existingRefMap.set(nameKey, newRef);
+        if (emailKey) existingRefMap.set(emailKey, newRef);
+      }
+    });
+  }
+
+  return updatedAppData;
+}
+
+// -------------------------------------------------------------
 // CSV EXPORT FUNCTIONS (1:1 FORMAT PARITY WITH IMPORTERS)
 // -------------------------------------------------------------
 
@@ -1464,6 +1787,59 @@ export function exportFieldsToCsv(appData: AppData, fieldsToExport?: Field[]): s
   return [headers.join(','), ...rows].join('\n');
 }
 
+export function exportRefereesToCsv(appData: AppData, refereesToExport?: Referee[]): string {
+  const referees = refereesToExport || appData.referees || [];
+  const divisionMap = new Map(appData.divisions.map((d) => [d.id, d.name]));
+  const refereeGameCounts: Record<string, number> = {};
+  for (const r of referees) refereeGameCounts[r.id] = 0;
+  for (const g of appData.games) {
+    if (g.status === 'cancelled') continue;
+    if (g.refereeId) refereeGameCounts[g.refereeId] = (refereeGameCounts[g.refereeId] || 0) + 1;
+    if (g.assistantReferee1Id) refereeGameCounts[g.assistantReferee1Id] = (refereeGameCounts[g.assistantReferee1Id] || 0) + 1;
+    if (g.assistantReferee2Id) refereeGameCounts[g.assistantReferee2Id] = (refereeGameCounts[g.assistantReferee2Id] || 0) + 1;
+  }
+
+  const headers = [
+    'Name',
+    'Email',
+    'Phone',
+    'Certification Level',
+    'Badge Number',
+    'Experience Years',
+    'Max Games/Day',
+    'Preferred Divisions',
+    'Blackout Dates',
+    'Active Status',
+    'Total Assigned Games',
+    'Notes',
+  ];
+
+  const rows = referees.map((r) => {
+    const preferredDivNames = (r.preferredDivisionIds || [])
+      .map((id) => divisionMap.get(id) || id)
+      .join('; ');
+    const blackoutStr = (r.blackoutDates || []).join('; ');
+    const gamesCount = refereeGameCounts[r.id] || 0;
+
+    return [
+      escapeCsvCell(r.name),
+      escapeCsvCell(r.email || ''),
+      escapeCsvCell(r.phone || ''),
+      escapeCsvCell(r.certificationLevel),
+      escapeCsvCell(r.badgeNumber || ''),
+      escapeCsvCell(r.experienceYears || ''),
+      escapeCsvCell(r.maxGamesPerDay || 3),
+      escapeCsvCell(preferredDivNames),
+      escapeCsvCell(blackoutStr),
+      escapeCsvCell(r.isActive ? 'Active' : 'Inactive'),
+      escapeCsvCell(gamesCount),
+      escapeCsvCell(r.notes || ''),
+    ].join(',');
+  });
+
+  return [headers.join(','), ...rows].join('\n');
+}
+
 export function downloadCsv(filename: string, csvContent: string): void {
   const cleanName = filename.endsWith('.csv') ? filename : `${filename}.csv`;
   const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -1508,5 +1884,15 @@ export function getFieldsCsvTemplate(): string {
     '"Memorial Park - Field 2 (North)","1401 Olympic Blvd, Santa Monica, CA","https://maps.google.com/?q=Memorial+Park+Santa+Monica","U12 Boys Premier; U10 Girls Classic","11v11 Full","Artificial Turf","","Regulation artificial turf field"',
     '"Clover Field - Pitch A","2600 Ocean Park Blvd, Santa Monica, CA","https://maps.google.com/?q=Clover+Park+Santa+Monica","U10 Girls Classic","7v7 Small","Natural Grass","2026-04-26","Small-sided field for U10 matches"',
     '"Westside Sports Complex - Turf 1","11301 Wilshire Blvd, Los Angeles, CA","https://maps.google.com/?q=Westside+Complex","U14 Coed Metro","11v11 Full","Artificial Turf","","All-weather turf facility"',
+  ].join('\n');
+}
+
+export function getRefereesCsvTemplate(): string {
+  return [
+    'Name,Email,Phone,Certification Level,Badge Number,Experience Years,Max Games/Day,Preferred Divisions,Blackout Dates,Active Status,Total Assigned Games,Notes',
+    '"Elena Rostova","elena.rostova@referee-assoc.com","(555) 301-4491","National / Grade 6","USSF-88412",8,4,"U14 Boys Premier; U12 Boys Premier","2026-05-02; 2026-05-03","Active",0,"Lead tournament referee instructor"',
+    '"Marcus Thorne","mthorne.ref@bayareaofficials.org","(555) 782-1134","Regional / Grade 7","USSF-72109",5,3,"U10 Girls Classic; U12 Girls Classic","","Active",0,"Available for weekend morning fixtures"',
+    '"Carlos Mendez","carlos.mendez@socalreferees.com","(555) 438-9902","Grassroots / Grade 8","USSF-49102",2,2,"U10 Girls Classic","2026-04-18","Active",0,"Junior competitive match official"',
+    '"Sarah Jenkins","s.jenkins@referees.org","(555) 671-8820","PRO / FIFA","USSF-10492",12,4,"U14 Boys Premier","","Active",0,"FIFA certified referee evaluator"',
   ].join('\n');
 }

@@ -1,4 +1,4 @@
-import { AppData, Division, Field, Team, TeamSizeOption } from '../types';
+import { AppData, Division, Field, Referee, Team, TeamSizeOption } from '../types';
 import { generateLeagueSchedule } from './scheduler';
 
 export const COOKIE_NAME = 'soccer_scheduler_last_file';
@@ -300,6 +300,94 @@ export const initialTeams: Team[] = [
   },
 ];
 
+// Initial default referees directory
+export const initialReferees: Referee[] = [
+  {
+    id: 'ref-1',
+    name: 'Marcus Vance',
+    email: 'marcus.vance@socalrefs.org',
+    phone: '(310) 555-0321',
+    certificationLevel: 'Regional / Grade 7',
+    badgeNumber: 'USSF-884210',
+    experienceYears: 8,
+    preferredDivisionIds: ['div-u12-boys', 'div-u14-coed'],
+    blackoutDates: ['2026-04-12'],
+    maxGamesPerDay: 3,
+    notes: 'Certified for competitive U12-U16. Available Saturdays and Sundays.',
+    isActive: true,
+  },
+  {
+    id: 'ref-2',
+    name: 'Elena Rostova',
+    email: 'elena.rostova@referee-assoc.com',
+    phone: '(310) 555-0455',
+    certificationLevel: 'Grassroots / Grade 8',
+    badgeNumber: 'USSF-912440',
+    experienceYears: 4,
+    preferredDivisionIds: ['div-u10-girls', 'div-u12-boys'],
+    blackoutDates: [],
+    maxGamesPerDay: 4,
+    notes: 'Youth development specialist. Excellent with U10 small-sided rules.',
+    isActive: true,
+  },
+  {
+    id: 'ref-3',
+    name: 'David Okafor',
+    email: 'd.okafor@coastalreferees.net',
+    phone: '(310) 555-0612',
+    certificationLevel: 'National / Grade 6',
+    badgeNumber: 'USSF-720195',
+    experienceYears: 12,
+    preferredDivisionIds: ['div-u12-boys', 'div-u14-coed'],
+    blackoutDates: ['2026-05-02'],
+    maxGamesPerDay: 2,
+    notes: 'State tournament referee evaluator. Prefers high-tempo Premier matches.',
+    isActive: true,
+  },
+  {
+    id: 'ref-4',
+    name: 'Chloe Tremblay',
+    email: 'chloe.t@metroref.org',
+    phone: '(310) 555-0789',
+    certificationLevel: 'Grassroots / Grade 8',
+    badgeNumber: 'USSF-954118',
+    experienceYears: 3,
+    preferredDivisionIds: ['div-u10-girls', 'div-u12-boys'],
+    blackoutDates: [],
+    maxGamesPerDay: 3,
+    notes: 'Available for morning Saturday slots at Clover and Memorial.',
+    isActive: true,
+  },
+  {
+    id: 'ref-5',
+    name: 'Julian Castillo',
+    email: 'julian.c@ayso-officials.org',
+    phone: '(310) 555-0834',
+    certificationLevel: 'Regional / Grade 7',
+    badgeNumber: 'USSF-831092',
+    experienceYears: 6,
+    preferredDivisionIds: ['div-u14-coed', 'div-u12-boys'],
+    blackoutDates: [],
+    maxGamesPerDay: 4,
+    notes: 'Bilingual (English/Spanish). High reliability and punctual.',
+    isActive: true,
+  },
+  {
+    id: 'ref-6',
+    name: 'Maya Patel',
+    email: 'maya.patel@socalsoccer.org',
+    phone: '(310) 555-0921',
+    certificationLevel: 'Junior Apprentice',
+    badgeNumber: 'USSF-991204',
+    experienceYears: 1,
+    preferredDivisionIds: ['div-u10-girls'],
+    blackoutDates: ['2026-04-26'],
+    maxGamesPerDay: 2,
+    notes: 'Mentored official for grassroots U10 7v7 matches.',
+    isActive: true,
+  },
+];
+
 export function getInitialAppData(fileName: string = DEFAULT_FILE_NAME): AppData {
   const baseData: AppData = {
     version: '1.0.0',
@@ -315,6 +403,7 @@ export function getInitialAppData(fileName: string = DEFAULT_FILE_NAME): AppData
     divisions: initialDivisions,
     teams: initialTeams,
     games: [],
+    referees: initialReferees,
     lastModified: new Date().toISOString(),
   };
 
@@ -324,6 +413,28 @@ export function getInitialAppData(fileName: string = DEFAULT_FILE_NAME): AppData
     baseData.games = result.games;
     if (result.syntheticTeams && result.syntheticTeams.length > 0) {
       baseData.teams.push(...result.syntheticTeams);
+    }
+
+    // Seed realistic initial referee assignments on games
+    const activeRefs = initialReferees.filter((r) => r.isActive);
+    if (activeRefs.length > 0) {
+      baseData.games.forEach((game, idx) => {
+        // Assign center referee to games in rotation matching preferred division
+        const eligibleRefs = activeRefs.filter((r) =>
+          r.preferredDivisionIds.length === 0 || r.preferredDivisionIds.includes(game.divisionId)
+        );
+        const pool = eligibleRefs.length > 0 ? eligibleRefs : activeRefs;
+        const ref = pool[idx % pool.length];
+        game.refereeId = ref.id;
+
+        // On every 3rd game, assign assistant referee 1
+        if (idx % 3 === 0 && pool.length > 1) {
+          const ar1 = pool[(idx + 1) % pool.length];
+          if (ar1.id !== ref.id) {
+            game.assistantReferee1Id = ar1.id;
+          }
+        }
+      });
     }
   } catch (err) {
     console.error('Initial schedule generation error:', err);
@@ -358,6 +469,9 @@ export function loadAppData(): AppData {
     if (fileSaved) {
       const parsed: AppData = JSON.parse(fileSaved);
       parsed.fileName = targetFileName;
+      if (!parsed.referees || !Array.isArray(parsed.referees) || parsed.referees.length === 0) {
+        parsed.referees = initialReferees;
+      }
       setCookie(COOKIE_NAME, targetFileName);
       return parsed;
     }
@@ -367,6 +481,9 @@ export function loadAppData(): AppData {
     if (activeSaved) {
       const parsed: AppData = JSON.parse(activeSaved);
       if (!parsed.fileName) parsed.fileName = targetFileName;
+      if (!parsed.referees || !Array.isArray(parsed.referees) || parsed.referees.length === 0) {
+        parsed.referees = initialReferees;
+      }
       setCookie(COOKIE_NAME, parsed.fileName);
       return parsed;
     }

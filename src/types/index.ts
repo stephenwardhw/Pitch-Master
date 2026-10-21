@@ -66,6 +66,32 @@ export interface Game {
     away: number;
   };
   notes?: string;
+  refereeId?: string; // Center / Main match official
+  assistantReferee1Id?: string; // Assistant referee 1 / Linesperson 1
+  assistantReferee2Id?: string; // Assistant referee 2 / Linesperson 2
+}
+
+export type RefereeCertification =
+  | 'Grassroots / Grade 8'
+  | 'Regional / Grade 7'
+  | 'National / Grade 6'
+  | 'PRO / FIFA'
+  | 'Junior Apprentice'
+  | 'Club Official';
+
+export interface Referee {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  certificationLevel: RefereeCertification;
+  badgeNumber?: string;
+  experienceYears?: number;
+  preferredDivisionIds: string[]; // Divisions certified or preferred to officiate
+  blackoutDates: string[]; // YYYY-MM-DD dates unavailable
+  maxGamesPerDay?: number;
+  notes?: string;
+  isActive: boolean;
 }
 
 export interface SeasonConfig {
@@ -84,6 +110,7 @@ export interface AppData {
   divisions: Division[];
   teams: Team[];
   games: Game[];
+  referees?: Referee[];
   lastModified: string;
 }
 
@@ -92,7 +119,9 @@ export type ConflictType =
   | 'field_blackout'
   | 'team_double_booked'
   | 'field_not_in_division'
-  | 'season_blackout';
+  | 'season_blackout'
+  | 'referee_double_booked'
+  | 'referee_blackout';
 
 export interface Conflict {
   id: string;

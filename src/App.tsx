@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { AppData, Conflict, Division, Field, Game, SeasonConfig, Team, TeamSizeOption } from './types';
+import { AppData, Conflict, Division, Field, Game, Referee, SeasonConfig, Team, TeamSizeOption } from './types';
 import { loadAppData, saveAppData, COOKIE_NAME, getCookie, setCookie } from './utils/cookieStorage';
 import { generateLeagueSchedule } from './utils/scheduler';
 import { detectConflicts } from './utils/conflictDetector';
@@ -9,6 +9,7 @@ import { SchedulePage } from './components/SchedulePage';
 import { DivisionsPage } from './components/DivisionsPage';
 import { TeamsPage } from './components/TeamsPage';
 import { FieldsPage } from './components/FieldsPage';
+import { RefereesPage } from './components/RefereesPage';
 import { SeasonConfigPage } from './components/SeasonConfigPage';
 import { StandaloneParentPortal } from './components/StandaloneParentPortal';
 import { TeamStatisticsPage } from './components/TeamStatisticsPage';
@@ -242,6 +243,34 @@ export default function App() {
     }));
   }, [updateAndSaveAppData]);
 
+  // Referee save
+  const handleSaveReferee = useCallback((referee: Referee) => {
+    updateAndSaveAppData((prev) => {
+      const currentReferees = prev.referees || [];
+      const exists = currentReferees.some((r) => r.id === referee.id);
+      return {
+        ...prev,
+        referees: exists
+          ? currentReferees.map((r) => (r.id === referee.id ? referee : r))
+          : [...currentReferees, referee],
+      };
+    });
+  }, [updateAndSaveAppData]);
+
+  // Referee delete
+  const handleDeleteReferee = useCallback((refereeId: string) => {
+    updateAndSaveAppData((prev) => ({
+      ...prev,
+      referees: (prev.referees || []).filter((r) => r.id !== refereeId),
+      games: prev.games.map((g) => ({
+        ...g,
+        refereeId: g.refereeId === refereeId ? undefined : g.refereeId,
+        assistantReferee1Id: g.assistantReferee1Id === refereeId ? undefined : g.assistantReferee1Id,
+        assistantReferee2Id: g.assistantReferee2Id === refereeId ? undefined : g.assistantReferee2Id,
+      })),
+    }));
+  }, [updateAndSaveAppData]);
+
   // Season config save
   const handleSaveSeasonConfig = useCallback((config: SeasonConfig) => {
     updateAndSaveAppData((prev) => ({
@@ -442,6 +471,18 @@ export default function App() {
           />
         )}
 
+        {currentTab === 'referees' && (
+          <RefereesPage
+            appData={appData}
+            onSaveReferee={handleSaveReferee}
+            onDeleteReferee={handleDeleteReferee}
+            onUpdateGame={handleUpdateGame}
+            onUpdateBatchGames={handleUpdateBatchGames}
+            onNavigateToSchedule={() => setCurrentTab('schedule')}
+            onOpenCsvImport={() => handleOpenCsvImport('referees')}
+          />
+        )}
+
         {currentTab === 'season' && (
           <SeasonConfigPage
             appData={appData}
@@ -528,6 +569,7 @@ export default function App() {
         divisions={appData.divisions}
         teams={appData.teams}
         fields={appData.fields}
+        referees={appData.referees}
         onSave={handleUpdateGame}
         onClose={() => setActiveEditingGame(null)}
       />

@@ -103,6 +103,18 @@ export interface SeasonConfig {
   blackoutDates: string[]; // Dates when games are not to be scheduled (holidays/breaks)
 }
 
+export interface GoogleDriveSyncInfo {
+  fileId: string;
+  fileName: string;
+  driveId?: string; // Shared Drive ID if in a shared drive
+  driveName?: string; // Shared Drive Name if in a shared drive
+  modifiedTime: string; // ISO string reported by Google Drive
+  headRevisionId?: string;
+  syncToken: string; // unique modification token to detect concurrent edits
+  lastSyncedAt: string; // local ISO timestamp when last pulled or saved
+  lastModifiedBy?: string; // user name or email of editor
+}
+
 export interface AppData {
   version: string;
   fileName: string;
@@ -115,6 +127,9 @@ export interface AppData {
   referees?: Referee[];
   refereeCertifications?: RefereeCertificationOption[];
   lastModified: string;
+  syncToken?: string;
+  lastModifiedBy?: string;
+  googleDriveSync?: GoogleDriveSyncInfo;
 }
 
 export type ConflictType =

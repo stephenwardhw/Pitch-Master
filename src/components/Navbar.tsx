@@ -19,6 +19,7 @@ import {
   Home,
   Grid,
   UserCheck,
+  Cloud,
 } from 'lucide-react';
 
 export type NavTab =
@@ -39,6 +40,7 @@ interface NavbarProps {
   appData: AppData;
   conflicts: Conflict[];
   onOpenDatasetModal: () => void;
+  onOpenGoogleDriveModal?: () => void;
   onOpenPortal: (openInNewTab?: boolean) => void;
   onGoToHome?: () => void;
 }
@@ -49,6 +51,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   appData,
   conflicts,
   onOpenDatasetModal,
+  onOpenGoogleDriveModal,
   onOpenPortal,
   onGoToHome,
 }) => {
@@ -254,6 +257,39 @@ export const Navbar: React.FC<NavbarProps> = ({
               )}
             </div>
 
+            {/* Google Drive Cloud Sync Button */}
+            {onOpenGoogleDriveModal && (
+              <button
+                type="button"
+                onClick={onOpenGoogleDriveModal}
+                title={
+                  appData.googleDriveSync
+                    ? `Synced with Google Drive: ${appData.googleDriveSync.fileName} (${appData.googleDriveSync.driveName || 'My Drive'})`
+                    : 'Connect to Google Drive or Shared Drive to store and sync schedule data'
+                }
+                className={`hidden md:flex items-center gap-2 px-2.5 py-1.5 rounded-lg border text-xs transition-colors shadow-2xs ${
+                  appData.googleDriveSync
+                    ? 'border-blue-300 bg-blue-50/90 hover:bg-blue-100 text-blue-900'
+                    : 'border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700'
+                }`}
+              >
+                <div className="relative shrink-0">
+                  <Cloud className="w-4 h-4 text-blue-600" />
+                  {appData.googleDriveSync && (
+                    <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-emerald-500 rounded-full border border-white" />
+                  )}
+                </div>
+                <div className="truncate text-left leading-tight max-w-[130px]">
+                  <span className="text-[9px] text-blue-700 block uppercase font-mono font-semibold">
+                    {appData.googleDriveSync ? 'Drive Synced' : 'Google Drive'}
+                  </span>
+                  <span className="font-mono text-xs font-medium truncate block">
+                    {appData.googleDriveSync ? appData.googleDriveSync.fileName : 'Connect Sync'}
+                  </span>
+                </div>
+              </button>
+            )}
+
             {/* Header Data File Indicator */}
             <button
               onClick={onOpenDatasetModal}
@@ -342,6 +378,26 @@ export const Navbar: React.FC<NavbarProps> = ({
                 </button>
               );
             })}
+
+            {onOpenGoogleDriveModal && (
+              <button
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  onOpenGoogleDriveModal();
+                }}
+                className="w-full flex items-center justify-between px-3 py-2 text-sm text-blue-700 hover:bg-blue-50 rounded-lg text-left font-medium"
+              >
+                <div className="flex items-center gap-2.5">
+                  <Cloud className="w-4 h-4 text-blue-600" />
+                  <span>Google Drive & Shared Drive Sync</span>
+                </div>
+                {appData.googleDriveSync && (
+                  <span className="text-[10px] px-1.5 py-0.5 bg-emerald-100 text-emerald-800 rounded-full font-semibold">
+                    Synced
+                  </span>
+                )}
+              </button>
+            )}
 
             <button
               onClick={() => {

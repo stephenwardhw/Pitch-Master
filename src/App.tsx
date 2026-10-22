@@ -22,7 +22,8 @@ import { DatasetModal } from './components/modals/DatasetModal';
 import { ManageTeamSizesModal } from './components/modals/ManageTeamSizesModal';
 import { RegenerateScheduleModal } from './components/modals/RegenerateScheduleModal';
 import { CsvImportModal, CsvImportType } from './components/modals/CsvImportModal';
-import { Github } from 'lucide-react';
+import { GoogleDriveSyncModal } from './components/modals/GoogleDriveSyncModal';
+import { Github, Cloud } from 'lucide-react';
 
 export type AppMode = 'landing' | 'admin' | 'portal';
 
@@ -106,6 +107,7 @@ export default function App() {
   const [activeMapField, setActiveMapField] = useState<Field | null>(null);
   const [activeEditingGame, setActiveEditingGame] = useState<Game | null>(null);
   const [isDatasetModalOpen, setIsDatasetModalOpen] = useState(false);
+  const [isGoogleDriveModalOpen, setIsGoogleDriveModalOpen] = useState(false);
   const [isTeamSizesModalOpen, setIsTeamSizesModalOpen] = useState(false);
   const [isRegenerateModalOpen, setIsRegenerateModalOpen] = useState(false);
   const [isCsvImportOpen, setIsCsvImportOpen] = useState(false);
@@ -386,6 +388,7 @@ export default function App() {
         appData={appData}
         conflicts={conflicts}
         onOpenDatasetModal={() => setIsDatasetModalOpen(true)}
+        onOpenGoogleDriveModal={() => setIsGoogleDriveModalOpen(true)}
         onOpenPortal={handleOpenPortal}
         onGoToHome={handleGoToLanding}
       />
@@ -536,6 +539,14 @@ export default function App() {
             </button>
             <span aria-hidden="true">·</span>
             <button
+              onClick={() => setIsGoogleDriveModalOpen(true)}
+              className="text-blue-600 hover:underline inline-flex items-center gap-1 font-medium"
+            >
+              <Cloud className="w-3 h-3 text-blue-600" />
+              <span>Google Drive Sync</span>
+            </button>
+            <span aria-hidden="true">·</span>
+            <button
               onClick={() => handleOpenCsvImport('teams')}
               className="text-emerald-700 hover:underline font-medium"
             >
@@ -605,10 +616,22 @@ export default function App() {
           onUpdateData={handleUpdateFullData}
           onClose={() => setIsDatasetModalOpen(false)}
           onOpenCsvImport={handleOpenCsvImport}
+          onOpenGoogleDriveModal={() => setIsGoogleDriveModalOpen(true)}
         />
       )}
 
-      {/* 5. Manage Team Sizes Modal */}
+      {/* 5. Google Drive / Shared Drive Synchronization Modal */}
+      {isGoogleDriveModalOpen && (
+        <GoogleDriveSyncModal
+          appData={appData}
+          onUpdateAppData={(updatedData) => {
+            handleUpdateFullData(updatedData);
+          }}
+          onClose={() => setIsGoogleDriveModalOpen(false)}
+        />
+      )}
+
+      {/* 6. Manage Team Sizes Modal */}
       {isTeamSizesModalOpen && (
         <ManageTeamSizesModal
           teamSizes={appData.teamSizes}
@@ -617,7 +640,7 @@ export default function App() {
         />
       )}
 
-      {/* 6. Re-run Automated Scheduler Modal */}
+      {/* 7. Re-run Automated Scheduler Modal */}
       {isRegenerateModalOpen && (
         <RegenerateScheduleModal
           appData={appData}
@@ -626,7 +649,7 @@ export default function App() {
         />
       )}
 
-      {/* 7. CSV Importer Modal */}
+      {/* 8. CSV Importer Modal */}
       {isCsvImportOpen && (
         <CsvImportModal
           appData={appData}

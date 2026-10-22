@@ -21,6 +21,7 @@ import {
   Calendar,
   MapPin,
   UserCheck,
+  Cloud,
 } from 'lucide-react';
 import {
   exportTeamsToCsv,
@@ -35,6 +36,7 @@ interface DatasetModalProps {
   onUpdateData: (newData: AppData) => void;
   onClose: () => void;
   onOpenCsvImport?: (type?: 'teams' | 'fields' | 'schedule' | 'referees') => void;
+  onOpenGoogleDriveModal?: () => void;
 }
 
 export const DatasetModal: React.FC<DatasetModalProps> = ({
@@ -42,6 +44,7 @@ export const DatasetModal: React.FC<DatasetModalProps> = ({
   onUpdateData,
   onClose,
   onOpenCsvImport,
+  onOpenGoogleDriveModal,
 }) => {
   const [fileNameInput, setFileNameInput] = useState(appData.fileName || 'soccer_schedule.json');
   const [statusMessage, setStatusMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
@@ -246,6 +249,43 @@ export const DatasetModal: React.FC<DatasetModalProps> = ({
               </p>
             </div>
           </div>
+
+          {/* Google Drive / Shared Drive Cloud Storage Card */}
+          {onOpenGoogleDriveModal && (
+            <div className="p-3.5 bg-blue-50/70 border border-blue-200 rounded-xl flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center shrink-0">
+                  <Cloud className="w-4 h-4" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-slate-900 text-xs">Google Drive & Shared Drive Sync</span>
+                    {appData.googleDriveSync && (
+                      <span className="px-1.5 py-0.2 bg-emerald-100 text-emerald-800 text-[10px] rounded-full font-semibold">
+                        Connected
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[11px] text-slate-600">
+                    {appData.googleDriveSync
+                      ? `Linked to "${appData.googleDriveSync.fileName}" with concurrency conflict detection`
+                      : 'Store and retrieve your schedule file directly from Google Drive or Shared Drives'}
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  onOpenGoogleDriveModal();
+                }}
+                className="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shrink-0 transition-colors shadow-2xs"
+              >
+                {appData.googleDriveSync ? 'Manage Sync' : 'Open Google Drive'}
+              </button>
+            </div>
+          )}
 
           {/* Active File Name & Rename */}
           <form onSubmit={handleRename} className="space-y-2">

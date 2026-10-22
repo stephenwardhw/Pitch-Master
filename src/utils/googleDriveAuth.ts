@@ -7,7 +7,22 @@ import {
   signOut,
   User,
 } from 'firebase/auth';
-import firebaseConfig from '../../firebase-applet-config.json';
+import rawFirebaseConfig from '../../firebase-applet-config.json';
+
+// Default / fallback configuration for project ichl-web-site-188817
+const defaultFirebaseConfig = {
+  projectId: 'ichl-web-site-188817',
+  appId: '1:728568455837:web:639024561f96a72a1e2a74',
+  apiKey: 'AIzaSyCWt3kchKk62cvkJtfPnctMcPFVWCehMFw',
+  authDomain: 'ichl-web-site-188817.firebaseapp.com',
+  storageBucket: 'ichl-web-site-188817.firebasestorage.app',
+  messagingSenderId: '728568455837',
+};
+
+const firebaseConfig = {
+  ...defaultFirebaseConfig,
+  ...(rawFirebaseConfig || {}),
+};
 
 // Reuse existing Firebase app instance if already initialized
 const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);

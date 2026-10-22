@@ -17,13 +17,13 @@ function leagueScheduleServerPlugin(): Plugin {
           req.on('end', () => {
             try {
               const parsed = JSON.parse(body);
-              const publicDir = path.resolve(__dirname, 'public');
+              const publicDir = path.resolve(import.meta.dirname, 'public');
               if (!fs.existsSync(publicDir)) {
                 fs.mkdirSync(publicDir, { recursive: true });
               }
               const payloadStr = JSON.stringify(parsed, null, 2);
               fs.writeFileSync(path.resolve(publicDir, 'league_schedule.json'), payloadStr);
-              fs.writeFileSync(path.resolve(__dirname, 'league_schedule.json'), payloadStr);
+              fs.writeFileSync(path.resolve(import.meta.dirname, 'league_schedule.json'), payloadStr);
 
               res.statusCode = 200;
               res.setHeader('Content-Type', 'application/json');
@@ -51,7 +51,7 @@ export default defineConfig(() => {
     plugins: [react(), tailwindcss(), leagueScheduleServerPlugin()],
     resolve: {
       alias: {
-        '@': path.resolve(__dirname, '.'),
+        '@': path.resolve(import.meta.dirname, '.'),
       },
     },
     server: {

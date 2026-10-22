@@ -1,4 +1,4 @@
-import { AppData, Division, Field, Referee, Team, TeamSizeOption } from '../types';
+import { AppData, Division, Field, Referee, RefereeCertificationOption, Team, TeamSizeOption } from '../types';
 import { generateLeagueSchedule } from './scheduler';
 
 export const COOKIE_NAME = 'soccer_scheduler_last_file';
@@ -388,6 +388,52 @@ export const initialReferees: Referee[] = [
   },
 ];
 
+// Default referee certification levels
+export const DEFAULT_REFEREE_CERTIFICATIONS: RefereeCertificationOption[] = [
+  {
+    id: 'cert-grassroots',
+    name: 'Grassroots / Grade 8',
+    description: 'Entry-level certified official for youth grassroots matches and local recreational play',
+    badgeCode: 'USSF-8',
+    isDefault: true,
+  },
+  {
+    id: 'cert-regional',
+    name: 'Regional / Grade 7',
+    description: 'Experienced official qualified for competitive youth & amateur adult matches',
+    badgeCode: 'USSF-7',
+    isDefault: true,
+  },
+  {
+    id: 'cert-national',
+    name: 'National / Grade 6',
+    description: 'High-level official certified for premier tournaments, state cups & academy matches',
+    badgeCode: 'USSF-6',
+    isDefault: true,
+  },
+  {
+    id: 'cert-pro-fifa',
+    name: 'PRO / FIFA',
+    description: 'Elite professional or international certified match official',
+    badgeCode: 'FIFA',
+    isDefault: true,
+  },
+  {
+    id: 'cert-apprentice',
+    name: 'Junior Apprentice',
+    description: 'Youth official in training assisting experienced mentors on small-sided games',
+    badgeCode: 'JR-APP',
+    isDefault: true,
+  },
+  {
+    id: 'cert-club',
+    name: 'Club Official',
+    description: 'Volunteer or club-certified official for internal recreational matches',
+    badgeCode: 'CLUB',
+    isDefault: true,
+  },
+];
+
 export function getInitialAppData(fileName: string = DEFAULT_FILE_NAME): AppData {
   const baseData: AppData = {
     version: '1.0.0',
@@ -404,6 +450,7 @@ export function getInitialAppData(fileName: string = DEFAULT_FILE_NAME): AppData
     teams: initialTeams,
     games: [],
     referees: initialReferees,
+    refereeCertifications: DEFAULT_REFEREE_CERTIFICATIONS,
     lastModified: new Date().toISOString(),
   };
 
@@ -472,6 +519,9 @@ export function loadAppData(): AppData {
       if (!parsed.referees || !Array.isArray(parsed.referees) || parsed.referees.length === 0) {
         parsed.referees = initialReferees;
       }
+      if (!parsed.refereeCertifications || !Array.isArray(parsed.refereeCertifications) || parsed.refereeCertifications.length === 0) {
+        parsed.refereeCertifications = DEFAULT_REFEREE_CERTIFICATIONS;
+      }
       setCookie(COOKIE_NAME, targetFileName);
       return parsed;
     }
@@ -483,6 +533,9 @@ export function loadAppData(): AppData {
       if (!parsed.fileName) parsed.fileName = targetFileName;
       if (!parsed.referees || !Array.isArray(parsed.referees) || parsed.referees.length === 0) {
         parsed.referees = initialReferees;
+      }
+      if (!parsed.refereeCertifications || !Array.isArray(parsed.refereeCertifications) || parsed.refereeCertifications.length === 0) {
+        parsed.refereeCertifications = DEFAULT_REFEREE_CERTIFICATIONS;
       }
       setCookie(COOKIE_NAME, parsed.fileName);
       return parsed;

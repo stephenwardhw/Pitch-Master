@@ -1,5 +1,7 @@
 import React, { useState, useMemo } from 'react';
-import { AppData, Game, Referee, RefereeCertification } from '../types';
+import { AppData, Game, Referee, RefereeCertification, RefereeCertificationOption } from '../types';
+import { DEFAULT_REFEREE_CERTIFICATIONS } from '../utils/cookieStorage';
+import { ManageCertificationsModal } from './modals/ManageCertificationsModal';
 import {
   UserCheck,
   Shield,
@@ -36,16 +38,11 @@ interface RefereesPageProps {
   onUpdateBatchGames: (games: Game[]) => void;
   onNavigateToSchedule?: () => void;
   onOpenCsvImport?: () => void;
+  onSaveCertifications?: (
+    updatedCertifications: RefereeCertificationOption[],
+    renamedMap?: Record<string, string>
+  ) => void;
 }
-
-const CERTIFICATION_LEVELS: RefereeCertification[] = [
-  'Grassroots / Grade 8',
-  'Regional / Grade 7',
-  'National / Grade 6',
-  'PRO / FIFA',
-  'Junior Apprentice',
-  'Club Official',
-];
 
 export const RefereesPage: React.FC<RefereesPageProps> = ({
   appData,
@@ -55,6 +52,7 @@ export const RefereesPage: React.FC<RefereesPageProps> = ({
   onUpdateBatchGames,
   onNavigateToSchedule,
   onOpenCsvImport,
+  onSaveCertifications,
 }) => {
   const referees = useMemo(() => appData.referees || [], [appData.referees]);
   const games = appData.games;
@@ -76,8 +74,20 @@ export const RefereesPage: React.FC<RefereesPageProps> = ({
   // Modals state
   const [editingReferee, setEditingReferee] = useState<Referee | null>(null);
   const [isNewRefereeModalOpen, setIsNewRefereeModalOpen] = useState(false);
+  const [isCertificationsModalOpen, setIsCertificationsModalOpen] = useState(false);
   const [refereeToDelete, setRefereeToDelete] = useState<Referee | null>(null);
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'info' | 'error' } | null>(null);
+
+  // Dynamic referee certifications
+  const certificationOptions = useMemo<RefereeCertificationOption[]>(() => {
+    return appData.refereeCertifications && appData.refereeCertifications.length > 0
+      ? appData.refereeCertifications
+      : DEFAULT_REFEREE_CERTIFICATIONS;
+  }, [appData.refereeCertifications]);
+
+  const certificationLevels = useMemo(() => {
+    return certificationOptions.map((c) => c.name);
+  }, [certificationOptions]);
 
   const showNotification = (message: string, type: 'success' | 'info' | 'error' = 'success') => {
     setNotification({ message, type });
@@ -359,6 +369,18 @@ export const RefereesPage: React.FC<RefereesPageProps> = ({
               </button>
             )}
 
+            {onSaveCertifications && (
+              <button
+                type="button"
+                onClick={() => setIsCertificationsModalOpen(true)}
+                className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-lg transition-colors shadow-2xs"
+                title="Manage referee certification levels, badge codes, and standards"
+              >
+                <Award className="w-3.5 h-3.5 text-indigo-600" />
+                <span>Certifications</span>
+              </button>
+            )}
+
             <button
               type="button"
               onClick={() => setIsNewRefereeModalOpen(true)}
@@ -501,7 +523,7 @@ export const RefereesPage: React.FC<RefereesPageProps> = ({
                 className="px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-slate-700 text-xs focus:outline-hidden focus:ring-2 focus:ring-slate-900"
               >
                 <option value="all">All Certifications</option>
-                {CERTIFICATION_LEVELS.map((cert) => (
+                {certificationLevels.map((cert) => (
                   <option key={cert} value={cert}>
                     {cert}
                   </option>
@@ -1042,11 +1064,27 @@ export const RefereesPage: React.FC<RefereesPageProps> = ({
         <RefereeFormModal
           referee={editingReferee}
           divisions={divisions}
+          certificationLevels={certificationLevels}
           onSave={handleSaveRefereeForm}
           onClose={() => {
             setIsNewRefereeModalOpen(false);
             setEditingReferee(null);
           }}
+        />
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL: MANAGE REFEREE CERTIFICATIONS                                      */}
+      {/* ========================================================================= */}
+      {isCertificationsModalOpen && onSaveCertifications && (
+        <ManageCertificationsModal
+          certifications={certificationOptions}
+          referees={referees}
+          onSaveCertifications={(updatedCerts, renamedMap) => {
+            onSaveCertifications(updatedCerts, renamedMap);
+            showNotification('Referee certification levels updated successfully.');
+          }}
+          onClose={() => setIsCertificationsModalOpen(false)}
         />
       )}
 
@@ -1103,6 +1141,7 @@ export const RefereesPage: React.FC<RefereesPageProps> = ({
 interface RefereeFormModalProps {
   referee: Referee | null;
   divisions: AppData['divisions'];
+  certificationLevels: string[];
   onSave: (referee: Referee) => void;
   onClose: () => void;
 }
@@ -1110,6 +1149,7 @@ interface RefereeFormModalProps {
 const RefereeFormModal: React.FC<RefereeFormModalProps> = ({
   referee,
   divisions,
+  certificationLevels,
   onSave,
   onClose,
 }) => {
@@ -1119,7 +1159,7 @@ const RefereeFormModal: React.FC<RefereeFormModalProps> = ({
   const [email, setEmail] = useState(referee?.email || '');
   const [phone, setPhone] = useState(referee?.phone || '');
   const [certificationLevel, setCertificationLevel] = useState<RefereeCertification>(
-    referee?.certificationLevel || 'Grassroots / Grade 8'
+    referee?.certificationLevel || certificationLevels[0] || 'Grassroots / Grade 8'
   );
   const [badgeNumber, setBadgeNumber] = useState(referee?.badgeNumber || '');
   const [experienceYears, setExperienceYears] = useState<number>(referee?.experienceYears || 2);
@@ -1213,7 +1253,7 @@ const RefereeFormModal: React.FC<RefereeFormModalProps> = ({
                 onChange={(e) => setCertificationLevel(e.target.value as RefereeCertification)}
                 className="w-full text-xs rounded-lg border border-slate-300 p-2 text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-slate-900"
               >
-                {CERTIFICATION_LEVELS.map((cert) => (
+                {certificationLevels.map((cert) => (
                   <option key={cert} value={cert}>
                     {cert}
                   </option>

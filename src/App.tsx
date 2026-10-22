@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { AppData, Conflict, Division, Field, Game, Referee, SeasonConfig, Team, TeamSizeOption } from './types';
+import { AppData, Conflict, Division, Field, Game, Referee, RefereeCertificationOption, SeasonConfig, Team, TeamSizeOption } from './types';
 import { loadAppData, saveAppData, COOKIE_NAME, getCookie, setCookie } from './utils/cookieStorage';
 import { generateLeagueSchedule } from './utils/scheduler';
 import { detectConflicts } from './utils/conflictDetector';
@@ -271,6 +271,29 @@ export default function App() {
     }));
   }, [updateAndSaveAppData]);
 
+  // Referee certification levels save & remapping
+  const handleSaveRefereeCertifications = useCallback(
+    (updatedCertifications: RefereeCertificationOption[], renamedMap?: Record<string, string>) => {
+      updateAndSaveAppData((prev) => {
+        let updatedReferees = prev.referees || [];
+        if (renamedMap && Object.keys(renamedMap).length > 0) {
+          updatedReferees = updatedReferees.map((r) => {
+            if (renamedMap[r.certificationLevel]) {
+              return { ...r, certificationLevel: renamedMap[r.certificationLevel] };
+            }
+            return r;
+          });
+        }
+        return {
+          ...prev,
+          refereeCertifications: updatedCertifications,
+          referees: updatedReferees,
+        };
+      });
+    },
+    [updateAndSaveAppData]
+  );
+
   // Season config save
   const handleSaveSeasonConfig = useCallback((config: SeasonConfig) => {
     updateAndSaveAppData((prev) => ({
@@ -480,6 +503,7 @@ export default function App() {
             onUpdateBatchGames={handleUpdateBatchGames}
             onNavigateToSchedule={() => setCurrentTab('schedule')}
             onOpenCsvImport={() => handleOpenCsvImport('referees')}
+            onSaveCertifications={handleSaveRefereeCertifications}
           />
         )}
 

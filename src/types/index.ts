@@ -71,13 +71,15 @@ export interface Game {
   assistantReferee2Id?: string; // Assistant referee 2 / Linesperson 2
 }
 
-export type RefereeCertification =
-  | 'Grassroots / Grade 8'
-  | 'Regional / Grade 7'
-  | 'National / Grade 6'
-  | 'PRO / FIFA'
-  | 'Junior Apprentice'
-  | 'Club Official';
+export type RefereeCertification = string;
+
+export interface RefereeCertificationOption {
+  id: string;
+  name: string;
+  description?: string;
+  badgeCode?: string;
+  isDefault?: boolean;
+}
 
 export interface Referee {
   id: string;
@@ -111,6 +113,7 @@ export interface AppData {
   teams: Team[];
   games: Game[];
   referees?: Referee[];
+  refereeCertifications?: RefereeCertificationOption[];
   lastModified: string;
 }
 

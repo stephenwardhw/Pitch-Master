@@ -32,6 +32,10 @@ import {
   Server,
   Layers,
   Sparkles,
+  BookOpen,
+  Copy,
+  Code,
+  Terminal,
 } from 'lucide-react';
 
 interface MySqlBackupModalProps {
@@ -56,11 +60,56 @@ export const MySqlBackupModal: React.FC<MySqlBackupModalProps> = ({
     tableName: 'schedule_backups',
   });
 
+  // Navigation Tab: 'backups' or 'guide'
+  const [activeTab, setActiveTab] = useState<'backups' | 'guide'>('backups');
+  const [copiedEnv, setCopiedEnv] = useState(false);
+  const [copiedSql, setCopiedSql] = useState(false);
+
   // Settings Panel state
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [tempConfig, setTempConfig] = useState<MySqlConfig>(config);
   const [isTestingConn, setIsTestingConn] = useState(false);
   const [connTestResult, setConnTestResult] = useState<{ success: boolean; message: string } | null>(null);
+
+  const copyEnvToClipboard = () => {
+    const text = `# MySQL NoSQL Document Backup Configuration
+MYSQL_HOST=localhost
+MYSQL_PORT=3306
+MYSQL_USER=root
+MYSQL_PASSWORD=your_password_here
+MYSQL_DATABASE=pitchmaster
+MYSQL_TABLE=schedule_backups`;
+    navigator.clipboard.writeText(text);
+    setCopiedEnv(true);
+    setTimeout(() => setCopiedEnv(false), 2000);
+  };
+
+  const copySqlToClipboard = () => {
+    const text = `-- Step 1: Create Database
+CREATE DATABASE IF NOT EXISTS \`pitchmaster\`
+  DEFAULT CHARACTER SET utf8mb4
+  DEFAULT COLLATE utf8mb4_unicode_ci;
+
+USE \`pitchmaster\`;
+
+-- Step 2: Create NoSQL Document Table for JSON Payloads
+CREATE TABLE IF NOT EXISTS \`schedule_backups\` (
+  \`id\` VARCHAR(128) NOT NULL,
+  \`name\` VARCHAR(255) NOT NULL,
+  \`data_json\` LONGTEXT NOT NULL COMMENT 'JSON-encoded complete AppData payload',
+  \`sync_token\` VARCHAR(128) NOT NULL COMMENT 'Optimistic concurrency revision token',
+  \`last_modified_by\` VARCHAR(255) NOT NULL,
+  \`last_modified_at\` DATETIME NOT NULL,
+  \`created_at\` DATETIME NOT NULL,
+  \`version_number\` INT NOT NULL DEFAULT 1,
+  PRIMARY KEY (\`id\`),
+  INDEX \`idx_last_modified_at\` (\`last_modified_at\`),
+  INDEX \`idx_sync_token\` (\`sync_token\`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;`;
+    navigator.clipboard.writeText(text);
+    setCopiedSql(true);
+    setTimeout(() => setCopiedSql(false), 2000);
+  };
 
   // Backups list state
   const [backups, setBackups] = useState<MySqlBackupMetadata[]>([]);
@@ -381,6 +430,34 @@ export const MySqlBackupModal: React.FC<MySqlBackupModalProps> = ({
             </button>
           </div>
 
+          {/* Navigation Tabs */}
+          <div className="flex items-center px-6 border-b border-slate-200 bg-slate-50/60 gap-1 shrink-0">
+            <button
+              type="button"
+              onClick={() => setActiveTab('backups')}
+              className={`py-3 px-3.5 text-xs font-semibold border-b-2 flex items-center gap-1.5 transition-colors ${
+                activeTab === 'backups'
+                  ? 'border-indigo-600 text-indigo-600 bg-white shadow-2xs'
+                  : 'border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-100/60'
+              }`}
+            >
+              <Database className="w-3.5 h-3.5" />
+              <span>Backups & Storage</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('guide')}
+              className={`py-3 px-3.5 text-xs font-semibold border-b-2 flex items-center gap-1.5 transition-colors ${
+                activeTab === 'guide'
+                  ? 'border-indigo-600 text-indigo-600 bg-white shadow-2xs'
+                  : 'border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-100/60'
+              }`}
+            >
+              <BookOpen className="w-3.5 h-3.5" />
+              <span>Setup Guide & SQL Schema</span>
+            </button>
+          </div>
+
           {/* Modal Body */}
           <div className="p-6 overflow-y-auto space-y-5 text-xs text-slate-700 flex-1">
             {/* Status Message Alert */}
@@ -407,8 +484,11 @@ export const MySqlBackupModal: React.FC<MySqlBackupModalProps> = ({
               </div>
             )}
 
-            {/* SECTION 1: CONNECTION STATUS BAR */}
-            <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            {/* ACTIVE TAB: BACKUPS & STORAGE */}
+            {activeTab === 'backups' ? (
+              <>
+                {/* SECTION 1: CONNECTION STATUS BAR */}
+                <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="flex items-center gap-2.5">
                 <div className={`w-3 h-3 rounded-full ${isLiveMySql ? 'bg-emerald-500' : 'bg-amber-500'} shrink-0`} />
                 <div>
@@ -790,7 +870,310 @@ export const MySqlBackupModal: React.FC<MySqlBackupModalProps> = ({
                 </div>
               )}
             </div>
+          </>
+        ) : (
+          /* ACTIVE TAB: SETUP GUIDE & SQL SCHEMA */
+          <div className="space-y-6 animate-in fade-in">
+            {/* Overview Banner */}
+            <div className="p-4 bg-indigo-50/70 border border-indigo-200 rounded-2xl flex items-start gap-3.5">
+              <div className="w-9 h-9 rounded-xl bg-indigo-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+                <Database className="w-5 h-5" />
+              </div>
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <h4 className="font-bold text-slate-900 text-xs">
+                    NoSQL JSON Document Architecture in MySQL
+                  </h4>
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-100 text-indigo-800 border border-indigo-200">
+                    Document Store
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-600 leading-relaxed">
+                  PitchMaster stores full league schedules as serialized JSON documents inside MySQL's <code className="font-mono text-indigo-900 font-bold">data_json LONGTEXT</code> column.
+                  This provides NoSQL-like flexibility for complex nested scheduling data (teams, divisions, game slots, referee certifications, constraints) while maintaining relational ACID durability and multi-user conflict detection via optimistic revision tokens (<code className="font-mono text-indigo-900 font-bold">sync_token</code>).
+                </p>
+              </div>
+            </div>
+
+            {/* SECTION 1: ENVIRONMENT VARIABLES */}
+            <div className="border border-slate-200 rounded-2xl overflow-hidden bg-white shadow-2xs">
+              <div className="px-5 py-3.5 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Terminal className="w-4 h-4 text-indigo-600" />
+                  <h4 className="font-bold text-slate-900 text-xs">
+                    1. Environment Variables Configuration (<code className="text-slate-700">.env</code>)
+                  </h4>
+                </div>
+                <button
+                  type="button"
+                  onClick={copyEnvToClipboard}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold transition-colors shadow-2xs"
+                >
+                  {copiedEnv ? (
+                    <>
+                      <Check className="w-3.5 h-3.5 text-emerald-600" />
+                      <span className="text-emerald-700">Copied .env!</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-3.5 h-3.5 text-slate-500" />
+                      <span>Copy .env Template</span>
+                    </>
+                  )}
+                </button>
+              </div>
+
+              <div className="p-5 space-y-4">
+                <p className="text-[11px] text-slate-600 leading-relaxed">
+                  Add the following variables to your project's <code className="font-mono font-semibold text-slate-800">.env</code> file or runtime server environment:
+                </p>
+
+                <div className="relative group">
+                  <pre className="p-3.5 bg-slate-900 text-indigo-200 rounded-xl font-mono text-[11px] overflow-x-auto leading-relaxed border border-slate-800">
+{`# MySQL Connection for NoSQL Schedule Backups
+MYSQL_HOST=localhost
+MYSQL_PORT=3306
+MYSQL_USER=root
+MYSQL_PASSWORD=your_mysql_password
+MYSQL_DATABASE=pitchmaster
+MYSQL_TABLE=schedule_backups`}
+                  </pre>
+                </div>
+
+                {/* Variable Breakdown Table */}
+                <div className="border border-slate-200 rounded-xl overflow-hidden">
+                  <table className="w-full text-left border-collapse text-[11px]">
+                    <thead className="bg-slate-50 border-b border-slate-200 font-bold text-slate-700">
+                      <tr>
+                        <th className="py-2 px-3">Variable</th>
+                        <th className="py-2 px-3">Default</th>
+                        <th className="py-2 px-3">Description</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 text-slate-600">
+                      <tr>
+                        <td className="py-2 px-3 font-mono font-semibold text-indigo-700">MYSQL_HOST</td>
+                        <td className="py-2 px-3 font-mono">localhost</td>
+                        <td className="py-2 px-3">Hostname or IP address of the MySQL server.</td>
+                      </tr>
+                      <tr>
+                        <td className="py-2 px-3 font-mono font-semibold text-indigo-700">MYSQL_PORT</td>
+                        <td className="py-2 px-3 font-mono">3306</td>
+                        <td className="py-2 px-3">Port on which MySQL is listening (default: 3306).</td>
+                      </tr>
+                      <tr>
+                        <td className="py-2 px-3 font-mono font-semibold text-indigo-700">MYSQL_USER</td>
+                        <td className="py-2 px-3 font-mono">root</td>
+                        <td className="py-2 px-3">Database user with permissions on target database.</td>
+                      </tr>
+                      <tr>
+                        <td className="py-2 px-3 font-mono font-semibold text-indigo-700">MYSQL_PASSWORD</td>
+                        <td className="py-2 px-3 font-mono">"" (empty)</td>
+                        <td className="py-2 px-3">Password for the specified MySQL user.</td>
+                      </tr>
+                      <tr>
+                        <td className="py-2 px-3 font-mono font-semibold text-indigo-700">MYSQL_DATABASE</td>
+                        <td className="py-2 px-3 font-mono">pitchmaster</td>
+                        <td className="py-2 px-3">Target database name. Will be auto-created if permitted.</td>
+                      </tr>
+                      <tr>
+                        <td className="py-2 px-3 font-mono font-semibold text-indigo-700">MYSQL_TABLE</td>
+                        <td className="py-2 px-3 font-mono">schedule_backups</td>
+                        <td className="py-2 px-3">Table name for storing serialized JSON schedule documents.</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+
+                <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl flex items-start gap-2.5 text-[11px] text-amber-900">
+                  <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                  <span>
+                    <strong>Runtime UI Overrides:</strong> You can also modify these credentials on the fly without restarting the app using the <strong>Configure DB</strong> button on the Backups tab.
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* SECTION 2: SQL SCHEMA (CREATE TABLE) */}
+            <div className="border border-slate-200 rounded-2xl overflow-hidden bg-white shadow-2xs">
+              <div className="px-5 py-3.5 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Code className="w-4 h-4 text-indigo-600" />
+                  <h4 className="font-bold text-slate-900 text-xs">
+                    2. SQL Schema Script (<code className="text-slate-700">schedule_backups</code>)
+                  </h4>
+                </div>
+                <button
+                  type="button"
+                  onClick={copySqlToClipboard}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold transition-colors shadow-2xs"
+                >
+                  {copiedSql ? (
+                    <>
+                      <Check className="w-3.5 h-3.5 text-emerald-600" />
+                      <span className="text-emerald-700">Copied SQL!</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-3.5 h-3.5 text-slate-500" />
+                      <span>Copy SQL Script</span>
+                    </>
+                  )}
+                </button>
+              </div>
+
+              <div className="p-5 space-y-4">
+                <p className="text-[11px] text-slate-600 leading-relaxed">
+                  PitchMaster automatically runs <code className="font-mono bg-slate-100 px-1 py-0.5 rounded">CREATE TABLE IF NOT EXISTS</code> when it connects. To create the database and table manually, execute the following script in MySQL Workbench, phpMyAdmin, or the MySQL CLI:
+                </p>
+
+                <div className="relative group">
+                  <pre className="p-4 bg-slate-900 text-emerald-300 rounded-xl font-mono text-[11px] overflow-x-auto leading-relaxed border border-slate-800">
+{`-- Step 1: Create Database with UTF-8 Unicode Support
+CREATE DATABASE IF NOT EXISTS \`pitchmaster\`
+  DEFAULT CHARACTER SET utf8mb4
+  DEFAULT COLLATE utf8mb4_unicode_ci;
+
+USE \`pitchmaster\`;
+
+-- Step 2: Create NoSQL Document Table for JSON Payloads
+CREATE TABLE IF NOT EXISTS \`schedule_backups\` (
+  \`id\` VARCHAR(128) NOT NULL,
+  \`name\` VARCHAR(255) NOT NULL,
+  \`data_json\` LONGTEXT NOT NULL COMMENT 'JSON-encoded complete AppData payload',
+  \`sync_token\` VARCHAR(128) NOT NULL COMMENT 'Optimistic concurrency revision token',
+  \`last_modified_by\` VARCHAR(255) NOT NULL,
+  \`last_modified_at\` DATETIME NOT NULL,
+  \`created_at\` DATETIME NOT NULL,
+  \`version_number\` INT NOT NULL DEFAULT 1,
+  PRIMARY KEY (\`id\`),
+  INDEX \`idx_last_modified_at\` (\`last_modified_at\`),
+  INDEX \`idx_sync_token\` (\`sync_token\`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;`}
+                  </pre>
+                </div>
+
+                {/* Schema Column Breakdown */}
+                <div className="border border-slate-200 rounded-xl overflow-hidden">
+                  <table className="w-full text-left border-collapse text-[11px]">
+                    <thead className="bg-slate-50 border-b border-slate-200 font-bold text-slate-700">
+                      <tr>
+                        <th className="py-2 px-3">Column</th>
+                        <th className="py-2 px-3">Type</th>
+                        <th className="py-2 px-3">Purpose & JSON Storage</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 text-slate-600">
+                      <tr>
+                        <td className="py-2 px-3 font-mono font-semibold text-indigo-700">id</td>
+                        <td className="py-2 px-3 font-mono">VARCHAR(128)</td>
+                        <td className="py-2 px-3">Unique document identifier (Primary Key, e.g. <code className="font-mono">main_schedule</code>).</td>
+                      </tr>
+                      <tr>
+                        <td className="py-2 px-3 font-mono font-semibold text-indigo-700">name</td>
+                        <td className="py-2 px-3 font-mono">VARCHAR(255)</td>
+                        <td className="py-2 px-3">Human-readable schedule backup name displayed in the UI.</td>
+                      </tr>
+                      <tr>
+                        <td className="py-2 px-3 font-mono font-semibold text-indigo-700">data_json</td>
+                        <td className="py-2 px-3 font-mono">LONGTEXT / JSON</td>
+                        <td className="py-2 px-3">
+                          <strong>Full AppData payload:</strong> Stores complete serialized JSON structure (teams, games, referees, slots, certifications, and rules). Supports up to 4GB in MySQL <code className="font-mono">LONGTEXT</code>.
+                        </td>
+                      </tr>
+                      <tr>
+                        <td className="py-2 px-3 font-mono font-semibold text-indigo-700">sync_token</td>
+                        <td className="py-2 px-3 font-mono">VARCHAR(128)</td>
+                        <td className="py-2 px-3">
+                          <strong>Optimistic Concurrency Lock:</strong> Cryptographic token updated on every save. If another user saves first, the token mismatch triggers the 3-way smart merge modal instead of overwriting.
+                        </td>
+                      </tr>
+                      <tr>
+                        <td className="py-2 px-3 font-mono font-semibold text-indigo-700">last_modified_by</td>
+                        <td className="py-2 px-3 font-mono">VARCHAR(255)</td>
+                        <td className="py-2 px-3">User display name or email who committed the revision.</td>
+                      </tr>
+                      <tr>
+                        <td className="py-2 px-3 font-mono font-semibold text-indigo-700">last_modified_at</td>
+                        <td className="py-2 px-3 font-mono">DATETIME</td>
+                        <td className="py-2 px-3">Timestamp of the most recent modification.</td>
+                      </tr>
+                      <tr>
+                        <td className="py-2 px-3 font-mono font-semibold text-indigo-700">version_number</td>
+                        <td className="py-2 px-3 font-mono">INT</td>
+                        <td className="py-2 px-3">Incremental revision counter (v1, v2, v3...).</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+            {/* SECTION 3: USER PRIVILEGES & QUICK VERIFICATION */}
+            <div className="border border-slate-200 rounded-2xl overflow-hidden bg-white shadow-2xs">
+              <div className="px-5 py-3.5 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <ShieldCheck className="w-4 h-4 text-indigo-600" />
+                  <h4 className="font-bold text-slate-900 text-xs">
+                    3. MySQL User Permissions & Quick Verification
+                  </h4>
+                </div>
+              </div>
+
+              <div className="p-5 space-y-4">
+                <p className="text-[11px] text-slate-600 leading-relaxed">
+                  To create a dedicated MySQL user with permissions for the backup table:
+                </p>
+
+                <pre className="p-3 bg-slate-900 text-slate-200 rounded-xl font-mono text-[11px] overflow-x-auto leading-relaxed border border-slate-800">
+{`CREATE USER IF NOT EXISTS 'pitch_user'@'%' IDENTIFIED BY 'your_password';
+GRANT ALL PRIVILEGES ON \`pitchmaster\`.* TO 'pitch_user'@'%';
+FLUSH PRIVILEGES;`}
+                </pre>
+
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
+                  <div className="text-[11px] text-slate-500">
+                    Full offline guide also available at <code className="font-mono bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded font-semibold">/MYSQL_SETUP.md</code> in the repository.
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      type="button"
+                      onClick={handleTestConnection}
+                      disabled={isTestingConn}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold transition-colors shadow-2xs disabled:opacity-60"
+                    >
+                      <RefreshCw className={`w-3.5 h-3.5 text-slate-500 ${isTestingConn ? 'animate-spin' : ''}`} />
+                      <span>{isTestingConn ? 'Testing...' : 'Test Connection'}</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('backups')}
+                      className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition-colors shadow-xs"
+                    >
+                      <span>Go to Backups</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+
+                {connTestResult && (
+                  <div
+                    className={`p-3 rounded-xl text-xs font-medium ${
+                      connTestResult.success
+                        ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                        : 'bg-rose-100 text-rose-800 border border-rose-300'
+                    }`}
+                  >
+                    {connTestResult.message}
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
+        )}
+      </div>
 
           {/* Footer */}
           <div className="px-6 py-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between">

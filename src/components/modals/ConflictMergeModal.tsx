@@ -23,6 +23,7 @@ interface ConflictMergeModalProps {
   remoteData: AppData;
   remoteModifier?: string;
   remoteModifiedTime?: string;
+  sourceName?: string;
   onApplyMerge: (mergedData: AppData, strategy: 'smart' | 'overwrite_remote' | 'accept_remote') => void;
   onClose: () => void;
 }
@@ -32,6 +33,7 @@ export const ConflictMergeModal: React.FC<ConflictMergeModalProps> = ({
   remoteData,
   remoteModifier = 'Another administrator',
   remoteModifiedTime,
+  sourceName = 'MySQL Backup',
   onApplyMerge,
   onClose,
 }) => {
@@ -75,7 +77,7 @@ export const ConflictMergeModal: React.FC<ConflictMergeModalProps> = ({
             </div>
             <div>
               <h2 className="text-base font-bold tracking-tight">
-                Concurrency Conflict Detected in Google Drive
+                Concurrency Conflict Detected in {sourceName}
               </h2>
               <p className="text-xs text-amber-100">
                 This schedule was modified by <strong>{remoteModifier}</strong> at {formattedRemoteTime} while you were working on it.
@@ -214,10 +216,10 @@ export const ConflictMergeModal: React.FC<ConflictMergeModalProps> = ({
                   />
                   <div>
                     <span className="font-bold text-slate-900 text-xs block">
-                      Keep My Local Changes & Overwrite Google Drive
+                      Keep My Local Changes & Overwrite {sourceName}
                     </span>
                     <p className="text-[11px] text-slate-600 mt-0.5 leading-relaxed">
-                      Replaces the remote file in Google Drive with your current browser state. Changes made by {remoteModifier} will be superseded.
+                      Replaces the remote document in {sourceName} with your current browser state. Changes made by {remoteModifier} will be superseded.
                     </p>
                   </div>
                 </div>
@@ -242,7 +244,7 @@ export const ConflictMergeModal: React.FC<ConflictMergeModalProps> = ({
                   />
                   <div>
                     <span className="font-bold text-slate-900 text-xs block">
-                      Discard Local & Accept Latest from Google Drive
+                      Discard Local & Accept Latest from {sourceName}
                     </span>
                     <p className="text-[11px] text-slate-600 mt-0.5 leading-relaxed">
                       Replaces your working session with the version saved by {remoteModifier}. Any unsaved local edits will be discarded.

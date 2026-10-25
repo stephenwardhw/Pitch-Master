@@ -22,8 +22,8 @@ import { DatasetModal } from './components/modals/DatasetModal';
 import { ManageTeamSizesModal } from './components/modals/ManageTeamSizesModal';
 import { RegenerateScheduleModal } from './components/modals/RegenerateScheduleModal';
 import { CsvImportModal, CsvImportType } from './components/modals/CsvImportModal';
-import { GoogleDriveSyncModal } from './components/modals/GoogleDriveSyncModal';
-import { Github, Cloud } from 'lucide-react';
+import { MySqlBackupModal } from './components/modals/MySqlBackupModal';
+import { Github, Database } from 'lucide-react';
 
 export type AppMode = 'landing' | 'admin' | 'portal';
 
@@ -107,7 +107,7 @@ export default function App() {
   const [activeMapField, setActiveMapField] = useState<Field | null>(null);
   const [activeEditingGame, setActiveEditingGame] = useState<Game | null>(null);
   const [isDatasetModalOpen, setIsDatasetModalOpen] = useState(false);
-  const [isGoogleDriveModalOpen, setIsGoogleDriveModalOpen] = useState(false);
+  const [isMySqlBackupModalOpen, setIsMySqlBackupModalOpen] = useState(false);
   const [isTeamSizesModalOpen, setIsTeamSizesModalOpen] = useState(false);
   const [isRegenerateModalOpen, setIsRegenerateModalOpen] = useState(false);
   const [isCsvImportOpen, setIsCsvImportOpen] = useState(false);
@@ -388,7 +388,7 @@ export default function App() {
         appData={appData}
         conflicts={conflicts}
         onOpenDatasetModal={() => setIsDatasetModalOpen(true)}
-        onOpenGoogleDriveModal={() => setIsGoogleDriveModalOpen(true)}
+        onOpenMySqlBackupModal={() => setIsMySqlBackupModalOpen(true)}
         onOpenPortal={handleOpenPortal}
         onGoToHome={handleGoToLanding}
       />
@@ -539,11 +539,11 @@ export default function App() {
             </button>
             <span aria-hidden="true">·</span>
             <button
-              onClick={() => setIsGoogleDriveModalOpen(true)}
-              className="text-blue-600 hover:underline inline-flex items-center gap-1 font-medium"
+              onClick={() => setIsMySqlBackupModalOpen(true)}
+              className="text-indigo-600 hover:underline inline-flex items-center gap-1 font-medium"
             >
-              <Cloud className="w-3 h-3 text-blue-600" />
-              <span>Google Drive Sync</span>
+              <Database className="w-3 h-3 text-indigo-600" />
+              <span>MySQL Backup</span>
             </button>
             <span aria-hidden="true">·</span>
             <button
@@ -616,18 +616,18 @@ export default function App() {
           onUpdateData={handleUpdateFullData}
           onClose={() => setIsDatasetModalOpen(false)}
           onOpenCsvImport={handleOpenCsvImport}
-          onOpenGoogleDriveModal={() => setIsGoogleDriveModalOpen(true)}
+          onOpenMySqlBackupModal={() => setIsMySqlBackupModalOpen(true)}
         />
       )}
 
-      {/* 5. Google Drive / Shared Drive Synchronization Modal */}
-      {isGoogleDriveModalOpen && (
-        <GoogleDriveSyncModal
+      {/* 5. MySQL NoSQL Document Backup Modal */}
+      {isMySqlBackupModalOpen && (
+        <MySqlBackupModal
           appData={appData}
           onUpdateAppData={(updatedData) => {
             handleUpdateFullData(updatedData);
           }}
-          onClose={() => setIsGoogleDriveModalOpen(false)}
+          onClose={() => setIsMySqlBackupModalOpen(false)}
         />
       )}
 

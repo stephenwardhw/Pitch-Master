@@ -103,16 +103,34 @@ export interface SeasonConfig {
   blackoutDates: string[]; // Dates when games are not to be scheduled (holidays/breaks)
 }
 
-export interface GoogleDriveSyncInfo {
-  fileId: string;
-  fileName: string;
-  driveId?: string; // Shared Drive ID if in a shared drive
-  driveName?: string; // Shared Drive Name if in a shared drive
-  modifiedTime: string; // ISO string reported by Google Drive
-  headRevisionId?: string;
+export interface MySqlBackupSyncInfo {
+  backupId: string;
+  backupName: string;
   syncToken: string; // unique modification token to detect concurrent edits
+  lastModifiedAt: string; // ISO timestamp in MySQL record
+  lastModifiedBy: string; // user name or identifier of editor
   lastSyncedAt: string; // local ISO timestamp when last pulled or saved
-  lastModifiedBy?: string; // user name or email of editor
+  versionNumber?: number;
+}
+
+export interface MySqlBackupMetadata {
+  id: string;
+  name: string;
+  syncToken: string;
+  lastModifiedBy: string;
+  lastModifiedAt: string;
+  createdAt: string;
+  versionNumber: number;
+  dataSize?: number;
+}
+
+export interface MySqlConfig {
+  host: string;
+  port: number;
+  user: string;
+  password?: string;
+  database: string;
+  tableName?: string;
 }
 
 export interface AppData {
@@ -129,7 +147,7 @@ export interface AppData {
   lastModified: string;
   syncToken?: string;
   lastModifiedBy?: string;
-  googleDriveSync?: GoogleDriveSyncInfo;
+  mysqlBackupSync?: MySqlBackupSyncInfo;
 }
 
 export type ConflictType =

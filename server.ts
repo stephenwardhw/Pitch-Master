@@ -2,6 +2,7 @@ import express from 'express';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
+import { mysqlRouter } from './src/server/mysqlRouter';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -10,6 +11,9 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(express.json({ limit: '15mb' }));
+
+// MySQL NoSQL Backup API routes
+app.use('/api/mysql', mysqlRouter);
 
 // Dedicated route to serve league_schedule.json
 app.get('/league_schedule.json', (_req, res) => {

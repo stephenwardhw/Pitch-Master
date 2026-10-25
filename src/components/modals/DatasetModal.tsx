@@ -21,7 +21,7 @@ import {
   Calendar,
   MapPin,
   UserCheck,
-  Cloud,
+  Database,
 } from 'lucide-react';
 import {
   exportTeamsToCsv,
@@ -36,7 +36,7 @@ interface DatasetModalProps {
   onUpdateData: (newData: AppData) => void;
   onClose: () => void;
   onOpenCsvImport?: (type?: 'teams' | 'fields' | 'schedule' | 'referees') => void;
-  onOpenGoogleDriveModal?: () => void;
+  onOpenMySqlBackupModal?: () => void;
 }
 
 export const DatasetModal: React.FC<DatasetModalProps> = ({
@@ -44,7 +44,7 @@ export const DatasetModal: React.FC<DatasetModalProps> = ({
   onUpdateData,
   onClose,
   onOpenCsvImport,
-  onOpenGoogleDriveModal,
+  onOpenMySqlBackupModal,
 }) => {
   const [fileNameInput, setFileNameInput] = useState(appData.fileName || 'soccer_schedule.json');
   const [statusMessage, setStatusMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
@@ -250,26 +250,26 @@ export const DatasetModal: React.FC<DatasetModalProps> = ({
             </div>
           </div>
 
-          {/* Google Drive / Shared Drive Cloud Storage Card */}
-          {onOpenGoogleDriveModal && (
-            <div className="p-3.5 bg-blue-50/70 border border-blue-200 rounded-xl flex items-center justify-between gap-3">
+          {/* MySQL NoSQL Backup Storage Card */}
+          {onOpenMySqlBackupModal && (
+            <div className="p-3.5 bg-indigo-50/70 border border-indigo-200 rounded-xl flex items-center justify-between gap-3">
               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center shrink-0">
-                  <Cloud className="w-4 h-4" />
+                <div className="w-8 h-8 rounded-lg bg-indigo-600 text-white flex items-center justify-center shrink-0">
+                  <Database className="w-4 h-4" />
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="font-bold text-slate-900 text-xs">Google Drive & Shared Drive Sync</span>
-                    {appData.googleDriveSync && (
+                    <span className="font-bold text-slate-900 text-xs">MySQL NoSQL Backup & Concurrency Sync</span>
+                    {appData.mysqlBackupSync && (
                       <span className="px-1.5 py-0.2 bg-emerald-100 text-emerald-800 text-[10px] rounded-full font-semibold">
-                        Connected
+                        Synced
                       </span>
                     )}
                   </div>
                   <p className="text-[11px] text-slate-600">
-                    {appData.googleDriveSync
-                      ? `Linked to "${appData.googleDriveSync.fileName}" with concurrency conflict detection`
-                      : 'Store and retrieve your schedule file directly from Google Drive or Shared Drives'}
+                    {appData.mysqlBackupSync
+                      ? `Linked to "${appData.mysqlBackupSync.backupName}" (Rev: ${appData.mysqlBackupSync.syncToken.substring(0, 16)}...) with concurrency protection`
+                      : 'Store schedule JSON documents into MySQL database with conflict detection'}
                   </p>
                 </div>
               </div>
@@ -278,11 +278,11 @@ export const DatasetModal: React.FC<DatasetModalProps> = ({
                 type="button"
                 onClick={() => {
                   onClose();
-                  onOpenGoogleDriveModal();
+                  onOpenMySqlBackupModal();
                 }}
-                className="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shrink-0 transition-colors shadow-2xs"
+                className="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold shrink-0 transition-colors shadow-2xs"
               >
-                {appData.googleDriveSync ? 'Manage Sync' : 'Open Google Drive'}
+                {appData.mysqlBackupSync ? 'Manage Backup' : 'Open MySQL'}
               </button>
             </div>
           )}

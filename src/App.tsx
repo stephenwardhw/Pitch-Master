@@ -390,18 +390,32 @@ export default function App() {
     [updateAndSaveAppData]
   );
 
-  // Season config save
+  // Season config save - Restricted to admin and superadmin
   const handleSaveSeasonConfig = useCallback((config: SeasonConfig) => {
+    if (adminUser?.role !== 'admin' && adminUser?.role !== 'superadmin') {
+      setScheduleNotice({
+        message: 'Permission denied: Season configuration can only be modified by Admins or Superadmins.',
+        type: 'error',
+      });
+      return;
+    }
     updateAndSaveAppData((prev) => ({
       ...prev,
       seasonConfig: config,
     }));
-  }, [updateAndSaveAppData]);
+  }, [adminUser, updateAndSaveAppData]);
 
-  // Re-generate schedule - opens modern in-app modal (no browser popup blockers)
+  // Re-generate schedule - opens modern in-app modal (Restricted to admin and superadmin)
   const handleRegenerateSchedule = useCallback(() => {
+    if (adminUser?.role !== 'admin' && adminUser?.role !== 'superadmin') {
+      setScheduleNotice({
+        message: 'Permission denied: Schedule generation requires Admin or Superadmin permissions.',
+        type: 'error',
+      });
+      return;
+    }
     setIsRegenerateModalOpen(true);
-  }, []);
+  }, [adminUser]);
 
   // Executes schedule generation from modal confirmation
   const handleConfirmRegenerate = useCallback((targetDivisionId?: string) => {
@@ -630,6 +644,7 @@ export default function App() {
             appData={appData}
             onSaveSeasonConfig={handleSaveSeasonConfig}
             onRegenerateSchedule={handleRegenerateSchedule}
+            canEdit={adminUser?.role === 'admin' || adminUser?.role === 'superadmin'}
           />
         )}
       </main>

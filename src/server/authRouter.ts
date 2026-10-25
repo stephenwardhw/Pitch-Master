@@ -66,13 +66,16 @@ authRouter.post('/logout', (req, res) => {
   res.json({ success: true, message: 'Logged out successfully' });
 });
 
-// 5. List admin users
+// 5. List admin users (Restricted to superadmin)
 authRouter.get('/users', async (req, res) => {
   try {
     const token = getBearerToken(req);
     const user = validateSessionToken(token);
     if (!user) {
-      return res.status(401).json({ error: 'Unauthorized: Admin session required' });
+      return res.status(401).json({ error: 'Unauthorized: Session required' });
+    }
+    if (user.role !== 'superadmin') {
+      return res.status(403).json({ error: 'Forbidden: Superadmin role required to manage users' });
     }
 
     const result = await listAdminUsers();
@@ -82,13 +85,16 @@ authRouter.get('/users', async (req, res) => {
   }
 });
 
-// 6. Create admin user
+// 6. Create admin user (Restricted to superadmin)
 authRouter.post('/users', async (req, res) => {
   try {
     const token = getBearerToken(req);
     const user = validateSessionToken(token);
     if (!user) {
-      return res.status(401).json({ error: 'Unauthorized: Admin session required' });
+      return res.status(401).json({ error: 'Unauthorized: Session required' });
+    }
+    if (user.role !== 'superadmin') {
+      return res.status(403).json({ error: 'Forbidden: Superadmin role required to create users' });
     }
 
     const { username, password, displayName, role } = req.body;
@@ -114,9 +120,12 @@ authRouter.post('/change-password', async (req, res) => {
     }
 
     const { newPassword, targetUsername } = req.body;
-    // Admins can change their own password, superadmins can change anyone's
-    const target = (user.role === 'superadmin' && targetUsername) ? targetUsername : user.username;
+    // Admins can change their own password; changing another user's requires superadmin
+    if (targetUsername && targetUsername.toLowerCase() !== user.username.toLowerCase() && user.role !== 'superadmin') {
+      return res.status(403).json({ error: 'Forbidden: Superadmin role required to change other users passwords' });
+    }
 
+    const target = (user.role === 'superadmin' && targetUsername) ? targetUsername : user.username;
     const result = await changeAdminPassword(target, newPassword);
     res.json(result);
   } catch (err: any) {
@@ -124,13 +133,16 @@ authRouter.post('/change-password', async (req, res) => {
   }
 });
 
-// 8. Delete admin user
+// 8. Delete admin user (Restricted to superadmin)
 authRouter.post('/delete-user', async (req, res) => {
   try {
     const token = getBearerToken(req);
     const user = validateSessionToken(token);
     if (!user) {
       return res.status(401).json({ error: 'Unauthorized' });
+    }
+    if (user.role !== 'superadmin') {
+      return res.status(403).json({ error: 'Forbidden: Superadmin role required to delete users' });
     }
 
     const { targetUsername } = req.body;
@@ -145,13 +157,16 @@ authRouter.post('/delete-user', async (req, res) => {
   }
 });
 
-// 9. Update admin user (role & display name)
+// 9. Update admin user (role & display name - Restricted to superadmin)
 authRouter.post('/update-user', async (req, res) => {
   try {
     const token = getBearerToken(req);
     const user = validateSessionToken(token);
     if (!user) {
       return res.status(401).json({ error: 'Unauthorized' });
+    }
+    if (user.role !== 'superadmin') {
+      return res.status(403).json({ error: 'Forbidden: Superadmin role required to modify user roles' });
     }
 
     const { targetUsername, displayName, role } = req.body;
@@ -165,3 +180,4 @@ authRouter.post('/update-user', async (req, res) => {
     res.status(500).json({ success: false, message: err.message });
   }
 });
+

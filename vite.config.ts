@@ -110,12 +110,26 @@ function leagueScheduleServerPlugin(): Plugin {
             }
 
             if (url === '/api/auth/users' && req.method === 'GET') {
+              const authHeader = req.headers.authorization || '';
+              const token = authHeader.startsWith('Bearer ') ? authHeader.substring(7) : (req.headers['x-admin-token'] as string) || '';
+              const currentUser = authSvc.validateSessionToken(token);
+              if (!currentUser || currentUser.role !== 'superadmin') {
+                res.statusCode = 403;
+                return res.end(JSON.stringify({ error: 'Forbidden: Superadmin role required' }));
+              }
               const list = await authSvc.listAdminUsers();
               res.statusCode = 200;
               return res.end(JSON.stringify(list));
             }
 
             if (url === '/api/auth/users' && req.method === 'POST') {
+              const authHeader = req.headers.authorization || '';
+              const token = authHeader.startsWith('Bearer ') ? authHeader.substring(7) : (req.headers['x-admin-token'] as string) || '';
+              const currentUser = authSvc.validateSessionToken(token);
+              if (!currentUser || currentUser.role !== 'superadmin') {
+                res.statusCode = 403;
+                return res.end(JSON.stringify({ error: 'Forbidden: Superadmin role required' }));
+              }
               const body = await parseBody();
               const result = await authSvc.createAdminUser(body);
               res.statusCode = result.success ? 200 : 400;
@@ -123,8 +137,16 @@ function leagueScheduleServerPlugin(): Plugin {
             }
 
             if (url === '/api/auth/change-password' && req.method === 'POST') {
+              const authHeader = req.headers.authorization || '';
+              const token = authHeader.startsWith('Bearer ') ? authHeader.substring(7) : (req.headers['x-admin-token'] as string) || '';
+              const currentUser = authSvc.validateSessionToken(token);
               const body = await parseBody();
-              const result = await authSvc.changeAdminPassword(body.username, body.newPassword);
+              const target = (currentUser?.role === 'superadmin' && body.targetUsername) ? body.targetUsername : (body.username || currentUser?.username);
+              if (body.targetUsername && body.targetUsername.toLowerCase() !== currentUser?.username.toLowerCase() && currentUser?.role !== 'superadmin') {
+                res.statusCode = 403;
+                return res.end(JSON.stringify({ error: 'Forbidden: Superadmin role required' }));
+              }
+              const result = await authSvc.changeAdminPassword(target, body.newPassword);
               res.statusCode = result.success ? 200 : 400;
               return res.end(JSON.stringify(result));
             }
@@ -134,6 +156,10 @@ function leagueScheduleServerPlugin(): Plugin {
               const authHeader = req.headers.authorization || '';
               const token = authHeader.startsWith('Bearer ') ? authHeader.substring(7) : (req.headers['x-admin-token'] as string) || '';
               const currentUser = authSvc.validateSessionToken(token);
+              if (!currentUser || currentUser.role !== 'superadmin') {
+                res.statusCode = 403;
+                return res.end(JSON.stringify({ error: 'Forbidden: Superadmin role required' }));
+              }
               const result = await authSvc.deleteAdminUser(body.targetUsername, currentUser?.username);
               res.statusCode = result.success ? 200 : 400;
               return res.end(JSON.stringify(result));
@@ -141,6 +167,13 @@ function leagueScheduleServerPlugin(): Plugin {
 
             if (url === '/api/auth/update-user' && req.method === 'POST') {
               const body = await parseBody();
+              const authHeader = req.headers.authorization || '';
+              const token = authHeader.startsWith('Bearer ') ? authHeader.substring(7) : (req.headers['x-admin-token'] as string) || '';
+              const currentUser = authSvc.validateSessionToken(token);
+              if (!currentUser || currentUser.role !== 'superadmin') {
+                res.statusCode = 403;
+                return res.end(JSON.stringify({ error: 'Forbidden: Superadmin role required' }));
+              }
               const result = await authSvc.updateAdminUser(body.targetUsername, { displayName: body.displayName, role: body.role });
               res.statusCode = result.success ? 200 : 400;
               return res.end(JSON.stringify(result));

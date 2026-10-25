@@ -321,13 +321,13 @@ export const Navbar: React.FC<NavbarProps> = ({
               </button>
             )}
 
-            {/* Direct Admin Users button */}
-            {adminUser && onOpenAdminUsersModal && (
+            {/* Direct Admin Users button - Restricted to Superadmin */}
+            {adminUser && adminUser.role === 'superadmin' && onOpenAdminUsersModal && (
               <button
                 type="button"
                 onClick={onOpenAdminUsersModal}
                 className="hidden xl:inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-medium transition-colors shadow-2xs cursor-pointer shrink-0"
-                title="Manage Admin Logins & Permissions (MySQL admin_users table)"
+                title="Manage Admin Logins & Permissions (Superadmin only)"
               >
                 <Users className="w-3.5 h-3.5 text-indigo-600" />
                 <span>Users</span>
@@ -412,7 +412,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                       <span className="text-[10px] text-slate-500 font-mono block">@{adminUser.username} · {adminUser.role}</span>
                     </div>
 
-                    {onOpenAdminUsersModal && (
+                    {adminUser.role === 'superadmin' && onOpenAdminUsersModal && (
                       <button
                         type="button"
                         onClick={() => {
@@ -422,7 +422,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                         className="w-full flex items-center gap-2 px-2.5 py-2 text-slate-700 hover:bg-indigo-50 hover:text-indigo-900 rounded-lg text-left transition-colors font-medium cursor-pointer"
                       >
                         <Users className="w-3.5 h-3.5 text-indigo-600" />
-                        <span>Admin Users (MySQL)</span>
+                        <span>Manage Admin Users</span>
                       </button>
                     )}
 
@@ -575,7 +575,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   <span className="font-mono text-[10px] bg-slate-200 px-1.5 py-0.5 rounded text-slate-700">{adminUser.role}</span>
                 </div>
 
-                {onOpenAdminUsersModal && (
+                {adminUser.role === 'superadmin' && onOpenAdminUsersModal && (
                   <button
                     onClick={() => {
                       setMobileMenuOpen(false);

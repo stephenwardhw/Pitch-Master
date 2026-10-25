@@ -77,8 +77,38 @@ export const AdminUsersModal: React.FC<AdminUsersModalProps> = ({
   };
 
   useEffect(() => {
-    fetchUsers();
-  }, []);
+    if (currentUser.role === 'superadmin') {
+      fetchUsers();
+    }
+  }, [currentUser.role]);
+
+  if (currentUser.role !== 'superadmin') {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs font-sans">
+        <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 text-center space-y-4 border border-slate-200 animate-in fade-in zoom-in-95">
+          <div className="w-12 h-12 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center mx-auto">
+            <ShieldAlert className="w-6 h-6" />
+          </div>
+          <div>
+            <h3 className="font-bold text-slate-900 text-base">Superadmin Access Required</h3>
+            <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">
+              User login and role administration is restricted exclusively to <strong>Super Administrator</strong> accounts.
+            </p>
+            <p className="text-xs text-slate-600 mt-2">
+              Your current account role: <span className="font-mono font-semibold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-200">{currentUser.role}</span>
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="w-full py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs transition-colors cursor-pointer"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();

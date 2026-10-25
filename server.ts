@@ -69,6 +69,11 @@ app.post('/api/publish-schedule', (req, res) => {
   }
 });
 
+// Handle 404 for any unmatched /api/* routes with JSON, never HTML
+app.all('/api/*', (req, res) => {
+  res.status(404).json({ error: `API route not found: ${req.method} ${req.originalUrl}` });
+});
+
 // Serve static assets from the production build directory (dist)
 const distPath = path.join(__dirname, 'dist');
 app.use(express.static(distPath));

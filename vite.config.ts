@@ -45,8 +45,9 @@ function leagueScheduleServerPlugin(): Plugin {
 
       // Handle /api/mysql in Vite dev server
       server.middlewares.use(async (req, res, next) => {
-        const url = req.url || '';
-        if (!url.startsWith('/api/mysql')) {
+        const rawUrl = req.url || '';
+        const url = rawUrl.split('?')[0].replace(/\/+$/, '') || '/';
+        if (!rawUrl.startsWith('/api/mysql')) {
           return next();
         }
 
@@ -105,7 +106,7 @@ function leagueScheduleServerPlugin(): Plugin {
           }
 
           if (url.startsWith('/api/mysql/backups/') && req.method === 'GET') {
-            const id = decodeURIComponent(url.replace('/api/mysql/backups/', '').split('?')[0]);
+            const id = decodeURIComponent(url.replace('/api/mysql/backups/', ''));
             const backup = await mysqlSvc.getBackup(id);
             if (!backup.record || !backup.appData) {
               res.statusCode = 404;
@@ -136,7 +137,8 @@ function leagueScheduleServerPlugin(): Plugin {
             return res.end(JSON.stringify(result));
           }
 
-          next();
+          res.statusCode = 404;
+          return res.end(JSON.stringify({ error: `API route not found: ${req.method} ${rawUrl}` }));
         } catch (err: any) {
           res.statusCode = 500;
           res.end(JSON.stringify({ error: err.message || 'Internal server error' }));

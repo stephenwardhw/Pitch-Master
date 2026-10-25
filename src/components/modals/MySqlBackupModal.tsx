@@ -105,7 +105,24 @@ CREATE TABLE IF NOT EXISTS \`schedule_backups\` (
   PRIMARY KEY (\`id\`),
   INDEX \`idx_last_modified_at\` (\`last_modified_at\`),
   INDEX \`idx_sync_token\` (\`sync_token\`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;`;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Step 3: Create Admin Users Table for MySQL Authentication
+CREATE TABLE IF NOT EXISTS \`admin_users\` (
+  \`id\` INT AUTO_INCREMENT PRIMARY KEY,
+  \`username\` VARCHAR(64) NOT NULL UNIQUE,
+  \`password_hash\` VARCHAR(255) NOT NULL,
+  \`display_name\` VARCHAR(128) NOT NULL,
+  \`role\` VARCHAR(32) NOT NULL DEFAULT 'admin',
+  \`created_at\` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  \`last_login_at\` DATETIME NULL,
+  INDEX \`idx_username\` (\`username\`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Step 4: Seed Initial Administrator (Default: admin / pitchmaster)
+INSERT INTO \`admin_users\` (\`username\`, \`password_hash\`, \`display_name\`, \`role\`)
+VALUES ('admin', SHA2('pitchmaster', 256), 'League Administrator', 'superadmin')
+ON DUPLICATE KEY UPDATE \`display_name\` = VALUES(\`display_name\`);`;
     navigator.clipboard.writeText(text);
     setCopiedSql(true);
     setTimeout(() => setCopiedSql(false), 2000);
@@ -1049,7 +1066,24 @@ CREATE TABLE IF NOT EXISTS \`schedule_backups\` (
   PRIMARY KEY (\`id\`),
   INDEX \`idx_last_modified_at\` (\`last_modified_at\`),
   INDEX \`idx_sync_token\` (\`sync_token\`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;`}
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Step 3: Create Admin Users Table for MySQL Authentication
+CREATE TABLE IF NOT EXISTS \`admin_users\` (
+  \`id\` INT AUTO_INCREMENT PRIMARY KEY,
+  \`username\` VARCHAR(64) NOT NULL UNIQUE,
+  \`password_hash\` VARCHAR(255) NOT NULL,
+  \`display_name\` VARCHAR(128) NOT NULL,
+  \`role\` VARCHAR(32) NOT NULL DEFAULT 'admin',
+  \`created_at\` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  \`last_login_at\` DATETIME NULL,
+  INDEX \`idx_username\` (\`username\`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Step 4: Seed Initial Administrator (Default: admin / pitchmaster)
+INSERT INTO \`admin_users\` (\`username\`, \`password_hash\`, \`display_name\`, \`role\`)
+VALUES ('admin', SHA2('pitchmaster', 256), 'League Administrator', 'superadmin')
+ON DUPLICATE KEY UPDATE \`display_name\` = VALUES(\`display_name\`);`}
                   </pre>
                 </div>
 

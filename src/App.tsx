@@ -23,6 +23,9 @@ import { ManageTeamSizesModal } from './components/modals/ManageTeamSizesModal';
 import { RegenerateScheduleModal } from './components/modals/RegenerateScheduleModal';
 import { CsvImportModal, CsvImportType } from './components/modals/CsvImportModal';
 import { MySqlBackupModal } from './components/modals/MySqlBackupModal';
+import { AdminLoginScreen } from './components/AdminLoginScreen';
+import { AdminUsersModal } from './components/modals/AdminUsersModal';
+import { AdminUser, checkAdminSession, getStoredUser, logoutAdmin } from './utils/authClient';
 import { Github, Database } from 'lucide-react';
 
 export type AppMode = 'landing' | 'admin' | 'portal';
@@ -68,6 +71,17 @@ export default function App() {
   const [currentTab, setCurrentTab] = useState<NavTab>('schedule');
   const [appMode, setAppMode] = useState<AppMode>(() => checkRouteMode());
 
+  // MySQL Admin Authentication State
+  const [adminUser, setAdminUser] = useState<AdminUser | null>(() => getStoredUser());
+  const [isAdminUsersModalOpen, setIsAdminUsersModalOpen] = useState(false);
+
+  // Verify stored session on mount
+  useEffect(() => {
+    checkAdminSession().then((user) => {
+      setAdminUser(user);
+    });
+  }, []);
+
   // Sync mode with browser back/forward buttons
   useEffect(() => {
     const handlePopState = () => {
@@ -89,10 +103,15 @@ export default function App() {
   }, []);
 
   const handleSwitchToAdmin = useCallback(() => {
-    // Perform a true browser navigation to /admin so the web server (Apache)
-    // intercepts the HTTP request and enforces Basic Authentication / security rules.
-    // Client-side pushState or React state switching bypasses web server HTTP authentication.
-    window.location.assign('/admin');
+    setAppMode('admin');
+    try {
+      window.history.pushState(null, '', '/admin');
+    } catch {}
+  }, []);
+
+  const handleLogoutAdmin = useCallback(async () => {
+    await logoutAdmin();
+    setAdminUser(null);
   }, []);
 
   const handleGoToLanding = useCallback(() => {
@@ -379,6 +398,23 @@ export default function App() {
   }
 
   // ================= 3. LEAGUE ADMIN MODE (/admin) =================
+  // If not authenticated, prompt for MySQL admin login
+  if (!adminUser) {
+    return (
+      <AdminLoginScreen
+        onLoginSuccess={(user) => {
+          setAdminUser(user);
+          updateAndSaveAppData((prev) => ({
+            ...prev,
+            lastModifiedBy: user.displayName || user.username,
+          }));
+        }}
+        onGoToHome={handleGoToLanding}
+        onGoToPortal={() => handleOpenPortal(false)}
+      />
+    );
+  }
+
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col text-slate-900 font-sans">
       {/* Top Navigation Bar with Cookie Tracked File Indicator, Home button & Portal Launcher */}
@@ -391,6 +427,9 @@ export default function App() {
         onOpenMySqlBackupModal={() => setIsMySqlBackupModalOpen(true)}
         onOpenPortal={handleOpenPortal}
         onGoToHome={handleGoToLanding}
+        adminUser={adminUser}
+        onOpenAdminUsersModal={() => setIsAdminUsersModalOpen(true)}
+        onLogoutAdmin={handleLogoutAdmin}
       />
 
       {/* Main Content Viewport */}
@@ -656,6 +695,14 @@ export default function App() {
           initialType={csvImportInitialType}
           onUpdateAppData={handleUpdateFullData}
           onClose={() => setIsCsvImportOpen(false)}
+        />
+      )}
+
+      {/* 9. MySQL Admin Users Management Modal */}
+      {isAdminUsersModalOpen && adminUser && (
+        <AdminUsersModal
+          currentUser={adminUser}
+          onClose={() => setIsAdminUsersModalOpen(false)}
         />
       )}
     </div>

@@ -47,7 +47,7 @@ function leagueScheduleServerPlugin(): Plugin {
       server.middlewares.use(async (req, res, next) => {
         const rawUrl = req.url || '';
         const url = rawUrl.split('?')[0].replace(/\/+$/, '') || '/';
-        if (!rawUrl.startsWith('/api/mysql')) {
+        if (!rawUrl.startsWith('/api/mysql') && !rawUrl.startsWith('/api/auth')) {
           return next();
         }
 
@@ -69,6 +69,70 @@ function leagueScheduleServerPlugin(): Plugin {
         res.setHeader('Content-Type', 'application/json');
 
         try {
+          // Handle /api/auth routes
+          if (url.startsWith('/api/auth')) {
+            const authSvc = await import('./src/server/authService');
+
+            if (url === '/api/auth/status' && req.method === 'GET') {
+              const status = await authSvc.initializeAuthTable();
+              res.statusCode = 200;
+              return res.end(JSON.stringify(status));
+            }
+
+            if (url === '/api/auth/login' && req.method === 'POST') {
+              const body = await parseBody();
+              const result = await authSvc.authenticateAdmin(body.username, body.password);
+              res.statusCode = result.success ? 200 : 401;
+              return res.end(JSON.stringify(result));
+            }
+
+            if (url === '/api/auth/me' && req.method === 'GET') {
+              const authHeader = req.headers.authorization || '';
+              const token = authHeader.startsWith('Bearer ')
+                ? authHeader.substring(7)
+                : (req.headers['x-admin-token'] as string) || '';
+              const user = authSvc.validateSessionToken(token);
+              if (!user) {
+                res.statusCode = 401;
+                return res.end(JSON.stringify({ authenticated: false, message: 'Invalid or expired session' }));
+              }
+              res.statusCode = 200;
+              return res.end(JSON.stringify({ authenticated: true, user }));
+            }
+
+            if (url === '/api/auth/logout' && req.method === 'POST') {
+              const body = await parseBody();
+              const authHeader = req.headers.authorization || '';
+              const token = authHeader.startsWith('Bearer ') ? authHeader.substring(7) : body.token;
+              authSvc.logoutSession(token);
+              res.statusCode = 200;
+              return res.end(JSON.stringify({ success: true, message: 'Logged out' }));
+            }
+
+            if (url === '/api/auth/users' && req.method === 'GET') {
+              const list = await authSvc.listAdminUsers();
+              res.statusCode = 200;
+              return res.end(JSON.stringify(list));
+            }
+
+            if (url === '/api/auth/users' && req.method === 'POST') {
+              const body = await parseBody();
+              const result = await authSvc.createAdminUser(body);
+              res.statusCode = result.success ? 200 : 400;
+              return res.end(JSON.stringify(result));
+            }
+
+            if (url === '/api/auth/change-password' && req.method === 'POST') {
+              const body = await parseBody();
+              const result = await authSvc.changeAdminPassword(body.username, body.newPassword);
+              res.statusCode = result.success ? 200 : 400;
+              return res.end(JSON.stringify(result));
+            }
+
+            res.statusCode = 404;
+            return res.end(JSON.stringify({ error: `Auth route not found: ${req.method} ${rawUrl}` }));
+          }
+
           // Dynamic import of mysqlService
           const mysqlSvc = await import('./src/server/mysqlService');
 

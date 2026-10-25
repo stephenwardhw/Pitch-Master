@@ -73,20 +73,51 @@ CREATE TABLE IF NOT EXISTS `schedule_backups` (
   INDEX `idx_last_modified_at` (`last_modified_at`),
   INDEX `idx_sync_token` (`sync_token`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Step 3: Create the admin_users table for administrator authentication
+CREATE TABLE IF NOT EXISTS `admin_users` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `username` VARCHAR(64) NOT NULL UNIQUE,
+  `password_hash` VARCHAR(255) NOT NULL,
+  `display_name` VARCHAR(128) NOT NULL,
+  `role` VARCHAR(32) NOT NULL DEFAULT 'admin',
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `last_login_at` DATETIME NULL,
+  INDEX `idx_username` (`username`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Step 4 (Optional): Seed an initial administrator manually
+-- (PitchMaster automatically seeds 'admin' with password 'pitchmaster' if the table is empty)
+-- You can also insert users directly with SHA-256 or plain text:
+INSERT INTO `admin_users` (`username`, `password_hash`, `display_name`, `role`)
+VALUES ('steve', SHA2('your_password', 256), 'Steve Ward', 'superadmin')
+ON DUPLICATE KEY UPDATE `display_name` = VALUES(`display_name`);
 ```
 
-### Table Schema Breakdown
+### Table Schemas Breakdown
 
+#### 1. `schedule_backups` Table
 | Column | Type | Description |
 | :--- | :--- | :--- |
 | `id` | `VARCHAR(128)` | Unique document identifier (e.g. `main_schedule`, `spring_2026_v2`). Primary key. |
 | `name` | `VARCHAR(255)` | Human-readable schedule title displayed in the backup manager. |
-| `data_json` | `LONGTEXT` | Complete serialized JSON containing teams, games, divisions, fields, referees, and rules (supports up to 4GB in MySQL `LONGTEXT`). MySQL `JSON` data type is also compatible. |
+| `data_json` | `LONGTEXT` | Complete serialized JSON containing teams, games, divisions, fields, referees, and rules. |
 | `sync_token` | `VARCHAR(128)` | Token generated on each revision. Compared on save to detect simultaneous multi-user edits. |
 | `last_modified_by` | `VARCHAR(255)` | Name or email of the user/administrator who committed the last change. |
 | `last_modified_at` | `DATETIME` | Timestamp of the most recent save in UTC. |
 | `created_at` | `DATETIME` | Creation timestamp of the backup. |
 | `version_number` | `INT` | Monotonically increasing revision counter (1, 2, 3...). |
+
+#### 2. `admin_users` Table (Authentication)
+| Column | Type | Description |
+| :--- | :--- | :--- |
+| `id` | `INT AUTO_INCREMENT` | Unique user ID. Primary key. |
+| `username` | `VARCHAR(64)` | Login username (unique, case-insensitive). |
+| `password_hash` | `VARCHAR(255)` | Password hash. Supports salted PBKDF2, SHA-256 (via `SHA2(pass, 256)`), or plaintext. |
+| `display_name` | `VARCHAR(128)` | Administrator's display name shown in navigation bar and edit history. |
+| `role` | `VARCHAR(32)` | Permission level (`superadmin`, `admin`, `scheduler`, `viewer`). |
+| `created_at` | `DATETIME` | Timestamp of user creation. |
+| `last_login_at` | `DATETIME` | Timestamp of the most recent successful login. |
 
 ---
 

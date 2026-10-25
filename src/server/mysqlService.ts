@@ -43,7 +43,7 @@ export function getMySqlConfig(): MySqlConfig {
 /**
  * Creates connection pool or returns null if connection fails
  */
-async function getPool(): Promise<mysql.Pool | null> {
+export async function getPool(): Promise<mysql.Pool | null> {
   try {
     const pool = mysql.createPool({
       host: activeConfig.host,

@@ -1,0 +1,5 @@
+# PitchMaster Soccer Scheduler
+# Block all search engine spiders, crawlers, and AI indexers from crawling and indexing this site
+
+User-agent: *
+Disallow: /

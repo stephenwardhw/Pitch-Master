@@ -17,6 +17,12 @@ app.use(express.json({ limit: '15mb' }));
 app.use('/api/auth', authRouter);
 app.use('/api/mysql', mysqlRouter);
 
+// Dedicated route to serve robots.txt to prevent crawlers
+app.get('/robots.txt', (_req, res) => {
+  res.type('text/plain');
+  res.send('User-agent: *\nDisallow: /\n');
+});
+
 // Dedicated route to serve league_schedule.json
 app.get('/league_schedule.json', (_req, res) => {
   const candidatePaths = [

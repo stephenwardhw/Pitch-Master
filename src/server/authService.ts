@@ -440,3 +440,149 @@ export async function changeAdminPassword(
 
   return { success: false, message: `User "${username}" not found.` };
 }
+
+/**
+ * Deletes an admin user
+ */
+export async function deleteAdminUser(
+  targetUsername: string,
+  requestingUsername?: string
+): Promise<{ success: boolean; message: string }> {
+  const targetLower = targetUsername.trim().toLowerCase();
+  if (!targetLower) {
+    return { success: false, message: 'Target username is required.' };
+  }
+
+  if (requestingUsername && requestingUsername.trim().toLowerCase() === targetLower) {
+    return { success: false, message: 'You cannot delete your own account while logged in.' };
+  }
+
+  const pool = await getPool();
+  if (pool) {
+    try {
+      const [countRows]: any = await pool.query('SELECT COUNT(*) as cnt FROM `admin_users`');
+      if (countRows && countRows[0] && countRows[0].cnt <= 1) {
+        return { success: false, message: 'Cannot delete the only remaining administrator account.' };
+      }
+
+      const [res]: any = await pool.query('DELETE FROM `admin_users` WHERE LOWER(username) = ?', [targetLower]);
+      if (res.affectedRows === 0) {
+        return { success: false, message: `Admin user "${targetUsername}" not found.` };
+      }
+
+      // Evict any sessions for this user
+      for (const [token, session] of activeSessions.entries()) {
+        if (session.user.username.toLowerCase() === targetLower) {
+          activeSessions.delete(token);
+        }
+      }
+
+      return { success: true, message: `User "${targetUsername}" successfully removed from MySQL.` };
+    } catch (err: any) {
+      return { success: false, message: err.message };
+    }
+  }
+
+  const fallback = readFallbackUsers();
+  if (Object.keys(fallback).length <= 1) {
+    return { success: false, message: 'Cannot delete the only remaining administrator account.' };
+  }
+
+  if (!fallback[targetLower]) {
+    return { success: false, message: `Admin user "${targetUsername}" not found.` };
+  }
+
+  delete fallback[targetLower];
+  writeFallbackUsers(fallback);
+
+  for (const [token, session] of activeSessions.entries()) {
+    if (session.user.username.toLowerCase() === targetLower) {
+      activeSessions.delete(token);
+    }
+  }
+
+  return { success: true, message: `User "${targetUsername}" deleted from local admin store.` };
+}
+
+/**
+ * Updates an admin user's role or display name
+ */
+export async function updateAdminUser(
+  targetUsername: string,
+  updates: {
+    displayName?: string;
+    role?: 'superadmin' | 'admin' | 'scheduler' | 'viewer';
+  }
+): Promise<{ success: boolean; message: string; user?: AdminUser }> {
+  const targetLower = targetUsername.trim().toLowerCase();
+  if (!targetLower) {
+    return { success: false, message: 'Target username is required.' };
+  }
+
+  const pool = await getPool();
+  if (pool) {
+    try {
+      const fields: string[] = [];
+      const values: any[] = [];
+
+      if (updates.displayName !== undefined) {
+        fields.push('`display_name` = ?');
+        values.push(updates.displayName.trim());
+      }
+      if (updates.role !== undefined) {
+        fields.push('`role` = ?');
+        values.push(updates.role);
+      }
+
+      if (fields.length === 0) {
+        return { success: true, message: 'No updates specified.' };
+      }
+
+      values.push(targetLower);
+      const sql = `UPDATE \`admin_users\` SET ${fields.join(', ')} WHERE LOWER(username) = ?`;
+      const [res]: any = await pool.query(sql, values);
+
+      if (res.affectedRows === 0) {
+        return { success: false, message: `User "${targetUsername}" not found in MySQL.` };
+      }
+
+      // Query updated row
+      const [rows]: any = await pool.query('SELECT id, username, display_name, role FROM `admin_users` WHERE LOWER(username) = ?', [targetLower]);
+      const updatedUser: AdminUser | undefined = rows?.[0] ? {
+        id: rows[0].id,
+        username: rows[0].username,
+        displayName: rows[0].display_name,
+        role: rows[0].role,
+      } : undefined;
+
+      return { success: true, message: `User "${targetUsername}" updated successfully in MySQL.`, user: updatedUser };
+    } catch (err: any) {
+      return { success: false, message: err.message };
+    }
+  }
+
+  const fallback = readFallbackUsers();
+  if (!fallback[targetLower]) {
+    return { success: false, message: `User "${targetUsername}" not found.` };
+  }
+
+  if (updates.displayName !== undefined) {
+    fallback[targetLower].display_name = updates.displayName.trim();
+  }
+  if (updates.role !== undefined) {
+    fallback[targetLower].role = updates.role;
+  }
+  writeFallbackUsers(fallback);
+
+  const updatedRec = fallback[targetLower];
+  return {
+    success: true,
+    message: `User "${targetUsername}" updated in local store.`,
+    user: {
+      id: updatedRec.id,
+      username: updatedRec.username,
+      displayName: updatedRec.display_name,
+      role: updatedRec.role,
+    },
+  };
+}

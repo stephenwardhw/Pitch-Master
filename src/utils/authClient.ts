@@ -254,3 +254,42 @@ export async function changeAdminPassword(
   }
   return { success: false, message: result.error || 'Failed to change password.' };
 }
+
+/**
+ * Delete an admin user
+ */
+export async function deleteAdminUserApi(
+  targetUsername: string
+): Promise<{ success: boolean; message: string }> {
+  const result = await safeFetchAuthJson<{ success: boolean; message: string }>(
+    '/api/auth/delete-user',
+    {
+      method: 'POST',
+      body: JSON.stringify({ targetUsername }),
+    }
+  );
+  if (result.ok && result.data) {
+    return result.data;
+  }
+  return { success: false, message: result.error || 'Failed to delete user.' };
+}
+
+/**
+ * Update an admin user's role or display name
+ */
+export async function updateAdminUserApi(
+  targetUsername: string,
+  updates: { displayName?: string; role?: 'superadmin' | 'admin' | 'scheduler' | 'viewer' }
+): Promise<{ success: boolean; message: string; user?: AdminUser }> {
+  const result = await safeFetchAuthJson<{ success: boolean; message: string; user?: AdminUser }>(
+    '/api/auth/update-user',
+    {
+      method: 'POST',
+      body: JSON.stringify({ targetUsername, ...updates }),
+    }
+  );
+  if (result.ok && result.data) {
+    return result.data;
+  }
+  return { success: false, message: result.error || 'Failed to update user.' };
+}

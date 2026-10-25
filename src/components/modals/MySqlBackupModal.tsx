@@ -238,10 +238,13 @@ ON DUPLICATE KEY UPDATE \`display_name\` = VALUES(\`display_name\`);`;
   };
 
   // -------------------------------------------------------------
-  // SAVE CURRENT SCHEDULE TO MYSQL (WITH CONFLICT DETECTION)
+  // SAVE CURRENT LINKED SCHEDULE REVISION (WITH CONFLICT DETECTION)
   // -------------------------------------------------------------
   const handleSaveToMySql = async (forceOverwrite = false) => {
-    const backupId = linkedSync ? linkedSync.backupId : newBackupName.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '_');
+    // If schedule is already linked, update that specific backup ID
+    const backupId = linkedSync
+      ? linkedSync.backupId
+      : newBackupName.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '_');
     const backupName = linkedSync ? linkedSync.backupName : newBackupName.trim();
 
     if (!backupId || !backupName) {
@@ -275,8 +278,9 @@ ON DUPLICATE KEY UPDATE \`display_name\` = VALUES(\`display_name\`);`;
       if (saveResult.success && saveResult.updatedAppData) {
         onUpdateAppData(saveResult.updatedAppData);
         setIsCreatingNew(false);
+        const revToken = saveResult.savedRecord?.syncToken || saveResult.updatedAppData?.mysqlBackupSync?.syncToken || '';
         setStatusMessage({
-          text: saveResult.message || `Successfully saved backup "${backupName}" into MySQL!`,
+          text: saveResult.message || `Successfully updated backup "${backupName}" ${revToken ? `(Rev: ${revToken.substring(0, 10)}...)` : ''} in MySQL!`,
           type: 'success',
         });
         await refreshBackupsList();
@@ -284,6 +288,68 @@ ON DUPLICATE KEY UPDATE \`display_name\` = VALUES(\`display_name\`);`;
     } catch (err: any) {
       setStatusMessage({
         text: `Error saving backup: ${err.message}`,
+        type: 'error',
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // -------------------------------------------------------------
+  // CREATE A BRAND NEW BACKUP ENTRY IN MYSQL (NEVER OVERWRITE)
+  // -------------------------------------------------------------
+  const handleSaveNewBackup = async () => {
+    const backupName = newBackupName.trim();
+    if (!backupName) {
+      setStatusMessage({ text: 'Please specify a title for the new backup.', type: 'error' });
+      return;
+    }
+
+    // Clean slug for ID
+    let baseSlug = backupName
+      .toLowerCase()
+      .replace(/[^a-z0-9_-]/g, '_')
+      .replace(/^_+|_+$/g, '');
+    if (!baseSlug) baseSlug = 'backup';
+
+    // If an existing record already has this exact ID, append a timestamp suffix to ensure a brand-new entry
+    const idExists = backups.some((b) => b.id.toLowerCase() === baseSlug.toLowerCase());
+    const finalBackupId = idExists ? `${baseSlug}_${Date.now()}` : baseSlug;
+
+    setIsSaving(true);
+    setStatusMessage({ text: `Creating new backup entry "${backupName}" in MySQL...`, type: 'info' });
+
+    try {
+      const saveResult: MySqlSaveResult = await saveMySqlBackup({
+        id: finalBackupId,
+        name: backupName,
+        appData: {
+          ...appData,
+          // Clear old sync info so it saves cleanly as brand-new root
+          mysqlBackupSync: undefined,
+        },
+        checkSyncToken: undefined, // New document: no check on old token!
+        modifiedBy: editorName.trim() || 'League Admin',
+        forceOverwrite: true,
+      });
+
+      if (saveResult.success && saveResult.updatedAppData) {
+        onUpdateAppData(saveResult.updatedAppData);
+        setIsCreatingNew(false);
+        setStatusMessage({
+          text: `Created new backup entry "${backupName}" (ID: ${finalBackupId}) in MySQL!`,
+          type: 'success',
+        });
+        await refreshBackupsList();
+      } else {
+        setStatusMessage({
+          text: saveResult.message || 'Failed to create new backup record.',
+          type: 'error',
+        });
+      }
+    } catch (err: any) {
+      setStatusMessage({
+        text: `Error creating backup: ${err.message}`,
         type: 'error',
       });
     } finally {
@@ -792,11 +858,11 @@ ON DUPLICATE KEY UPDATE \`display_name\` = VALUES(\`display_name\`);`;
                     </button>
                     <button
                       type="button"
-                      onClick={() => handleSaveToMySql(false)}
+                      onClick={() => handleSaveNewBackup()}
                       disabled={isSaving}
                       className="px-4 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs transition-colors shadow-xs disabled:opacity-60"
                     >
-                      {isSaving ? 'Saving...' : 'Save & Link Backup'}
+                      {isSaving ? 'Creating...' : 'Create & Link New Backup'}
                     </button>
                   </div>
                 </div>

@@ -6,6 +6,8 @@ import {
   listAdminUsers,
   createAdminUser,
   changeAdminPassword,
+  deleteAdminUser,
+  updateAdminUser,
   initializeAuthTable,
 } from './authService';
 
@@ -117,6 +119,48 @@ authRouter.post('/change-password', async (req, res) => {
 
     const result = await changeAdminPassword(target, newPassword);
     res.json(result);
+  } catch (err: any) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// 8. Delete admin user
+authRouter.post('/delete-user', async (req, res) => {
+  try {
+    const token = getBearerToken(req);
+    const user = validateSessionToken(token);
+    if (!user) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const { targetUsername } = req.body;
+    const result = await deleteAdminUser(targetUsername, user.username);
+    if (result.success) {
+      res.json(result);
+    } else {
+      res.status(400).json(result);
+    }
+  } catch (err: any) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// 9. Update admin user (role & display name)
+authRouter.post('/update-user', async (req, res) => {
+  try {
+    const token = getBearerToken(req);
+    const user = validateSessionToken(token);
+    if (!user) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const { targetUsername, displayName, role } = req.body;
+    const result = await updateAdminUser(targetUsername, { displayName, role });
+    if (result.success) {
+      res.json(result);
+    } else {
+      res.status(400).json(result);
+    }
   } catch (err: any) {
     res.status(500).json({ success: false, message: err.message });
   }

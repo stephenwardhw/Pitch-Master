@@ -24,6 +24,9 @@ import {
   Shield,
   User,
   Key,
+  Save,
+  Check,
+  RefreshCw,
 } from 'lucide-react';
 import { AdminUser } from '../utils/authClient';
 
@@ -51,6 +54,7 @@ interface NavbarProps {
   adminUser?: AdminUser | null;
   onOpenAdminUsersModal?: () => void;
   onLogoutAdmin?: () => void;
+  onUnifiedSave?: () => Promise<{ success: boolean; message: string }>;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -65,11 +69,29 @@ export const Navbar: React.FC<NavbarProps> = ({
   adminUser,
   onOpenAdminUsersModal,
   onLogoutAdmin,
+  onUnifiedSave,
 }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [portalMenuOpen, setPortalMenuOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [copyNotice, setCopyNotice] = useState(false);
+  const [isSavingUnified, setIsSavingUnified] = useState(false);
+  const [saveSuccessState, setSaveSuccessState] = useState(false);
+
+  const handleQuickSave = async () => {
+    if (!onUnifiedSave || isSavingUnified) return;
+    setIsSavingUnified(true);
+    try {
+      const res = await onUnifiedSave();
+      if (res.success) {
+        setSaveSuccessState(true);
+        setTimeout(() => setSaveSuccessState(false), 2500);
+      }
+    } finally {
+      setIsSavingUnified(false);
+    }
+  };
+
   const activeFileName = appData.fileName || getCookie(COOKIE_NAME) || 'soccer_schedule.json';
   const conflictCount = conflicts.length;
 
@@ -269,6 +291,49 @@ export const Navbar: React.FC<NavbarProps> = ({
               )}
             </div>
 
+            {/* Unified Save Button (MySQL Database + Local JSON file) */}
+            {onUnifiedSave && (
+              <button
+                type="button"
+                onClick={handleQuickSave}
+                disabled={isSavingUnified}
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow-xs cursor-pointer shrink-0 ${
+                  saveSuccessState
+                    ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                    : 'bg-indigo-600 hover:bg-indigo-700 text-white active:scale-95'
+                }`}
+                title="Unified Save: Saves current schedule to MySQL NoSQL database and writes/downloads to local JSON file"
+              >
+                {isSavingUnified ? (
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                ) : saveSuccessState ? (
+                  <Check className="w-3.5 h-3.5" />
+                ) : (
+                  <Save className="w-3.5 h-3.5" />
+                )}
+                <span>
+                  {isSavingUnified
+                    ? 'Saving...'
+                    : saveSuccessState
+                    ? 'Saved!'
+                    : 'Save'}
+                </span>
+              </button>
+            )}
+
+            {/* Direct Admin Users button */}
+            {adminUser && onOpenAdminUsersModal && (
+              <button
+                type="button"
+                onClick={onOpenAdminUsersModal}
+                className="hidden xl:inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-medium transition-colors shadow-2xs cursor-pointer shrink-0"
+                title="Manage Admin Logins & Permissions (MySQL admin_users table)"
+              >
+                <Users className="w-3.5 h-3.5 text-indigo-600" />
+                <span>Users</span>
+              </button>
+            )}
+
             {/* MySQL NoSQL Backup & Concurrency Sync Button */}
             {onOpenMySqlBackupModal && (
               <button
@@ -421,6 +486,25 @@ export const Navbar: React.FC<NavbarProps> = ({
               </div>
               <ExternalLink className="w-3.5 h-3.5 text-emerald-600" />
             </button>
+
+            {/* Quick Unified Save in mobile drawer */}
+            {onUnifiedSave && (
+              <button
+                type="button"
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  handleQuickSave();
+                }}
+                disabled={isSavingUnified}
+                className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 shadow-xs"
+              >
+                <div className="flex items-center gap-2.5">
+                  <Save className="w-4 h-4" />
+                  <span>Save (MySQL + Local JSON)</span>
+                </div>
+                {isSavingUnified && <RefreshCw className="w-4 h-4 animate-spin" />}
+              </button>
+            )}
 
             {navItems.map((item) => {
               const isActive =

@@ -26,6 +26,8 @@ import { MySqlBackupModal } from './components/modals/MySqlBackupModal';
 import { AdminLoginScreen } from './components/AdminLoginScreen';
 import { AdminUsersModal } from './components/modals/AdminUsersModal';
 import { AdminUser, checkAdminSession, getStoredUser, logoutAdmin } from './utils/authClient';
+import { saveOrExportJson } from './utils/fileExport';
+import { saveMySqlBackup } from './utils/mysqlBackupClient';
 import { Github, Database } from 'lucide-react';
 
 export type AppMode = 'landing' | 'admin' | 'portal';
@@ -158,6 +160,79 @@ export default function App() {
     setAppData(newData);
     saveAppData(newData);
   }, []);
+
+  // Unified Save: Persists current schedule to MySQL NoSQL document and saves to local JSON file
+  const handleUnifiedSave = useCallback(async (): Promise<{ success: boolean; message: string }> => {
+    try {
+      const activeName = appData.fileName || getCookie(COOKIE_NAME) || 'soccer_schedule.json';
+      const cleanJsonName = activeName.endsWith('.json') ? activeName : `${activeName}.json`;
+
+      // 1. Save to MySQL Database
+      const backupId = appData.mysqlBackupSync
+        ? appData.mysqlBackupSync.backupId
+        : cleanJsonName.replace(/\.json$/i, '').toLowerCase().replace(/[^a-z0-9_-]/g, '_');
+      const backupTitle = appData.mysqlBackupSync
+        ? appData.mysqlBackupSync.backupName
+        : cleanJsonName.replace(/\.json$/i, '');
+
+      const mysqlRes = await saveMySqlBackup({
+        id: backupId,
+        name: backupTitle,
+        appData,
+        checkSyncToken: appData.mysqlBackupSync?.syncToken,
+        modifiedBy: adminUser?.displayName || 'League Admin',
+        forceOverwrite: false,
+      });
+
+      if (mysqlRes.conflict && mysqlRes.remoteData) {
+        setIsMySqlBackupModalOpen(true);
+        setScheduleNotice({
+          message: 'Concurrent update conflict detected in MySQL database. Please review differences in the backup dialog.',
+          type: 'error',
+        });
+        return { success: false, message: 'MySQL Concurrency Conflict Detected' };
+      }
+
+      let dataToExport = appData;
+      if (mysqlRes.success && mysqlRes.updatedAppData) {
+        dataToExport = mysqlRes.updatedAppData;
+        handleUpdateFullData(dataToExport);
+      }
+
+      // 2. Save / Export to local JSON file
+      const exportRes = await saveOrExportJson(dataToExport, cleanJsonName, {
+        preferOverwrite: true,
+        reuseHandle: true,
+      });
+
+      if (exportRes.success) {
+        setCookie(COOKIE_NAME, exportRes.fileName);
+        setScheduleNotice({
+          message: `Saved successfully! Schedule updated in MySQL (${mysqlRes.isLiveMySql ? 'Live Database' : 'NoSQL Fallback'}) and saved local file "${exportRes.fileName}".`,
+          type: 'success',
+        });
+        return { success: true, message: `Saved to MySQL & ${exportRes.fileName}` };
+      } else if (exportRes.method === 'cancelled') {
+        setScheduleNotice({
+          message: `Schedule saved to MySQL database (local file save dialog was cancelled).`,
+          type: 'success',
+        });
+        return { success: true, message: 'Saved to MySQL' };
+      } else {
+        setScheduleNotice({
+          message: `Saved to MySQL database. Note on local file: ${exportRes.message}`,
+          type: 'success',
+        });
+        return { success: true, message: 'Saved to MySQL' };
+      }
+    } catch (err: any) {
+      setScheduleNotice({
+        message: `Save error: ${err.message || 'Failed to complete save operation'}`,
+        type: 'error',
+      });
+      return { success: false, message: err.message };
+    }
+  }, [appData, adminUser, handleUpdateFullData]);
 
   // Game update
   const handleUpdateGame = useCallback((updatedGame: Game) => {
@@ -430,6 +505,7 @@ export default function App() {
         adminUser={adminUser}
         onOpenAdminUsersModal={() => setIsAdminUsersModalOpen(true)}
         onLogoutAdmin={handleLogoutAdmin}
+        onUnifiedSave={handleUnifiedSave}
       />
 
       {/* Main Content Viewport */}

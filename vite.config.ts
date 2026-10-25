@@ -129,6 +129,23 @@ function leagueScheduleServerPlugin(): Plugin {
               return res.end(JSON.stringify(result));
             }
 
+            if (url === '/api/auth/delete-user' && req.method === 'POST') {
+              const body = await parseBody();
+              const authHeader = req.headers.authorization || '';
+              const token = authHeader.startsWith('Bearer ') ? authHeader.substring(7) : (req.headers['x-admin-token'] as string) || '';
+              const currentUser = authSvc.validateSessionToken(token);
+              const result = await authSvc.deleteAdminUser(body.targetUsername, currentUser?.username);
+              res.statusCode = result.success ? 200 : 400;
+              return res.end(JSON.stringify(result));
+            }
+
+            if (url === '/api/auth/update-user' && req.method === 'POST') {
+              const body = await parseBody();
+              const result = await authSvc.updateAdminUser(body.targetUsername, { displayName: body.displayName, role: body.role });
+              res.statusCode = result.success ? 200 : 400;
+              return res.end(JSON.stringify(result));
+            }
+
             res.statusCode = 404;
             return res.end(JSON.stringify({ error: `Auth route not found: ${req.method} ${rawUrl}` }));
           }

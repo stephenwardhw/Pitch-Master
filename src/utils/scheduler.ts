@@ -7,6 +7,21 @@ interface PairMatch {
   activeRealTeamId: string;
 }
 
+// Helper to check if a team is unavailable on a specific date
+export function isTeamUnavailableOnDate(team: Team | undefined, date: string): boolean {
+  if (!team || team.isBye || team.name === 'Bye') return false;
+  return Array.isArray(team.blackoutDates) && team.blackoutDates.includes(date);
+}
+
+// Helper to check if either team in a matchup is unavailable on a specific date
+export function isMatchUnavailableOnDate(
+  homeTeam: Team | undefined,
+  awayTeam: Team | undefined,
+  date: string
+): boolean {
+  return isTeamUnavailableOnDate(homeTeam, date) || isTeamUnavailableOnDate(awayTeam, date);
+}
+
 // Generate round robin pairings for an array of teams (adds "Bye" if odd)
 export function generateRoundRobinPairings(
   teams: Team[],
@@ -164,6 +179,18 @@ export function generateLeagueSchedule(
   const fieldMap = new Map<string, Field>(fields.map((f) => [f.id, f]));
   const teamMap = new Map<string, Team>(teams.map((t) => [t.id, t]));
 
+  // Helper to check if a specific team is blacked out on a date
+  const isTeamBlackedOut = (teamId: string, date: string): boolean => {
+    const team = teamMap.get(teamId);
+    if (!team || team.isBye || team.name === 'Bye') return false;
+    return !!team.blackoutDates && team.blackoutDates.includes(date);
+  };
+
+  // Helper to check if either team in a matchup is blacked out on a date
+  const isMatchBlackedOutOnDate = (homeId: string, awayId: string, date: string): boolean => {
+    return isTeamBlackedOut(homeId, date) || isTeamBlackedOut(awayId, date);
+  };
+
   // Helper to check if a field is available at a given date/time
   const isFieldAvailable = (fieldId: string, date: string, time: string): boolean => {
     const field = fieldMap.get(fieldId);
@@ -175,13 +202,38 @@ export function generateLeagueSchedule(
     return !occupiedFieldSlots.has(slotKey);
   };
 
-  // Helper to check if teams are free at that slot
+  // Helper to check if teams are free at that slot and not blacked out
   const areTeamsAvailable = (teamAId: string, teamBId: string, date: string, time: string): boolean => {
+    // Strictly verify neither team is on a blackout date
+    if (isTeamBlackedOut(teamAId, date) || isTeamBlackedOut(teamBId, date)) {
+      return false;
+    }
     const keyA = `${teamAId}_${date}_${time}`;
     const keyB = `${teamBId}_${date}_${time}`;
     if (occupiedTeamSlots.has(keyA)) return false;
     if (occupiedTeamSlots.has(keyB)) return false;
     return true;
+  };
+
+  // Helper to get candidate fields in priority order for a home team
+  const getCandidateFields = (homeTeam: Team | undefined, divisionFields: string[]): string[] => {
+    const candidateFields: string[] = [];
+    if (homeTeam?.primaryHomeFieldId && divisionFields.includes(homeTeam.primaryHomeFieldId)) {
+      candidateFields.push(homeTeam.primaryHomeFieldId);
+    }
+    if (homeTeam?.alternateHomeFieldIds) {
+      for (const altFieldId of homeTeam.alternateHomeFieldIds) {
+        if (divisionFields.includes(altFieldId) && !candidateFields.includes(altFieldId)) {
+          candidateFields.push(altFieldId);
+        }
+      }
+    }
+    for (const divFieldId of divisionFields) {
+      if (!candidateFields.includes(divFieldId)) {
+        candidateFields.push(divFieldId);
+      }
+    }
+    return candidateFields;
   };
 
   for (const division of divisions) {
@@ -211,60 +263,97 @@ export function generateLeagueSchedule(
     const timeSlots = division.playTimeSlots.length > 0 ? division.playTimeSlots : ['10:00'];
     const divisionFields = division.fieldIds.length > 0 ? division.fieldIds : fields.map((f) => f.id);
 
+    // Track deferred matches that could not be scheduled on their scheduled round date due to team blackout dates
+    interface DeferredMatchItem {
+      homeTeamId: string;
+      awayTeamId: string;
+      isByePractice: boolean;
+      roundNumber: number;
+      originalDate: string;
+    }
+    const deferredMatches: DeferredMatchItem[] = [];
+
+    // Helper to assign and record a game
+    const scheduleMatchAtSlot = (
+      homeId: string,
+      awayId: string,
+      isByePractice: boolean,
+      roundNum: number,
+      targetDate: string,
+      targetTime: string,
+      targetFieldId: string,
+      mIndex: number
+    ) => {
+      const homeTeam = teamMap.get(homeId);
+      const awayTeam = teamMap.get(awayId);
+      const gameId = `g-${division.id}-r${roundNum}-m${mIndex + 1}-${targetDate.replace(/-/g, '')}`;
+
+      occupiedFieldSlots.set(`${targetFieldId}_${targetDate}_${targetTime}`, gameId);
+      if (homeId && !homeTeam?.isBye) {
+        occupiedTeamSlots.set(`${homeId}_${targetDate}_${targetTime}`, gameId);
+      }
+      if (awayId && !awayTeam?.isBye) {
+        occupiedTeamSlots.set(`${awayId}_${targetDate}_${targetTime}`, gameId);
+      }
+
+      newGames.push({
+        id: gameId,
+        divisionId: division.id,
+        date: targetDate,
+        time: targetTime,
+        fieldId: targetFieldId,
+        homeTeamId: homeId,
+        awayTeamId: awayId,
+        isByePractice,
+        roundNumber: roundNum,
+        status: 'scheduled',
+        notes: isByePractice
+          ? `Bye Practice Session on home / alternate pitch for ${homeTeam?.name || 'Home Team'}`
+          : undefined,
+      });
+    };
+
     // 3. Fill available dates with round rotation from season start to season end
-    // "The scheduler should fill the game days with the game rotation starting on the season start and ending on the season end.
-    // It does not matter if the teams play each other exactly the same number of times."
     let dateIdx = 0;
     let roundCycleIdx = 0;
 
     while (dateIdx < validDates.length) {
       const matchDate = validDates[dateIdx];
-      // Pick round from round-robin rotation
       const roundMatches = rounds[roundCycleIdx % rounds.length];
       const isReturnLeg = Math.floor(roundCycleIdx / rounds.length) % 2 === 1;
 
-      // Assign each match of this round to a time slot and field
       for (let mIdx = 0; mIdx < roundMatches.length; mIdx++) {
         const rawMatch = roundMatches[mIdx];
         let homeTeamId = rawMatch.homeTeamId;
         let awayTeamId = rawMatch.awayTeamId;
 
-        // If this is a return cycle and not a bye game, invert home/away for balance
+        // If return leg, invert home/away for balance (unless bye practice)
         if (isReturnLeg && !rawMatch.isByePractice) {
           homeTeamId = rawMatch.awayTeamId;
           awayTeamId = rawMatch.homeTeamId;
         }
 
+        // Check if either team is blacked out on this matchDate
+        if (isMatchBlackedOutOnDate(homeTeamId, awayTeamId, matchDate)) {
+          // Defer this match to be scheduled on an available date when both teams are free
+          deferredMatches.push({
+            homeTeamId,
+            awayTeamId,
+            isByePractice: rawMatch.isByePractice,
+            roundNumber: roundCycleIdx + 1,
+            originalDate: matchDate,
+          });
+          continue;
+        }
+
         const homeTeam = teamMap.get(homeTeamId);
-        const awayTeam = teamMap.get(awayTeamId);
+        const candidateFields = getCandidateFields(homeTeam, divisionFields);
 
-        // Find candidate fields in order of priority:
-        // Priority 1: Home team's primary home field (if assigned to division)
-        // Priority 2: Home team's alternate fields ("If there is a conflict on the field, try choosing one of the teams alternate fields")
-        // Priority 3: Any available division field
-        const candidateFields: string[] = [];
-        if (homeTeam?.primaryHomeFieldId && divisionFields.includes(homeTeam.primaryHomeFieldId)) {
-          candidateFields.push(homeTeam.primaryHomeFieldId);
-        }
-        if (homeTeam?.alternateHomeFieldIds) {
-          for (const altFieldId of homeTeam.alternateHomeFieldIds) {
-            if (divisionFields.includes(altFieldId) && !candidateFields.includes(altFieldId)) {
-              candidateFields.push(altFieldId);
-            }
-          }
-        }
-        for (const divFieldId of divisionFields) {
-          if (!candidateFields.includes(divFieldId)) {
-            candidateFields.push(divFieldId);
-          }
-        }
-
-        // Try to find a collision-free (field + time) combination
+        // Try to find a collision-free (field + time) slot on this matchDate
         let chosenFieldId = candidateFields[0] || divisionFields[0] || fields[0]?.id || 'f1';
         let chosenTime = timeSlots[mIdx % timeSlots.length];
         let assignedSlot = false;
 
-        // Strategy A: Iterate over time slots and candidate fields
         slotSearch: for (const timeSlot of timeSlots) {
           if (!areTeamsAvailable(homeTeamId, awayTeamId, matchDate, timeSlot)) {
             continue;
@@ -279,42 +368,227 @@ export function generateLeagueSchedule(
           }
         }
 
-        // If no completely free slot was found, pick primary or first candidate and record game
         if (!assignedSlot) {
-          chosenFieldId = candidateFields[0] || divisionFields[0] || 'f1';
-          chosenTime = timeSlots[mIdx % timeSlots.length];
+          // If no slot on candidate fields, try any field in division
+          for (const timeSlot of timeSlots) {
+            if (!areTeamsAvailable(homeTeamId, awayTeamId, matchDate, timeSlot)) continue;
+            for (const fieldId of divisionFields) {
+              if (isFieldAvailable(fieldId, matchDate, timeSlot)) {
+                chosenFieldId = fieldId;
+                chosenTime = timeSlot;
+                assignedSlot = true;
+                break;
+              }
+            }
+            if (assignedSlot) break;
+          }
         }
 
-        const gameId = `g-${division.id}-r${roundCycleIdx + 1}-m${mIdx + 1}-${matchDate.replace(/-/g, '')}`;
-
-        // Reserve slots in global tracking
-        occupiedFieldSlots.set(`${chosenFieldId}_${matchDate}_${chosenTime}`, gameId);
-        if (homeTeamId && !homeTeam?.isBye) {
-          occupiedTeamSlots.set(`${homeTeamId}_${matchDate}_${chosenTime}`, gameId);
+        // If a slot is available on matchDate, schedule it
+        if (assignedSlot) {
+          scheduleMatchAtSlot(
+            homeTeamId,
+            awayTeamId,
+            rawMatch.isByePractice,
+            roundCycleIdx + 1,
+            matchDate,
+            chosenTime,
+            chosenFieldId,
+            mIdx
+          );
+        } else {
+          // Both teams are not blacked out today, but time/field was congested today;
+          // check if teams are free at default slot or defer to avoid double booking
+          if (areTeamsAvailable(homeTeamId, awayTeamId, matchDate, chosenTime)) {
+            scheduleMatchAtSlot(
+              homeTeamId,
+              awayTeamId,
+              rawMatch.isByePractice,
+              roundCycleIdx + 1,
+              matchDate,
+              chosenTime,
+              chosenFieldId,
+              mIdx
+            );
+          } else {
+            deferredMatches.push({
+              homeTeamId,
+              awayTeamId,
+              isByePractice: rawMatch.isByePractice,
+              roundNumber: roundCycleIdx + 1,
+              originalDate: matchDate,
+            });
+          }
         }
-        if (awayTeamId && !awayTeam?.isBye) {
-          occupiedTeamSlots.set(`${awayTeamId}_${matchDate}_${chosenTime}`, gameId);
-        }
+      }
 
-        newGames.push({
-          id: gameId,
-          divisionId: division.id,
-          date: matchDate,
-          time: chosenTime,
-          fieldId: chosenFieldId,
-          homeTeamId,
-          awayTeamId,
-          isByePractice: rawMatch.isByePractice,
-          roundNumber: roundCycleIdx + 1,
-          status: 'scheduled',
-          notes: rawMatch.isByePractice
-            ? `Bye Practice Session on home / alternate pitch for ${homeTeam?.name || 'Home Team'}`
-            : undefined,
-        });
+      // Check if any previously deferred match can take an open slot on this matchDate
+      if (deferredMatches.length > 0) {
+        for (let defIdx = deferredMatches.length - 1; defIdx >= 0; defIdx--) {
+          const item = deferredMatches[defIdx];
+          if (isMatchBlackedOutOnDate(item.homeTeamId, item.awayTeamId, matchDate)) {
+            continue;
+          }
+          const itemHomeTeam = teamMap.get(item.homeTeamId);
+          const candidateFields = getCandidateFields(itemHomeTeam, divisionFields);
+
+          let foundDefSlot = false;
+          let defTime = timeSlots[0];
+          let defField = candidateFields[0];
+
+          for (const timeSlot of timeSlots) {
+            if (!areTeamsAvailable(item.homeTeamId, item.awayTeamId, matchDate, timeSlot)) {
+              continue;
+            }
+            for (const fieldId of candidateFields) {
+              if (isFieldAvailable(fieldId, matchDate, timeSlot)) {
+                defTime = timeSlot;
+                defField = fieldId;
+                foundDefSlot = true;
+                break;
+              }
+            }
+            if (foundDefSlot) break;
+          }
+
+          if (foundDefSlot) {
+            scheduleMatchAtSlot(
+              item.homeTeamId,
+              item.awayTeamId,
+              item.isByePractice,
+              item.roundNumber,
+              matchDate,
+              defTime,
+              defField,
+              defIdx
+            );
+            deferredMatches.splice(defIdx, 1);
+          }
+        }
       }
 
       dateIdx++;
       roundCycleIdx++;
+    }
+
+    // 4. Resolve any remaining deferred matches due to team blackout dates:
+    // Find the earliest valid date where neither team is blacked out and an open slot exists
+    for (let defIdx = 0; defIdx < deferredMatches.length; defIdx++) {
+      const item = deferredMatches[defIdx];
+      const itemHomeTeam = teamMap.get(item.homeTeamId);
+      const candidateFields = getCandidateFields(itemHomeTeam, divisionFields);
+
+      let scheduled = false;
+
+      // Pass 1: Try to find a date in validDates where neither team is blacked out
+      // and neither team has a match already scheduled on that date
+      for (const candDate of validDates) {
+        if (isMatchBlackedOutOnDate(item.homeTeamId, item.awayTeamId, candDate)) {
+          continue;
+        }
+
+        // Check if teams already have games that day
+        const homeHasGameOnDate = Array.from(occupiedTeamSlots.keys()).some(
+          (k) => k.startsWith(`${item.homeTeamId}_${candDate}_`)
+        );
+        const awayHasGameOnDate = Array.from(occupiedTeamSlots.keys()).some(
+          (k) => k.startsWith(`${item.awayTeamId}_${candDate}_`)
+        );
+
+        if (!homeHasGameOnDate && !awayHasGameOnDate) {
+          for (const timeSlot of timeSlots) {
+            if (!areTeamsAvailable(item.homeTeamId, item.awayTeamId, candDate, timeSlot)) continue;
+            for (const fieldId of candidateFields) {
+              if (isFieldAvailable(fieldId, candDate, timeSlot)) {
+                scheduleMatchAtSlot(
+                  item.homeTeamId,
+                  item.awayTeamId,
+                  item.isByePractice,
+                  item.roundNumber,
+                  candDate,
+                  timeSlot,
+                  fieldId,
+                  defIdx
+                );
+                scheduled = true;
+                break;
+              }
+            }
+            if (scheduled) break;
+          }
+        }
+        if (scheduled) break;
+      }
+
+      // Pass 2: If no open day exists, allow a different time slot on a valid date (with zero blackout violation)
+      if (!scheduled) {
+        for (const candDate of validDates) {
+          if (isMatchBlackedOutOnDate(item.homeTeamId, item.awayTeamId, candDate)) {
+            continue;
+          }
+
+          for (const timeSlot of timeSlots) {
+            if (!areTeamsAvailable(item.homeTeamId, item.awayTeamId, candDate, timeSlot)) continue;
+            for (const fieldId of candidateFields) {
+              if (isFieldAvailable(fieldId, candDate, timeSlot)) {
+                scheduleMatchAtSlot(
+                  item.homeTeamId,
+                  item.awayTeamId,
+                  item.isByePractice,
+                  item.roundNumber,
+                  candDate,
+                  timeSlot,
+                  fieldId,
+                  defIdx
+                );
+                scheduled = true;
+                break;
+              }
+            }
+            if (scheduled) break;
+          }
+          if (scheduled) break;
+        }
+      }
+
+      // Pass 3: If every date in validDates was congested, search subsequent play days (makeup days)
+      if (!scheduled) {
+        const lastDate = validDates[validDates.length - 1] || seasonConfig.endDate;
+        const lastDt = new Date(lastDate + 'T00:00:00');
+        const blackoutSet = new Set(seasonConfig.blackoutDates || []);
+
+        for (let dayOffset = 1; dayOffset <= 30; dayOffset++) {
+          const nextDt = new Date(lastDt);
+          nextDt.setDate(nextDt.getDate() + dayOffset);
+          const dOfWeek = nextDt.getDay() as DayOfWeek;
+
+          if (!division.playDays.includes(dOfWeek)) continue;
+
+          const yyyy = nextDt.getFullYear();
+          const mm = String(nextDt.getMonth() + 1).padStart(2, '0');
+          const dd = String(nextDt.getDate()).padStart(2, '0');
+          const makeupDate = `${yyyy}-${mm}-${dd}`;
+
+          if (blackoutSet.has(makeupDate)) continue;
+          if (isMatchBlackedOutOnDate(item.homeTeamId, item.awayTeamId, makeupDate)) continue;
+
+          const chosenTime = timeSlots[0] || '10:00';
+          const chosenField = candidateFields[0] || divisionFields[0] || fields[0]?.id || 'f1';
+
+          scheduleMatchAtSlot(
+            item.homeTeamId,
+            item.awayTeamId,
+            item.isByePractice,
+            item.roundNumber,
+            makeupDate,
+            chosenTime,
+            chosenField,
+            defIdx
+          );
+          scheduled = true;
+          break;
+        }
+      }
     }
   }
 

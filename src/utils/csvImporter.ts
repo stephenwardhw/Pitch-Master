@@ -1670,6 +1670,7 @@ export function exportTeamsToCsv(appData: AppData, teamsToExport?: Team[]): stri
     'Alternate Home Fields',
     'Jersey Color',
     'Team Size',
+    'Blackout Dates',
     'Notes',
   ];
 
@@ -1683,6 +1684,7 @@ export function exportTeamsToCsv(appData: AppData, teamsToExport?: Team[]): stri
         .filter(Boolean)
         .join('; ');
       const sizeName = teamSizeMap.get(t.sizeId) || t.sizeId || '';
+      const blackoutStr = (t.blackoutDates || []).join('; ');
 
       return [
         escapeCsvCell(t.name),
@@ -1694,6 +1696,7 @@ export function exportTeamsToCsv(appData: AppData, teamsToExport?: Team[]): stri
         escapeCsvCell(altFieldNames),
         escapeCsvCell(t.jerseyColor || ''),
         escapeCsvCell(sizeName),
+        escapeCsvCell(blackoutStr),
         escapeCsvCell(t.notes || ''),
       ].join(',');
     });

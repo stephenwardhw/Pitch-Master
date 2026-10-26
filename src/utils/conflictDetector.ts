@@ -43,6 +43,37 @@ export function detectConflicts(appData: AppData, gamesToInspect?: Game[]): Conf
       teamSlotMap.get(awaySlotKey)!.push(game);
     }
 
+    // 2b. Check Team Blackout dates
+    if (homeTeam && !homeTeam.isBye && homeTeam.blackoutDates && homeTeam.blackoutDates.includes(game.date)) {
+      conflicts.push({
+        id: `c-team-blackout-home-${homeTeam.id}-${game.id}`,
+        type: 'team_blackout',
+        severity: 'error',
+        title: `Team Unavailable on Match Date`,
+        description: `Home team "${homeTeam.name}" has marked ${game.date} as an unavailable blackout date.`,
+        gameIds: [game.id],
+        date: game.date,
+        time: game.time,
+        teamId: homeTeam.id,
+        suggestedResolution: `Reschedule match to an alternate game date when "${homeTeam.name}" is available.`,
+      });
+    }
+
+    if (awayTeam && !awayTeam.isBye && awayTeam.blackoutDates && awayTeam.blackoutDates.includes(game.date)) {
+      conflicts.push({
+        id: `c-team-blackout-away-${awayTeam.id}-${game.id}`,
+        type: 'team_blackout',
+        severity: 'error',
+        title: `Team Unavailable on Match Date`,
+        description: `Away team "${awayTeam.name}" has marked ${game.date} as an unavailable blackout date.`,
+        gameIds: [game.id],
+        date: game.date,
+        time: game.time,
+        teamId: awayTeam.id,
+        suggestedResolution: `Reschedule match to an alternate game date when "${awayTeam.name}" is available.`,
+      });
+    }
+
     // 3. Check Field Blackout dates
     const field = fieldMap.get(game.fieldId);
     if (field && field.blackoutDates && field.blackoutDates.includes(game.date)) {

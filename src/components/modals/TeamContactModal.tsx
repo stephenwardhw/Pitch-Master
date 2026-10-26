@@ -1,6 +1,6 @@
 import React from 'react';
 import { Field, Team } from '../../types';
-import { X, Phone, Mail, User, Shield, MapPin, FileText } from 'lucide-react';
+import { X, Phone, Mail, User, Shield, MapPin, FileText, Calendar } from 'lucide-react';
 
 interface TeamContactModalProps {
   team: Team | null;
@@ -105,6 +105,35 @@ export const TeamContactModal: React.FC<TeamContactModalProps> = ({
             <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">
               {team.notes?.trim() ? team.notes : 'No specific notes recorded for this team.'}
             </div>
+          </div>
+
+          {/* Blackout Dates Section */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                <Calendar className="w-3.5 h-3.5 text-amber-600" />
+                <span>Unavailable Blackout Dates</span>
+              </div>
+              <span className="text-[11px] font-mono text-slate-500">
+                {team.blackoutDates?.length || 0} registered
+              </span>
+            </div>
+            {team.blackoutDates && team.blackoutDates.length > 0 ? (
+              <div className="flex flex-wrap gap-1.5 p-3 bg-slate-50 border border-slate-200 rounded-lg">
+                {team.blackoutDates.map((dStr) => (
+                  <span
+                    key={dStr}
+                    className="inline-flex items-center px-2 py-0.5 rounded text-xs bg-amber-50 text-amber-900 border border-amber-300 font-mono shadow-2xs"
+                  >
+                    {dStr}
+                  </span>
+                ))}
+              </div>
+            ) : (
+              <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-500 italic">
+                No blackout dates recorded. Team is available for matches across all season dates.
+              </div>
+            )}
           </div>
 
           {/* Home Pitch & Alternates */}

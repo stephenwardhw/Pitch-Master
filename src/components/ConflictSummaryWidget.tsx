@@ -33,6 +33,7 @@ export function getConflictCategory(type: ConflictType): ConflictCategory {
     case 'field_not_in_division':
       return 'field';
     case 'team_double_booked':
+    case 'team_blackout':
     case 'season_blackout':
       return 'team';
     case 'referee_double_booked':
@@ -79,7 +80,7 @@ export const ConflictSummaryWidget: React.FC<ConflictSummaryWidgetProps> = ({
     });
 
     const fBreakdown = { doubleBooked: 0, blackout: 0, unassignedField: 0 };
-    const tBreakdown = { doubleBooked: 0, seasonBlackout: 0 };
+    const tBreakdown = { doubleBooked: 0, blackout: 0, seasonBlackout: 0 };
     const rBreakdown = { doubleBooked: 0, blackout: 0 };
 
     for (const c of conflicts) {
@@ -96,6 +97,7 @@ export const ConflictSummaryWidget: React.FC<ConflictSummaryWidgetProps> = ({
       } else if (category === 'team') {
         teams.push(c);
         if (c.type === 'team_double_booked') tBreakdown.doubleBooked++;
+        else if (c.type === 'team_blackout') tBreakdown.blackout++;
         else if (c.type === 'season_blackout') tBreakdown.seasonBlackout++;
       } else {
         referees.push(c);
@@ -378,7 +380,13 @@ export const ConflictSummaryWidget: React.FC<ConflictSummaryWidgetProps> = ({
                 </strong>
               </div>
               <div className="flex justify-between items-center text-[11px]">
-                <span className="text-slate-500">Season Break / Blackouts:</span>
+                <span className="text-slate-500">Team Blackout Dates:</span>
+                <strong className={teamBreakdown.blackout > 0 ? 'text-amber-800' : 'text-slate-700'}>
+                  {teamBreakdown.blackout}
+                </strong>
+              </div>
+              <div className="flex justify-between items-center text-[11px]">
+                <span className="text-slate-500">Season Break / Holidays:</span>
                 <strong className={teamBreakdown.seasonBlackout > 0 ? 'text-amber-800' : 'text-slate-700'}>
                   {teamBreakdown.seasonBlackout}
                 </strong>

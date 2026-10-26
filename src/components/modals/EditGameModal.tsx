@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Division, Field, Game, Referee, Team } from '../../types';
-import { X, Calendar, Clock, MapPin, ArrowRightLeft, UserCheck, Shield } from 'lucide-react';
+import { X, Calendar, Clock, MapPin, ArrowRightLeft, UserCheck, Shield, AlertTriangle } from 'lucide-react';
 
 interface EditGameModalProps {
   game: Game | null;
@@ -45,8 +45,12 @@ export const EditGameModal: React.FC<EditGameModalProps> = ({
   const currentDivision = divisions.find((d) => d.id === game.divisionId);
   const availableTeams = teams.filter((t) => t.divisionId === game.divisionId);
 
-  // Home team object to inspect alternate fields
+  // Teams in this matchup
   const selectedHomeTeam = teams.find((t) => t.id === homeTeamId);
+  const selectedAwayTeam = teams.find((t) => t.id === awayTeamId);
+
+  const homeBlackoutHit = Boolean(selectedHomeTeam && !selectedHomeTeam.isBye && selectedHomeTeam.blackoutDates?.includes(date));
+  const awayBlackoutHit = Boolean(selectedAwayTeam && !selectedAwayTeam.isBye && selectedAwayTeam.blackoutDates?.includes(date));
 
   const handleSwapTeams = () => {
     const temp = homeTeamId;
@@ -180,6 +184,27 @@ export const EditGameModal: React.FC<EditGameModalProps> = ({
               </label>
             </div>
           </div>
+
+          {/* Blackout Warning Alert */}
+          {(homeBlackoutHit || awayBlackoutHit) && (
+            <div className="p-3 rounded-lg bg-rose-50 border border-rose-300 text-xs text-rose-800 flex items-start gap-2 shadow-2xs">
+              <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+              <div>
+                <span className="font-bold">Team Blackout Date Violation:</span>{' '}
+                {homeBlackoutHit && (
+                  <span>
+                    Home team "{selectedHomeTeam?.name}" has {date} designated as an unavailable blackout date.
+                  </span>
+                )}
+                {homeBlackoutHit && awayBlackoutHit && ' '}
+                {awayBlackoutHit && (
+                  <span>
+                    Visiting team "{selectedAwayTeam?.name}" has {date} designated as an unavailable blackout date.
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Date & Time */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

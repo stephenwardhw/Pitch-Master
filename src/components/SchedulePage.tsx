@@ -132,6 +132,12 @@ export const SchedulePage: React.FC<SchedulePageProps> = ({
   const divisionMap = useMemo(() => new Map(appData.divisions.map((d) => [d.id, d])), [appData.divisions]);
   const refereeMap = useMemo(() => new Map((appData.referees || []).map((r) => [r.id, r])), [appData.referees]);
 
+  const teamsWithBlackouts = useMemo(() => {
+    return appData.teams.filter(
+      (t) => !t.isBye && Array.isArray(t.blackoutDates) && t.blackoutDates.length > 0
+    );
+  }, [appData.teams]);
+
   // Extract all unique dates from games in ascending order
   const allGameDates = useMemo(() => {
     return Array.from(new Set(appData.games.map((g) => g.date)))
@@ -491,7 +497,16 @@ export const SchedulePage: React.FC<SchedulePageProps> = ({
 
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div>
-            <h1 className="text-xl font-bold text-slate-900 tracking-tight">League Schedule</h1>
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="text-xl font-bold text-slate-900 tracking-tight">League Schedule</h1>
+              <span
+                className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200"
+                title={`${teamsWithBlackouts.length} teams have registered blackout dates. The round-robin generator automatically avoids scheduling matches on those dates.`}
+              >
+                <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                <span>Team Blackout Protection Active ({teamsWithBlackouts.length})</span>
+              </span>
+            </div>
             <p className="text-xs text-slate-500 mt-0.5">
               Round-robin games, pitch assignments, team contact links, and conflict resolution
             </p>
@@ -1001,12 +1016,17 @@ export const SchedulePage: React.FC<SchedulePageProps> = ({
                                 </>
                               )}
 
-                              {hasConflict && (
+                              {gameConflicts.some((c) => c.type === 'team_blackout') ? (
+                                <span className="inline-flex items-center gap-1 text-rose-800 font-bold text-[11px] bg-rose-100 px-2 py-0.5 rounded border border-rose-300">
+                                  <AlertTriangle className="w-3 h-3 text-rose-600" />
+                                  <span>{gameConflicts.find((c) => c.type === 'team_blackout')?.title || 'Team Blackout Conflict'}</span>
+                                </span>
+                              ) : hasConflict ? (
                                 <span className="inline-flex items-center gap-1 text-rose-700 font-medium text-[11px] bg-rose-50 px-2 py-0.5 rounded border border-rose-200">
                                   <AlertTriangle className="w-3 h-3 text-rose-600" />
                                   <span>{gameConflicts[0]?.title}</span>
                                 </span>
-                              )}
+                              ) : null}
                             </div>
 
                             {/* Teams Row (Clickable to view contact info) */}
@@ -1017,13 +1037,21 @@ export const SchedulePage: React.FC<SchedulePageProps> = ({
                                   type="button"
                                   onClick={() => homeTeam && onSelectTeamContact(homeTeam, division?.name)}
                                   className="text-sm font-bold text-slate-900 hover:text-emerald-700 hover:underline flex items-center gap-1.5 text-left"
-                                  title="Click to view coach contact info & team notes"
+                                  title={`Click to view coach contact info & team notes${homeTeam?.blackoutDates?.length ? ` (${homeTeam.blackoutDates.length} blackout dates)` : ''}`}
                                 >
                                   <span>{homeTeam?.name || 'TBD'}</span>
                                   <span className="text-[10px] font-normal text-emerald-800 bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200">
                                     HOME
                                   </span>
                                 </button>
+                                {homeTeam?.blackoutDates && homeTeam.blackoutDates.length > 0 && (
+                                  <span
+                                    className="text-[10px] text-amber-700 bg-amber-50 px-1.5 py-0.2 rounded border border-amber-200 font-mono"
+                                    title={`${homeTeam.name} has ${homeTeam.blackoutDates.length} blackout dates`}
+                                  >
+                                    {homeTeam.blackoutDates.length} unavail.
+                                  </span>
+                                )}
                               </div>
 
                               <span className="text-xs font-semibold text-slate-400">vs</span>
@@ -1035,17 +1063,27 @@ export const SchedulePage: React.FC<SchedulePageProps> = ({
                                     Bye (Dedicated Practice Session)
                                   </span>
                                 ) : (
-                                  <button
-                                    type="button"
-                                    onClick={() => awayTeam && onSelectTeamContact(awayTeam, division?.name)}
-                                    className="text-sm font-bold text-slate-900 hover:text-emerald-700 hover:underline flex items-center gap-1.5 text-left"
-                                    title="Click to view coach contact info & team notes"
-                                  >
-                                    <span>{awayTeam?.name || 'TBD'}</span>
-                                    <span className="text-[10px] font-normal text-slate-600 bg-slate-100 px-1.5 py-0.2 rounded border border-slate-200">
-                                      AWAY
-                                    </span>
-                                  </button>
+                                  <>
+                                    <button
+                                      type="button"
+                                      onClick={() => awayTeam && onSelectTeamContact(awayTeam, division?.name)}
+                                      className="text-sm font-bold text-slate-900 hover:text-emerald-700 hover:underline flex items-center gap-1.5 text-left"
+                                      title={`Click to view coach contact info & team notes${awayTeam?.blackoutDates?.length ? ` (${awayTeam.blackoutDates.length} blackout dates)` : ''}`}
+                                    >
+                                      <span>{awayTeam?.name || 'TBD'}</span>
+                                      <span className="text-[10px] font-normal text-slate-600 bg-slate-100 px-1.5 py-0.2 rounded border border-slate-200">
+                                        AWAY
+                                      </span>
+                                    </button>
+                                    {awayTeam?.blackoutDates && awayTeam.blackoutDates.length > 0 && (
+                                      <span
+                                        className="text-[10px] text-amber-700 bg-amber-50 px-1.5 py-0.2 rounded border border-amber-200 font-mono"
+                                        title={`${awayTeam.name} has ${awayTeam.blackoutDates.length} blackout dates`}
+                                      >
+                                        {awayTeam.blackoutDates.length} unavail.
+                                      </span>
+                                    )}
+                                  </>
                                 )}
                               </div>
                             </div>

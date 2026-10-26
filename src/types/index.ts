@@ -32,6 +32,7 @@ export interface Team {
   sizeId: string; // references TeamSizeOption id
   primaryHomeFieldId: string;
   alternateHomeFieldIds: string[]; // list of alternate fields scheduler can use for conflicts
+  blackoutDates?: string[]; // YYYY-MM-DD dates team unavailable for matches
   notes: string; // notes section for coach/team contact info
   contactName?: string;
   contactPhone?: string;
@@ -170,6 +171,7 @@ export type ConflictType =
   | 'field_double_booked'
   | 'field_blackout'
   | 'team_double_booked'
+  | 'team_blackout'
   | 'field_not_in_division'
   | 'season_blackout'
   | 'referee_double_booked'

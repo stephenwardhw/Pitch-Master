@@ -228,6 +228,7 @@ export const RegenerateScheduleModal: React.FC<RegenerateScheduleModalProps> = (
                 </span>
                 <ul className="list-disc list-inside text-[11px] text-blue-800 space-y-1 pl-1">
                   <li>Rotates Berger round-robin pairings across allowed game days.</li>
+                  <li>Strictly avoids scheduling matches for teams on their designated blackout dates.</li>
                   <li>Alternates home and away host venues for balance.</li>
                   <li>Prefers primary team home pitch, falling back to alternate pitches to avoid conflicts.</li>
                   <li>Automatically converts bye rounds into dedicated home practice slots for odd-count divisions.</li>

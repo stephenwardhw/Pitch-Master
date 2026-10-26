@@ -132,6 +132,7 @@ export const initialTeams: Team[] = [
     sizeId: 'size-9v9',
     primaryHomeFieldId: 'f1',
     alternateHomeFieldIds: ['f2', 'f5'],
+    blackoutDates: ['2026-04-18'],
     notes: 'Coach: Marco Rossi. Cell: (310) 555-0144. Email: coach.rossi@strikers.org. Primary jersey: Royal Blue.',
     contactName: 'Marco Rossi',
     contactPhone: '(310) 555-0144',
@@ -522,6 +523,12 @@ export function loadAppData(): AppData {
       if (!parsed.refereeCertifications || !Array.isArray(parsed.refereeCertifications) || parsed.refereeCertifications.length === 0) {
         parsed.refereeCertifications = DEFAULT_REFEREE_CERTIFICATIONS;
       }
+      if (parsed.teams && Array.isArray(parsed.teams)) {
+        parsed.teams = parsed.teams.map((t) => ({
+          ...t,
+          blackoutDates: Array.isArray(t.blackoutDates) ? t.blackoutDates : [],
+        }));
+      }
       setCookie(COOKIE_NAME, targetFileName);
       return parsed;
     }
@@ -536,6 +543,12 @@ export function loadAppData(): AppData {
       }
       if (!parsed.refereeCertifications || !Array.isArray(parsed.refereeCertifications) || parsed.refereeCertifications.length === 0) {
         parsed.refereeCertifications = DEFAULT_REFEREE_CERTIFICATIONS;
+      }
+      if (parsed.teams && Array.isArray(parsed.teams)) {
+        parsed.teams = parsed.teams.map((t) => ({
+          ...t,
+          blackoutDates: Array.isArray(t.blackoutDates) ? t.blackoutDates : [],
+        }));
       }
       setCookie(COOKIE_NAME, parsed.fileName);
       return parsed;

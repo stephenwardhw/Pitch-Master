@@ -26,6 +26,7 @@ import {
   ChevronDown,
   FileSpreadsheet,
   Download,
+  Calendar,
 } from 'lucide-react';
 import { exportTeamsToCsv, downloadCsv } from '../utils/csvImporter';
 
@@ -52,6 +53,7 @@ export const TeamsPage: React.FC<TeamsPageProps> = ({
   onSelectField,
 }) => {
   const [selectedDivision, setSelectedDivision] = useState<string>('all');
+  const [blackoutFilter, setBlackoutFilter] = useState<'all' | 'with-blackouts' | 'no-blackouts'>('all');
   const [editingTeam, setEditingTeam] = useState<Team | null>(null);
   const [isCreatingNew, setIsCreatingNew] = useState<boolean>(false);
 
@@ -61,6 +63,8 @@ export const TeamsPage: React.FC<TeamsPageProps> = ({
   const [formSizeId, setFormSizeId] = useState('');
   const [formPrimaryFieldId, setFormPrimaryFieldId] = useState('');
   const [formAltFieldIds, setFormAltFieldIds] = useState<string[]>([]);
+  const [formBlackoutDates, setFormBlackoutDates] = useState<string[]>([]);
+  const [newBlackoutDate, setNewBlackoutDate] = useState<string>('');
   const [formContactName, setFormContactName] = useState('');
   const [formContactPhone, setFormContactPhone] = useState('');
   const [formContactEmail, setFormContactEmail] = useState('');
@@ -86,9 +90,12 @@ export const TeamsPage: React.FC<TeamsPageProps> = ({
     return appData.teams.filter((t) => {
       if (t.isBye) return false;
       if (selectedDivision !== 'all' && t.divisionId !== selectedDivision) return false;
+      const hasBlackouts = Array.isArray(t.blackoutDates) && t.blackoutDates.length > 0;
+      if (blackoutFilter === 'with-blackouts' && !hasBlackouts) return false;
+      if (blackoutFilter === 'no-blackouts' && hasBlackouts) return false;
       return true;
     });
-  }, [appData.teams, selectedDivision]);
+  }, [appData.teams, selectedDivision, blackoutFilter]);
 
   // Total league teams and email availability stats
   const leagueEmailStats = useMemo(() => {
@@ -367,6 +374,8 @@ export const TeamsPage: React.FC<TeamsPageProps> = ({
     setFormSizeId(team.sizeId || appData.teamSizes[0]?.id || '');
     setFormPrimaryFieldId(team.primaryHomeFieldId || appData.fields[0]?.id || '');
     setFormAltFieldIds([...team.alternateHomeFieldIds]);
+    setFormBlackoutDates(team.blackoutDates ? [...team.blackoutDates] : []);
+    setNewBlackoutDate('');
     setFormContactName(team.contactName || '');
     setFormContactPhone(team.contactPhone || '');
     setFormContactEmail(team.contactEmail || '');
@@ -382,6 +391,8 @@ export const TeamsPage: React.FC<TeamsPageProps> = ({
     setFormSizeId(appData.teamSizes[0]?.id || '');
     setFormPrimaryFieldId(appData.fields[0]?.id || '');
     setFormAltFieldIds([]);
+    setFormBlackoutDates([]);
+    setNewBlackoutDate('');
     setFormContactName('');
     setFormContactPhone('');
     setFormContactEmail('');
@@ -397,6 +408,19 @@ export const TeamsPage: React.FC<TeamsPageProps> = ({
     }
   };
 
+  const handleAddBlackoutDate = (dateToAdd?: string) => {
+    const target = (dateToAdd || newBlackoutDate).trim();
+    if (!target) return;
+    if (!formBlackoutDates.includes(target)) {
+      setFormBlackoutDates([...formBlackoutDates, target].sort());
+    }
+    setNewBlackoutDate('');
+  };
+
+  const handleRemoveBlackoutDate = (dateToRemove: string) => {
+    setFormBlackoutDates(formBlackoutDates.filter((d) => d !== dateToRemove));
+  };
+
   const handleSaveForm = (e: React.FormEvent) => {
     e.preventDefault();
     if (!formName.trim()) return;
@@ -408,6 +432,7 @@ export const TeamsPage: React.FC<TeamsPageProps> = ({
       sizeId: formSizeId,
       primaryHomeFieldId: formPrimaryFieldId,
       alternateHomeFieldIds: formAltFieldIds.filter((id) => id !== formPrimaryFieldId),
+      blackoutDates: formBlackoutDates,
       contactName: formContactName.trim(),
       contactPhone: formContactPhone.trim(),
       contactEmail: formContactEmail.trim(),
@@ -508,6 +533,23 @@ export const TeamsPage: React.FC<TeamsPageProps> = ({
                   {d.name}
                 </option>
               ))}
+            </select>
+          </div>
+
+          {/* Blackout Filter */}
+          <div className="flex items-center gap-2">
+            <Calendar className="w-3.5 h-3.5 text-amber-600" />
+            <label className="font-medium text-slate-600">Availability:</label>
+            <select
+              value={blackoutFilter}
+              onChange={(e) => setBlackoutFilter(e.target.value as any)}
+              className="rounded-lg border border-slate-300 bg-slate-50 px-3 py-1.5 text-slate-800 font-medium focus:outline-hidden focus:ring-2 focus:ring-slate-900"
+            >
+              <option value="all">All Teams</option>
+              <option value="with-blackouts">
+                With Blackout Dates ({appData.teams.filter((t) => !t.isBye && t.blackoutDates && t.blackoutDates.length > 0).length})
+              </option>
+              <option value="no-blackouts">No Blackout Dates</option>
             </select>
           </div>
 
@@ -691,6 +733,42 @@ export const TeamsPage: React.FC<TeamsPageProps> = ({
                       Compose
                     </button>
                   </div>
+                </div>
+
+                {/* Blackout Dates (Unavailability) */}
+                <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-200 text-xs space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5 text-slate-700 font-semibold text-[11px]">
+                      <Calendar className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                      <span>Blackout Dates:</span>
+                    </div>
+                    <span
+                      className={`text-[10px] font-bold px-1.5 py-0.2 rounded ${
+                        team.blackoutDates && team.blackoutDates.length > 0
+                          ? 'bg-amber-100 text-amber-800 border border-amber-200'
+                          : 'bg-slate-200/70 text-slate-600'
+                      }`}
+                    >
+                      {team.blackoutDates?.length || 0} {team.blackoutDates?.length === 1 ? 'Date' : 'Dates'}
+                    </span>
+                  </div>
+
+                  {team.blackoutDates && team.blackoutDates.length > 0 ? (
+                    <div className="flex flex-wrap gap-1 pt-0.5">
+                      {team.blackoutDates.map((dStr) => (
+                        <span
+                          key={dStr}
+                          className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono bg-white text-slate-800 border border-slate-200 shadow-2xs"
+                        >
+                          {dStr}
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-[11px] text-slate-400 italic">
+                      Available all season dates (no team blackouts)
+                    </p>
+                  )}
                 </div>
 
                 {/* Notes preview */}
@@ -1253,6 +1331,77 @@ export const TeamsPage: React.FC<TeamsPageProps> = ({
                     );
                   })}
                 </div>
+              </div>
+
+              {/* Blackout Dates (Team-Specific Unavailability) */}
+              <div className="border-t border-slate-200 pt-3 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                      <Calendar className="w-3.5 h-3.5 text-amber-600" />
+                      <span>Blackout Dates (Team Unavailability)</span>
+                    </h4>
+                    <p className="text-[11px] text-slate-500 mt-0.5">
+                      Automated match scheduling strictly avoids booking matches for this team on these dates.
+                    </p>
+                  </div>
+                  {formBlackoutDates.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setFormBlackoutDates([])}
+                      className="text-[11px] text-slate-400 hover:text-rose-600 underline font-medium"
+                    >
+                      Clear all ({formBlackoutDates.length})
+                    </button>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <input
+                    type="date"
+                    value={newBlackoutDate}
+                    onChange={(e) => setNewBlackoutDate(e.target.value)}
+                    className="text-xs rounded border border-slate-300 p-2 bg-white font-mono flex-1 focus:ring-2 focus:ring-slate-900"
+                  />
+                  <button
+                    type="button"
+                    disabled={!newBlackoutDate}
+                    onClick={() => handleAddBlackoutDate()}
+                    className="px-3.5 py-2 text-xs font-medium text-white bg-slate-900 rounded-lg hover:bg-slate-800 disabled:opacity-40 transition-colors shrink-0"
+                  >
+                    Add Date
+                  </button>
+                </div>
+
+                {formBlackoutDates.length > 0 ? (
+                  <div className="space-y-1">
+                    <span className="text-[10px] uppercase font-semibold text-slate-500 tracking-wider">
+                      Unavailable Match Dates ({formBlackoutDates.length}):
+                    </span>
+                    <div className="flex flex-wrap gap-1.5 max-h-28 overflow-y-auto p-2 bg-slate-50 rounded-lg border border-slate-200">
+                      {formBlackoutDates.map((dateStr) => (
+                        <span
+                          key={dateStr}
+                          className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs bg-amber-50 text-amber-900 border border-amber-300 font-mono shadow-2xs"
+                        >
+                          <span>{dateStr}</span>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveBlackoutDate(dateStr)}
+                            className="text-amber-700 hover:text-rose-700 font-bold ml-0.5 text-xs"
+                            title={`Remove ${dateStr}`}
+                          >
+                            ×
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-[11px] text-slate-400 italic bg-slate-50 p-2 rounded-lg border border-slate-100">
+                    No blackout dates set. Team is free to be scheduled on all game days.
+                  </p>
+                )}
               </div>
 
               <div className="border-t border-slate-200 pt-3 space-y-3">

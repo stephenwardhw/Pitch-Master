@@ -124,6 +124,22 @@ export interface MySqlBackupMetadata {
   dataSize?: number;
 }
 
+export interface ScheduleActivityItem {
+  id: string;
+  backupId: string;
+  backupName: string;
+  versionNumber: number;
+  action: string;
+  modifiedBy: string;
+  modifiedAt: string;
+  summary: string;
+  divisionsCount: number;
+  teamsCount: number;
+  gamesCount: number;
+  syncToken: string;
+  dataSize?: number;
+}
+
 export interface MySqlConfig {
   host: string;
   port: number;

@@ -25,9 +25,10 @@ import { CsvImportModal, CsvImportType } from './components/modals/CsvImportModa
 import { MySqlBackupModal } from './components/modals/MySqlBackupModal';
 import { AdminLoginScreen } from './components/AdminLoginScreen';
 import { AdminUsersModal } from './components/modals/AdminUsersModal';
+import { ActivityLogModal } from './components/modals/ActivityLogModal';
 import { AdminUser, checkAdminSession, getStoredUser, logoutAdmin } from './utils/authClient';
 import { saveOrExportJson } from './utils/fileExport';
-import { saveMySqlBackup } from './utils/mysqlBackupClient';
+import { saveMySqlBackup, getMySqlBackup } from './utils/mysqlBackupClient';
 import { Github, Database } from 'lucide-react';
 
 export type AppMode = 'landing' | 'admin' | 'portal';
@@ -129,6 +130,7 @@ export default function App() {
   const [activeEditingGame, setActiveEditingGame] = useState<Game | null>(null);
   const [isDatasetModalOpen, setIsDatasetModalOpen] = useState(false);
   const [isMySqlBackupModalOpen, setIsMySqlBackupModalOpen] = useState(false);
+  const [isActivityLogModalOpen, setIsActivityLogModalOpen] = useState(false);
   const [isTeamSizesModalOpen, setIsTeamSizesModalOpen] = useState(false);
   const [isRegenerateModalOpen, setIsRegenerateModalOpen] = useState(false);
   const [isCsvImportOpen, setIsCsvImportOpen] = useState(false);
@@ -514,6 +516,7 @@ export default function App() {
         conflicts={conflicts}
         onOpenDatasetModal={() => setIsDatasetModalOpen(true)}
         onOpenMySqlBackupModal={() => setIsMySqlBackupModalOpen(true)}
+        onOpenActivityLogModal={() => setIsActivityLogModalOpen(true)}
         onOpenPortal={handleOpenPortal}
         onGoToHome={handleGoToLanding}
         adminUser={adminUser}
@@ -565,6 +568,7 @@ export default function App() {
                 setCurrentTab(subTab as NavTab);
               }
             }}
+            onNavigateToTab={(tab) => setCurrentTab(tab as NavTab)}
             onUpdateGame={handleUpdateGame}
             onUpdateBatchGames={handleUpdateBatchGames}
             onDeleteGame={handleDeleteGame}
@@ -758,6 +762,10 @@ export default function App() {
             handleUpdateFullData(updatedData);
           }}
           onClose={() => setIsMySqlBackupModalOpen(false)}
+          onOpenActivityLog={() => {
+            setIsMySqlBackupModalOpen(false);
+            setIsActivityLogModalOpen(true);
+          }}
         />
       )}
 
@@ -794,6 +802,34 @@ export default function App() {
         <AdminUsersModal
           currentUser={adminUser}
           onClose={() => setIsAdminUsersModalOpen(false)}
+        />
+      )}
+
+      {/* 10. Schedule Activity Log Modal */}
+      {isActivityLogModalOpen && (
+        <ActivityLogModal
+          onClose={() => setIsActivityLogModalOpen(false)}
+          onOpenMySqlBackupModal={() => {
+            setIsActivityLogModalOpen(false);
+            setIsMySqlBackupModalOpen(true);
+          }}
+          onLoadBackup={async (backupId) => {
+            try {
+              const res = await getMySqlBackup(backupId);
+              if (res && res.appData) {
+                handleUpdateFullData(res.appData);
+                setScheduleNotice({
+                  message: `Successfully restored and loaded snapshot "${res.metadata.name}" (version v${res.metadata.versionNumber}) from MySQL database.`,
+                  type: 'success',
+                });
+              }
+            } catch (err: any) {
+              setScheduleNotice({
+                message: `Failed to load backup: ${err.message || 'Unknown error'}`,
+                type: 'error',
+              });
+            }
+          }}
         />
       )}
     </div>

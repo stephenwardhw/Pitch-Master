@@ -251,6 +251,13 @@ function leagueScheduleServerPlugin(): Plugin {
             return res.end(JSON.stringify(result));
           }
 
+          if (url === '/api/mysql/activity-log' && req.method === 'GET') {
+            const limit = 10;
+            const result = await mysqlSvc.getActivityLog(limit);
+            res.statusCode = 200;
+            return res.end(JSON.stringify(result));
+          }
+
           res.statusCode = 404;
           return res.end(JSON.stringify({ error: `API route not found: ${req.method} ${rawUrl}` }));
         } catch (err: any) {

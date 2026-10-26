@@ -1,4 +1,4 @@
-import { AppData, MySqlBackupMetadata, MySqlConfig } from '../types';
+import { AppData, MySqlBackupMetadata, MySqlConfig, ScheduleActivityItem } from '../types';
 
 export interface MySqlSaveResult {
   success: boolean;
@@ -460,4 +460,60 @@ export async function checkForMySqlConflict(
   } catch {
     return { hasConflict: false };
   }
+}
+
+/**
+ * 8. Fetch Schedule Activity Log (last 10 modifications)
+ */
+export async function fetchScheduleActivityLog(limit: number = 10): Promise<{
+  isLiveMySql: boolean;
+  activities: ScheduleActivityItem[];
+}> {
+  const result = await safeFetchJson<{
+    isLiveMySql: boolean;
+    activities: ScheduleActivityItem[];
+  }>(`/api/mysql/activity-log?limit=${limit}`);
+
+  if (result.ok && result.data && Array.isArray(result.data.activities)) {
+    return result.data;
+  }
+
+  // Fallback to local storage
+  const localStore = getStoredLocalBackups();
+  const activities: ScheduleActivityItem[] = Object.values(localStore).map((item) => {
+    let divisionsCount = 0;
+    let teamsCount = 0;
+    let gamesCount = 0;
+    try {
+      const parsed = JSON.parse(item.data_json);
+      divisionsCount = parsed.divisions?.length || 0;
+      teamsCount = parsed.teams?.length || 0;
+      gamesCount = parsed.games?.length || 0;
+    } catch {}
+
+    return {
+      id: `local_${item.id}_${item.version_number}`,
+      backupId: item.id,
+      backupName: item.name,
+      versionNumber: item.version_number,
+      action: item.version_number > 1 ? `Updated Schedule (v${item.version_number})` : 'Created Schedule Backup',
+      modifiedBy: item.last_modified_by || 'Admin',
+      modifiedAt: item.last_modified_at || item.created_at,
+      summary: `${divisionsCount} divisions, ${teamsCount} teams, ${gamesCount} games`,
+      divisionsCount,
+      teamsCount,
+      gamesCount,
+      syncToken: item.sync_token,
+      dataSize: item.data_json ? item.data_json.length : 0,
+    };
+  });
+
+  activities.sort(
+    (a, b) => new Date(b.modifiedAt).getTime() - new Date(a.modifiedAt).getTime()
+  );
+
+  return {
+    isLiveMySql: false,
+    activities: activities.slice(0, limit),
+  };
 }

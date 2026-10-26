@@ -1,0 +1,12 @@
+{
+  "test_league_schedule": {
+    "id": "test_league_schedule",
+    "name": "Spring 2026 Test Schedule",
+    "data_json": "{\"version\":\"1.0\",\"fileName\":\"Spring 2026 Test Schedule.json\",\"seasonConfig\":{\"seasonName\":\"Spring 2026\",\"startDate\":\"2026-03-01\",\"endDate\":\"2026-05-31\",\"blackoutDates\":[]},\"teamSizes\":[],\"fields\":[],\"divisions\":[{\"id\":\"d1\",\"name\":\"U10 Boys\",\"playDays\":[6],\"playTimeSlots\":[\"09:00\"],\"fieldIds\":[],\"matchDurationMinutes\":50},{\"id\":\"d2\",\"name\":\"U12 Girls\",\"playDays\":[0],\"playTimeSlots\":[\"10:00\"],\"fieldIds\":[],\"matchDurationMinutes\":60}],\"teams\":[{\"id\":\"t1\",\"name\":\"Tigers\",\"divisionId\":\"d1\",\"sizeId\":\"\",\"primaryHomeFieldId\":\"\",\"alternateHomeFieldIds\":[],\"notes\":\"\"},{\"id\":\"t2\",\"name\":\"Lions\",\"divisionId\":\"d1\",\"sizeId\":\"\",\"primaryHomeFieldId\":\"\",\"alternateHomeFieldIds\":[],\"notes\":\"\"}],\"games\":[],\"lastModified\":\"2026-10-25T17:23:51.736Z\",\"syncToken\":\"mysql_sync_1792949031736_xjibkl\",\"lastModifiedBy\":\"Admin Coach\",\"mysqlBackupSync\":{\"backupId\":\"test_league_schedule\",\"backupName\":\"Spring 2026 Test Schedule\",\"syncToken\":\"mysql_sync_1792949031736_xjibkl\",\"lastModifiedAt\":\"2026-10-25T17:23:51.736Z\",\"lastModifiedBy\":\"Admin Coach\",\"lastSyncedAt\":\"2026-10-25T17:23:51.736Z\",\"versionNumber\":2}}",
+    "sync_token": "mysql_sync_1792949031736_xjibkl",
+    "last_modified_by": "Admin Coach",
+    "last_modified_at": "2026-10-25T17:23:51.736Z",
+    "created_at": "2026-10-25T17:23:43.768Z",
+    "version_number": 2
+  }
+}

@@ -37,6 +37,7 @@ import { PrintScheduleView } from './PrintScheduleView';
 import { MatchupAnalysisPage } from './MatchupAnalysisPage';
 import { HomeAwayBalancePage } from './HomeAwayBalancePage';
 import { ConflictsPage } from './ConflictsPage';
+import { ConflictSummaryWidget, ConflictCategory } from './ConflictSummaryWidget';
 import { publishScheduleToServer, downloadLeagueScheduleJson } from '../utils/serverSync';
 import {
   buildEventPayload,
@@ -54,6 +55,7 @@ interface SchedulePageProps {
   conflicts: Conflict[];
   activeRefinementTab?: 'matchups' | 'balance' | 'conflicts';
   onSelectRefinementTab?: (tab: ScheduleSubTab) => void;
+  onNavigateToTab?: (tab: string) => void;
   onUpdateGame: (updatedGame: Game) => void;
   onUpdateBatchGames?: (updatedGames: Game[]) => void;
   onDeleteGame: (gameId: string) => void;
@@ -83,10 +85,14 @@ export const SchedulePage: React.FC<SchedulePageProps> = ({
   onRecheckConflicts,
   onSwitchToPublicPortal,
   onOpenCsvImport,
+  onNavigateToTab,
 }) => {
   const [activeSubTab, setActiveSubTab] = useState<ScheduleSubTab>(() => {
     return activeRefinementTab || 'schedule';
   });
+
+  const [conflictTargetCategory, setConflictTargetCategory] = useState<'all' | ConflictCategory>('all');
+  const [conflictTargetDivisionId, setConflictTargetDivisionId] = useState<string>('all');
 
   React.useEffect(() => {
     if (activeRefinementTab) {
@@ -99,6 +105,12 @@ export const SchedulePage: React.FC<SchedulePageProps> = ({
     if (onSelectRefinementTab) {
       onSelectRefinementTab(tab);
     }
+  };
+
+  const handleNavigateToConflicts = (category?: ConflictCategory, divisionId?: string) => {
+    setConflictTargetCategory(category || 'all');
+    setConflictTargetDivisionId(divisionId || 'all');
+    handleSubTabChange('conflicts');
   };
   const [selectedDivision, setSelectedDivision] = useState<string>('all');
   const [selectedTeam, setSelectedTeam] = useState<string>('all');
@@ -406,15 +418,29 @@ export const SchedulePage: React.FC<SchedulePageProps> = ({
         <ConflictsPage
           appData={appData}
           conflicts={conflicts}
+          initialCategory={conflictTargetCategory}
+          initialDivisionId={conflictTargetDivisionId}
           onUpdateGame={onUpdateGame}
           onEditGame={onEditGame}
           onRecheckConflicts={onRecheckConflicts || (() => {})}
+          onNavigateToTab={onNavigateToTab}
         />
       )}
 
       {/* Main Schedule View */}
       {activeSubTab === 'schedule' && (
         <>
+          {/* Conflict Summary Dashboard Widget */}
+          <div className="no-print">
+            <ConflictSummaryWidget
+              appData={appData}
+              conflicts={conflicts}
+              onNavigateToConflictResolution={handleNavigateToConflicts}
+              onNavigateToTab={onNavigateToTab}
+              onRecheckConflicts={onRecheckConflicts}
+            />
+          </div>
+
           {/* Top Controls Toolbar */}
           <div className="bg-white rounded-xl border border-slate-200 p-4 sm:p-5 shadow-xs space-y-4 no-print">
         {/* Publish Banner Notification */}

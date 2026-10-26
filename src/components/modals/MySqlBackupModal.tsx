@@ -36,18 +36,21 @@ import {
   Copy,
   Code,
   Terminal,
+  History,
 } from 'lucide-react';
 
 interface MySqlBackupModalProps {
   appData: AppData;
   onUpdateAppData: (newData: AppData) => void;
   onClose: () => void;
+  onOpenActivityLog?: () => void;
 }
 
 export const MySqlBackupModal: React.FC<MySqlBackupModalProps> = ({
   appData,
   onUpdateAppData,
   onClose,
+  onOpenActivityLog,
 }) => {
   // MySQL Status
   const [isLiveMySql, setIsLiveMySql] = useState(false);
@@ -539,6 +542,21 @@ ON DUPLICATE KEY UPDATE \`display_name\` = VALUES(\`display_name\`);`;
               <BookOpen className="w-3.5 h-3.5" />
               <span>Setup Guide & SQL Schema</span>
             </button>
+
+            {onOpenActivityLog && (
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  onOpenActivityLog();
+                }}
+                className="ml-auto py-1 px-2.5 my-auto text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-lg border border-indigo-200 flex items-center gap-1.5 transition-colors cursor-pointer"
+                title="View last 10 modifications to the schedule"
+              >
+                <History className="w-3.5 h-3.5 text-indigo-600" />
+                <span>Activity Log</span>
+              </button>
+            )}
           </div>
 
           {/* Modal Body */}

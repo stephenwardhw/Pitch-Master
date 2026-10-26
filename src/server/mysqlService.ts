@@ -1,9 +1,30 @@
 import mysql from 'mysql2/promise';
 import fs from 'fs';
 import path from 'path';
-import { AppData, MySqlBackupMetadata, MySqlConfig } from '../types';
+import { AppData, MySqlBackupMetadata, MySqlConfig, ScheduleActivityItem } from '../types';
 
 const FALLBACK_STORAGE_FILE = path.resolve(process.cwd(), 'league_backups_nosql.json');
+const FALLBACK_ACTIVITY_FILE = path.resolve(process.cwd(), 'league_activity_nosql.json');
+
+function readFallbackActivityStore(): ScheduleActivityItem[] {
+  try {
+    if (fs.existsSync(FALLBACK_ACTIVITY_FILE)) {
+      const content = fs.readFileSync(FALLBACK_ACTIVITY_FILE, 'utf-8');
+      return JSON.parse(content);
+    }
+  } catch (err) {
+    console.error('Error reading fallback activity store:', err);
+  }
+  return [];
+}
+
+function writeFallbackActivityStore(items: ScheduleActivityItem[]) {
+  try {
+    fs.writeFileSync(FALLBACK_ACTIVITY_FILE, JSON.stringify(items, null, 2), 'utf-8');
+  } catch (err) {
+    console.error('Error writing fallback activity store:', err);
+  }
+}
 
 export interface BackupRecord {
   id: string;
@@ -115,9 +136,28 @@ export async function initializeTable(): Promise<{ isLiveMySql: boolean; message
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     `;
     await pool.query(createTableSql);
+
+    const createActivityTableSql = `
+      CREATE TABLE IF NOT EXISTS \`schedule_activity_log\` (
+        \`id\` VARCHAR(128) PRIMARY KEY,
+        \`backup_id\` VARCHAR(128) NOT NULL,
+        \`backup_name\` VARCHAR(255) NOT NULL,
+        \`version_number\` INT NOT NULL DEFAULT 1,
+        \`action\` VARCHAR(64) NOT NULL,
+        \`modified_by\` VARCHAR(255) NOT NULL,
+        \`modified_at\` DATETIME NOT NULL,
+        \`summary\` VARCHAR(255) NOT NULL,
+        \`divisions_count\` INT NOT NULL DEFAULT 0,
+        \`teams_count\` INT NOT NULL DEFAULT 0,
+        \`games_count\` INT NOT NULL DEFAULT 0,
+        \`sync_token\` VARCHAR(128) NOT NULL
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    `;
+    await pool.query(createActivityTableSql);
+
     return {
       isLiveMySql: true,
-      message: `Connected to MySQL database "${activeConfig.database}" and verified table "${tableName}".`,
+      message: `Connected to MySQL database "${activeConfig.database}" and verified tables "${tableName}" & "schedule_activity_log".`,
     };
   } catch (err: any) {
     return {
@@ -343,6 +383,14 @@ export async function saveBackup(params: {
 
   const encodedJson = JSON.stringify(finalAppData);
 
+  const divisionsCount = Array.isArray(appData.divisions) ? appData.divisions.length : 0;
+  const teamsCount = Array.isArray(appData.teams) ? appData.teams.length : 0;
+  const gamesCount = Array.isArray(appData.games) ? appData.games.length : 0;
+  const isInitial = !existing.record;
+  const action = isInitial ? 'Created Schedule Backup' : `Updated Schedule (v${nextVersion})`;
+  const summary = `${divisionsCount} divisions, ${teamsCount} teams, ${gamesCount} games`;
+  const activityId = `act_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+
   if (!pool) {
     // Save to fallback store
     const store = readFallbackStore();
@@ -358,6 +406,26 @@ export async function saveBackup(params: {
     };
     store[id] = record;
     writeFallbackStore(store);
+
+    // Save to fallback activity store
+    const activityItem: ScheduleActivityItem = {
+      id: activityId,
+      backupId: id,
+      backupName: name,
+      versionNumber: nextVersion,
+      action,
+      modifiedBy,
+      modifiedAt: nowIso,
+      summary,
+      divisionsCount,
+      teamsCount,
+      gamesCount,
+      syncToken: newSyncToken,
+      dataSize: Buffer.byteLength(encodedJson, 'utf-8'),
+    };
+    const actList = readFallbackActivityStore();
+    actList.unshift(activityItem);
+    writeFallbackActivityStore(actList.slice(0, 50));
 
     return {
       success: true,
@@ -403,6 +471,37 @@ export async function saveBackup(params: {
       nextVersion,
     ]);
 
+    // Record activity in schedule_activity_log table
+    try {
+      await pool.query(
+        `INSERT INTO \`schedule_activity_log\` (id, backup_id, backup_name, version_number, action, modified_by, modified_at, summary, divisions_count, teams_count, games_count, sync_token)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [activityId, id, name, nextVersion, action, modifiedBy, mysqlDateTime, summary, divisionsCount, teamsCount, gamesCount, newSyncToken]
+      );
+    } catch (actErr) {
+      console.warn('Could not record activity in schedule_activity_log:', actErr);
+    }
+
+    // Mirror to fallback activity store
+    const activityItem: ScheduleActivityItem = {
+      id: activityId,
+      backupId: id,
+      backupName: name,
+      versionNumber: nextVersion,
+      action,
+      modifiedBy,
+      modifiedAt: nowIso,
+      summary,
+      divisionsCount,
+      teamsCount,
+      gamesCount,
+      syncToken: newSyncToken,
+      dataSize: Buffer.byteLength(encodedJson, 'utf-8'),
+    };
+    const actList = readFallbackActivityStore();
+    actList.unshift(activityItem);
+    writeFallbackActivityStore(actList.slice(0, 50));
+
     return {
       success: true,
       isLiveMySql: true,
@@ -434,11 +533,178 @@ export async function saveBackup(params: {
     };
     writeFallbackStore(store);
 
+    const activityItem: ScheduleActivityItem = {
+      id: activityId,
+      backupId: id,
+      backupName: name,
+      versionNumber: nextVersion,
+      action,
+      modifiedBy,
+      modifiedAt: nowIso,
+      summary,
+      divisionsCount,
+      teamsCount,
+      gamesCount,
+      syncToken: newSyncToken,
+      dataSize: Buffer.byteLength(encodedJson, 'utf-8'),
+    };
+    const actList = readFallbackActivityStore();
+    actList.unshift(activityItem);
+    writeFallbackActivityStore(actList.slice(0, 50));
+
     return {
       success: true,
       isLiveMySql: false,
       updatedAppData: finalAppData,
       message: `MySQL Error (${err.message}). Saved into embedded fallback storage.`,
+    };
+  }
+}
+
+/**
+ * Fetches the last 10 modifications to the schedule from schedule_backups and schedule_activity_log
+ */
+export async function getActivityLog(limit: number = 10): Promise<{
+  isLiveMySql: boolean;
+  activities: ScheduleActivityItem[];
+}> {
+  const pool = await getPool();
+  const tableName = activeConfig.tableName || 'schedule_backups';
+
+  if (!pool) {
+    const fallbackActivities = readFallbackActivityStore();
+    const fallbackBackups = readFallbackStore();
+
+    // Also derive activities from fallback backups if not already present
+    const backupDerived: ScheduleActivityItem[] = Object.values(fallbackBackups).map((b) => {
+      let divisionsCount = 0;
+      let teamsCount = 0;
+      let gamesCount = 0;
+      try {
+        const parsed = JSON.parse(b.data_json);
+        divisionsCount = parsed.divisions?.length || 0;
+        teamsCount = parsed.teams?.length || 0;
+        gamesCount = parsed.games?.length || 0;
+      } catch {}
+
+      return {
+        id: `backup_${b.id}_v${b.version_number}`,
+        backupId: b.id,
+        backupName: b.name,
+        versionNumber: b.version_number || 1,
+        action: (b.version_number || 1) > 1 ? `Updated Schedule (v${b.version_number})` : 'Created Schedule Backup',
+        modifiedBy: b.last_modified_by || 'Admin',
+        modifiedAt: b.last_modified_at || b.created_at,
+        summary: `${divisionsCount} divisions, ${teamsCount} teams, ${gamesCount} games`,
+        divisionsCount,
+        teamsCount,
+        gamesCount,
+        syncToken: b.sync_token,
+        dataSize: Buffer.byteLength(b.data_json || '', 'utf-8'),
+      };
+    });
+
+    const combined = [...fallbackActivities];
+    const seenTokens = new Set(combined.map((a) => a.syncToken || a.id));
+    for (const item of backupDerived) {
+      if (!seenTokens.has(item.syncToken) && !seenTokens.has(item.id)) {
+        combined.push(item);
+        seenTokens.add(item.syncToken);
+      }
+    }
+
+    combined.sort((a, b) => new Date(b.modifiedAt).getTime() - new Date(a.modifiedAt).getTime());
+    return {
+      isLiveMySql: false,
+      activities: combined.slice(0, limit),
+    };
+  }
+
+  try {
+    await initializeTable();
+
+    // 1. Fetch from schedule_activity_log table
+    let activityLogRows: any[] = [];
+    try {
+      const [rows] = await pool.query(
+        `SELECT id, backup_id, backup_name, version_number, action, modified_by, modified_at, summary, divisions_count, teams_count, games_count, sync_token
+         FROM \`schedule_activity_log\`
+         ORDER BY modified_at DESC
+         LIMIT ?`,
+        [limit]
+      );
+      activityLogRows = rows as any[];
+    } catch {}
+
+    const activities: ScheduleActivityItem[] = activityLogRows.map((r) => ({
+      id: r.id,
+      backupId: r.backup_id,
+      backupName: r.backup_name,
+      versionNumber: Number(r.version_number) || 1,
+      action: r.action,
+      modifiedBy: r.modified_by,
+      modifiedAt: new Date(r.modified_at).toISOString(),
+      summary: r.summary,
+      divisionsCount: Number(r.divisions_count) || 0,
+      teamsCount: Number(r.teams_count) || 0,
+      gamesCount: Number(r.games_count) || 0,
+      syncToken: r.sync_token,
+    }));
+
+    // 2. Query schedule_backups table to ensure any backups are represented
+    const [backupRows] = await pool.query(
+      `SELECT id, name, last_modified_by, last_modified_at, created_at, version_number, sync_token, data_json, LENGTH(data_json) as data_size
+       FROM \`${tableName}\`
+       ORDER BY last_modified_at DESC
+       LIMIT ?`,
+      [limit]
+    );
+
+    const existingSyncTokens = new Set(activities.map((a) => a.syncToken));
+
+    for (const r of backupRows as any[]) {
+      if (!existingSyncTokens.has(r.sync_token)) {
+        let divCount = 0;
+        let tmCount = 0;
+        let gmCount = 0;
+        try {
+          const parsed = JSON.parse(r.data_json);
+          divCount = parsed.divisions?.length || 0;
+          tmCount = parsed.teams?.length || 0;
+          gmCount = parsed.games?.length || 0;
+        } catch {}
+
+        activities.push({
+          id: `mod_${r.id}_v${r.version_number}`,
+          backupId: r.id,
+          backupName: r.name,
+          versionNumber: Number(r.version_number) || 1,
+          action: (Number(r.version_number) || 1) > 1 ? `Updated Schedule (v${r.version_number})` : 'Created Schedule Backup',
+          modifiedBy: r.last_modified_by || 'Admin',
+          modifiedAt: new Date(r.last_modified_at).toISOString(),
+          summary: `${divCount} divisions, ${tmCount} teams, ${gmCount} games`,
+          divisionsCount: divCount,
+          teamsCount: tmCount,
+          gamesCount: gmCount,
+          syncToken: r.sync_token,
+          dataSize: Number(r.data_size) || 0,
+        });
+        existingSyncTokens.add(r.sync_token);
+      }
+    }
+
+    activities.sort((a, b) => new Date(b.modifiedAt).getTime() - new Date(a.modifiedAt).getTime());
+
+    return {
+      isLiveMySql: true,
+      activities: activities.slice(0, limit),
+    };
+  } catch (err: any) {
+    console.error('Error fetching activity log from MySQL:', err);
+    const fallbackActivities = readFallbackActivityStore();
+    return {
+      isLiveMySql: false,
+      activities: fallbackActivities.slice(0, limit),
     };
   }
 }

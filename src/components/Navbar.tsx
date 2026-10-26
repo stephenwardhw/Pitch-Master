@@ -27,6 +27,7 @@ import {
   Save,
   Check,
   RefreshCw,
+  History,
 } from 'lucide-react';
 import { AdminUser } from '../utils/authClient';
 
@@ -49,6 +50,7 @@ interface NavbarProps {
   conflicts: Conflict[];
   onOpenDatasetModal: () => void;
   onOpenMySqlBackupModal?: () => void;
+  onOpenActivityLogModal?: () => void;
   onOpenPortal: (openInNewTab?: boolean) => void;
   onGoToHome?: () => void;
   adminUser?: AdminUser | null;
@@ -64,6 +66,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   conflicts,
   onOpenDatasetModal,
   onOpenMySqlBackupModal,
+  onOpenActivityLogModal,
   onOpenPortal,
   onGoToHome,
   adminUser,
@@ -367,6 +370,19 @@ export const Navbar: React.FC<NavbarProps> = ({
               </button>
             )}
 
+            {/* Schedule Activity Log Button */}
+            {onOpenActivityLogModal && (
+              <button
+                type="button"
+                onClick={onOpenActivityLogModal}
+                className="hidden xl:inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-medium transition-colors shadow-2xs cursor-pointer shrink-0"
+                title="Schedule Activity Log: View last 10 modifications to the schedule from MySQL database"
+              >
+                <History className="w-3.5 h-3.5 text-indigo-600" />
+                <span>Activity Log</span>
+              </button>
+            )}
+
             {/* Header Data File Indicator */}
             <button
               onClick={onOpenDatasetModal}
@@ -423,6 +439,20 @@ export const Navbar: React.FC<NavbarProps> = ({
                       >
                         <Users className="w-3.5 h-3.5 text-indigo-600" />
                         <span>Manage Admin Users</span>
+                      </button>
+                    )}
+
+                    {onOpenActivityLogModal && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setUserMenuOpen(false);
+                          onOpenActivityLogModal();
+                        }}
+                        className="w-full flex items-center gap-2 px-2.5 py-2 text-slate-700 hover:bg-slate-100 rounded-lg text-left transition-colors font-medium cursor-pointer"
+                      >
+                        <History className="w-3.5 h-3.5 text-indigo-600" />
+                        <span>Activity Log (Last 10 Changes)</span>
                       </button>
                     )}
 
@@ -585,6 +615,19 @@ export const Navbar: React.FC<NavbarProps> = ({
                   >
                     <Users className="w-4 h-4 text-indigo-600" />
                     <span>Manage Admin Users</span>
+                  </button>
+                )}
+
+                {onOpenActivityLogModal && (
+                  <button
+                    onClick={() => {
+                      setMobileMenuOpen(false);
+                      onOpenActivityLogModal();
+                    }}
+                    className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 rounded-lg text-left font-medium"
+                  >
+                    <History className="w-4 h-4 text-indigo-600" />
+                    <span>Schedule Activity Log</span>
                   </button>
                 )}
 

@@ -1,0 +1,32 @@
+[
+  {
+    "id": "act_1792949031736_cxc8f",
+    "backupId": "test_league_schedule",
+    "backupName": "Spring 2026 Test Schedule",
+    "versionNumber": 2,
+    "action": "Updated Schedule (v2)",
+    "modifiedBy": "Admin Coach",
+    "modifiedAt": "2026-10-25T17:23:51.736Z",
+    "summary": "2 divisions, 2 teams, 0 games",
+    "divisionsCount": 2,
+    "teamsCount": 2,
+    "gamesCount": 0,
+    "syncToken": "mysql_sync_1792949031736_xjibkl",
+    "dataSize": 1091
+  },
+  {
+    "id": "act_1792949023768_j3z43",
+    "backupId": "test_league_schedule",
+    "backupName": "Spring 2026 Test Schedule",
+    "versionNumber": 1,
+    "action": "Created Schedule Backup",
+    "modifiedBy": "superadmin",
+    "modifiedAt": "2026-10-25T17:23:43.768Z",
+    "summary": "1 divisions, 1 teams, 0 games",
+    "divisionsCount": 1,
+    "teamsCount": 1,
+    "gamesCount": 0,
+    "syncToken": "mysql_sync_1792949023768_ykvfdo",
+    "dataSize": 858
+  }
+]

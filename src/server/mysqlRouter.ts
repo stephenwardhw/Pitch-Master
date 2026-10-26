@@ -5,6 +5,7 @@ import {
   listBackups,
   getBackup,
   saveBackup,
+  getActivityLog,
   getMySqlConfig,
   setMySqlConfig,
 } from './mysqlService';
@@ -106,6 +107,17 @@ mysqlRouter.post('/backups', async (req, res) => {
       return res.status(409).json(result);
     }
 
+    res.json(result);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 7. Get Activity Log (last 10 modifications)
+mysqlRouter.get('/activity-log', async (req, res) => {
+  try {
+    const limit = Number(req.query.limit) || 10;
+    const result = await getActivityLog(limit);
     res.json(result);
   } catch (err: any) {
     res.status(500).json({ error: err.message });

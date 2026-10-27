@@ -150,6 +150,32 @@ export interface MySqlConfig {
   tableName?: string;
 }
 
+export type BulletinCategory =
+  | 'General'
+  | 'Weather'
+  | 'Field Closure'
+  | 'Schedule Update'
+  | 'Urgent';
+
+export type BulletinPriority = 'normal' | 'important' | 'urgent';
+
+export type BulletinTargetAudience = 'All' | 'Coaches' | 'Parents' | 'Referees';
+
+export interface Bulletin {
+  id: string;
+  title: string;
+  content: string;
+  category: BulletinCategory;
+  priority: BulletinPriority;
+  author?: string;
+  createdAt: string; // ISO date string or YYYY-MM-DD
+  updatedAt?: string;
+  expiresAt?: string; // YYYY-MM-DD
+  isPinned?: boolean;
+  isActive: boolean;
+  targetAudience?: BulletinTargetAudience;
+}
+
 export interface AppData {
   version: string;
   fileName: string;
@@ -161,6 +187,7 @@ export interface AppData {
   games: Game[];
   referees?: Referee[];
   refereeCertifications?: RefereeCertificationOption[];
+  bulletins?: Bulletin[];
   lastModified: string;
   syncToken?: string;
   lastModifiedBy?: string;

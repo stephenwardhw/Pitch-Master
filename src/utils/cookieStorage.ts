@@ -1,4 +1,4 @@
-import { AppData, Division, Field, Referee, RefereeCertificationOption, Team, TeamSizeOption } from '../types';
+import { AppData, Bulletin, Division, Field, Referee, RefereeCertificationOption, Team, TeamSizeOption } from '../types';
 import { generateLeagueSchedule } from './scheduler';
 
 export const COOKIE_NAME = 'soccer_scheduler_last_file';
@@ -435,6 +435,58 @@ export const DEFAULT_REFEREE_CERTIFICATIONS: RefereeCertificationOption[] = [
   },
 ];
 
+// Initial default league bulletins & announcements
+export const initialBulletins: Bulletin[] = [
+  {
+    id: 'bulletin-1',
+    title: 'Pitch 3 Aeration & Drainage Maintenance - Weekend Relocations',
+    content: 'Due to scheduled aeration and irrigation maintenance, Memorial Park Field 3 (West) will be closed for all weekend games on April 11-12, 2026. All U10 Girls Rec matches originally slated for Field 3 have been reassigned to Field 2 (Turf). Please review updated kickoff times on your team schedule.',
+    category: 'Field Closure',
+    priority: 'urgent',
+    author: 'League Operations',
+    createdAt: '2026-04-01',
+    isPinned: true,
+    isActive: true,
+    targetAudience: 'All',
+  },
+  {
+    id: 'bulletin-2',
+    title: 'Spring Season Kickoff & Parent Sideline Etiquette',
+    content: 'Welcome to the Spring 2026 Youth Soccer season! We are thrilled to welcome over 400 players and families. Please remember that coaches and parents must remain on opposite touchlines. Spectator noise and cheering must remain positive and encouraging at all times. Referees have complete authority over match conduct.',
+    category: 'General',
+    priority: 'important',
+    author: 'Executive Committee',
+    createdAt: '2026-03-24',
+    isPinned: true,
+    isActive: true,
+    targetAudience: 'Parents',
+  },
+  {
+    id: 'bulletin-3',
+    title: 'Referee Match Report Submission Deadline & Match Cards',
+    content: 'Center referees are reminded to submit digital match cards via the portal within 24 hours of final whistle. In case of yellow or red cards, please include a detailed incident note in the match card remarks section.',
+    category: 'Schedule Update',
+    priority: 'normal',
+    author: 'Referee Coordinator',
+    createdAt: '2026-03-20',
+    isPinned: false,
+    isActive: true,
+    targetAudience: 'Referees',
+  },
+  {
+    id: 'bulletin-4',
+    title: 'Inclement Weather & Rainout Protocol',
+    content: 'In the event of heavy rain or lightning warnings, the league safety officer will inspect pitches by 7:00 AM on game days. Status updates will be posted immediately to this bulletin board and sent via team coach text broadcast. Do not assume games are cancelled unless officially posted.',
+    category: 'Weather',
+    priority: 'normal',
+    author: 'Safety Director',
+    createdAt: '2026-03-15',
+    isPinned: false,
+    isActive: true,
+    targetAudience: 'All',
+  },
+];
+
 export function getInitialAppData(fileName: string = DEFAULT_FILE_NAME): AppData {
   const baseData: AppData = {
     version: '1.0.0',
@@ -452,6 +504,7 @@ export function getInitialAppData(fileName: string = DEFAULT_FILE_NAME): AppData
     games: [],
     referees: initialReferees,
     refereeCertifications: DEFAULT_REFEREE_CERTIFICATIONS,
+    bulletins: initialBulletins,
     lastModified: new Date().toISOString(),
   };
 
@@ -523,6 +576,9 @@ export function loadAppData(): AppData {
       if (!parsed.refereeCertifications || !Array.isArray(parsed.refereeCertifications) || parsed.refereeCertifications.length === 0) {
         parsed.refereeCertifications = DEFAULT_REFEREE_CERTIFICATIONS;
       }
+      if (!parsed.bulletins || !Array.isArray(parsed.bulletins) || parsed.bulletins.length === 0) {
+        parsed.bulletins = initialBulletins;
+      }
       if (parsed.teams && Array.isArray(parsed.teams)) {
         parsed.teams = parsed.teams.map((t) => ({
           ...t,
@@ -543,6 +599,9 @@ export function loadAppData(): AppData {
       }
       if (!parsed.refereeCertifications || !Array.isArray(parsed.refereeCertifications) || parsed.refereeCertifications.length === 0) {
         parsed.refereeCertifications = DEFAULT_REFEREE_CERTIFICATIONS;
+      }
+      if (!parsed.bulletins || !Array.isArray(parsed.bulletins) || parsed.bulletins.length === 0) {
+        parsed.bulletins = initialBulletins;
       }
       if (parsed.teams && Array.isArray(parsed.teams)) {
         parsed.teams = parsed.teams.map((t) => ({

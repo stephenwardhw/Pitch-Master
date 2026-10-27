@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { AppData, Conflict, Division, Field, Game, Referee, RefereeCertificationOption, SeasonConfig, Team, TeamSizeOption } from './types';
+import { AppData, Bulletin, Conflict, Division, Field, Game, Referee, RefereeCertificationOption, SeasonConfig, Team, TeamSizeOption } from './types';
 import { loadAppData, saveAppData, COOKIE_NAME, getCookie, setCookie } from './utils/cookieStorage';
 import { generateLeagueSchedule } from './utils/scheduler';
 import { detectConflicts } from './utils/conflictDetector';
@@ -10,6 +10,7 @@ import { DivisionsPage } from './components/DivisionsPage';
 import { TeamsPage } from './components/TeamsPage';
 import { FieldsPage } from './components/FieldsPage';
 import { RefereesPage } from './components/RefereesPage';
+import { BulletinsPage } from './components/BulletinsPage';
 import { SeasonConfigPage } from './components/SeasonConfigPage';
 import { StandaloneParentPortal } from './components/StandaloneParentPortal';
 import { TeamStatisticsPage } from './components/TeamStatisticsPage';
@@ -392,6 +393,70 @@ export default function App() {
     [updateAndSaveAppData]
   );
 
+  // Bulletin management handlers
+  const handleSaveBulletin = useCallback(
+    (bulletin: Bulletin) => {
+      updateAndSaveAppData((prev) => {
+        const existing = prev.bulletins || [];
+        const index = existing.findIndex((b) => b.id === bulletin.id);
+        let updated: Bulletin[];
+        if (index >= 0) {
+          updated = [...existing];
+          updated[index] = bulletin;
+        } else {
+          updated = [bulletin, ...existing];
+        }
+        return {
+          ...prev,
+          bulletins: updated,
+        };
+      });
+      setScheduleNotice({
+        message: `Bulletin "${bulletin.title}" saved successfully.`,
+        type: 'success',
+      });
+    },
+    [updateAndSaveAppData]
+  );
+
+  const handleDeleteBulletin = useCallback(
+    (bulletinId: string) => {
+      updateAndSaveAppData((prev) => ({
+        ...prev,
+        bulletins: (prev.bulletins || []).filter((b) => b.id !== bulletinId),
+      }));
+      setScheduleNotice({
+        message: 'Bulletin deleted.',
+        type: 'success',
+      });
+    },
+    [updateAndSaveAppData]
+  );
+
+  const handleTogglePinBulletin = useCallback(
+    (bulletinId: string) => {
+      updateAndSaveAppData((prev) => ({
+        ...prev,
+        bulletins: (prev.bulletins || []).map((b) =>
+          b.id === bulletinId ? { ...b, isPinned: !b.isPinned } : b
+        ),
+      }));
+    },
+    [updateAndSaveAppData]
+  );
+
+  const handleToggleActiveBulletin = useCallback(
+    (bulletinId: string) => {
+      updateAndSaveAppData((prev) => ({
+        ...prev,
+        bulletins: (prev.bulletins || []).map((b) =>
+          b.id === bulletinId ? { ...b, isActive: !b.isActive } : b
+        ),
+      }));
+    },
+    [updateAndSaveAppData]
+  );
+
   // Season config save - Restricted to admin and superadmin
   const handleSaveSeasonConfig = useCallback((config: SeasonConfig) => {
     if (adminUser?.role !== 'admin' && adminUser?.role !== 'superadmin') {
@@ -640,6 +705,17 @@ export default function App() {
             onNavigateToSchedule={() => setCurrentTab('schedule')}
             onOpenCsvImport={() => handleOpenCsvImport('referees')}
             onSaveCertifications={handleSaveRefereeCertifications}
+          />
+        )}
+
+        {currentTab === 'bulletins' && (
+          <BulletinsPage
+            appData={appData}
+            adminUser={adminUser}
+            onSaveBulletin={handleSaveBulletin}
+            onDeleteBulletin={handleDeleteBulletin}
+            onTogglePinBulletin={handleTogglePinBulletin}
+            onToggleActiveBulletin={handleToggleActiveBulletin}
           />
         )}
 

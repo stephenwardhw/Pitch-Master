@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { AppData, Game } from '../types';
+import { AppData, Bulletin, Game } from '../types';
 import { fetchServerLeagueSchedule, downloadLeagueScheduleJson } from '../utils/serverSync';
+import { PrintBulletinsModal } from './modals/PrintBulletinsModal';
 import {
   Users,
   Shield,
@@ -25,6 +26,10 @@ import {
   Clock,
   Shirt,
   X,
+  Megaphone,
+  Printer,
+  Pin,
+  Tag,
 } from 'lucide-react';
 
 interface LandingPageProps {
@@ -55,6 +60,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   const [activeTab, setActiveTab] = useState<'games' | 'divisions' | 'fields'>('games');
   const [selectedDivisionId, setSelectedDivisionId] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
+
+  // Bulletins state
+  const [isPrintBulletinsModalOpen, setIsPrintBulletinsModalOpen] = useState(false);
+  const [selectedBulletinDetail, setSelectedBulletinDetail] = useState<Bulletin | null>(null);
+  const [bulletinCategoryFilter, setBulletinCategoryFilter] = useState<string>('all');
 
   // Fetch the local league_schedule.json file
   const loadLocalFileSchedule = useCallback(async () => {
@@ -142,6 +152,42 @@ export const LandingPage: React.FC<LandingPageProps> = ({
     return result;
   }, [activeData.games, selectedDivisionId, searchQuery, teamMap, fieldMap, divisionMap]);
 
+  // Bulletins computations
+  const activeBulletins = useMemo(() => {
+    const list = activeData.bulletins || [];
+    return list
+      .filter((b) => b.isActive)
+      .sort((a, b) => {
+        if (a.isPinned && !b.isPinned) return -1;
+        if (!a.isPinned && b.isPinned) return 1;
+        const pOrder: Record<string, number> = { urgent: 0, important: 1, normal: 2 };
+        const aOrder = pOrder[a.priority] ?? 2;
+        const bOrder = pOrder[b.priority] ?? 2;
+        if (aOrder !== bOrder) return aOrder - bOrder;
+        return b.createdAt.localeCompare(a.createdAt);
+      });
+  }, [activeData.bulletins]);
+
+  const urgentBulletins = useMemo(() => {
+    return activeBulletins.filter((b) => b.priority === 'urgent');
+  }, [activeBulletins]);
+
+  const displayedBulletins = useMemo(() => {
+    if (bulletinCategoryFilter === 'all') return activeBulletins;
+    return activeBulletins.filter((b) => b.category === bulletinCategoryFilter);
+  }, [activeBulletins, bulletinCategoryFilter]);
+
+  const pinnedBulletins = useMemo(() => {
+    return activeBulletins.filter((b) => b.isPinned);
+  }, [activeBulletins]);
+
+  const scrollToBulletins = () => {
+    const el = document.getElementById('bulletins-section');
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
+
   const handleCopyLink = (path: string, label: string) => {
     try {
       const fullUrl = `${window.location.origin}${path}`;
@@ -200,10 +246,25 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             </div>
           </div>
 
-          <div className="flex items-center gap-3 text-xs">
+          <div className="flex items-center gap-2 sm:gap-3 text-xs">
+            <button
+              type="button"
+              onClick={scrollToBulletins}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-emerald-300 hover:text-white bg-emerald-950/60 hover:bg-emerald-900 border border-emerald-700/60 transition-colors font-medium cursor-pointer"
+              title="Jump down to League Bulletins"
+            >
+              <Megaphone className="w-3.5 h-3.5 text-emerald-400" />
+              <span className="hidden sm:inline">Bulletins</span>
+              {pinnedBulletins.length > 0 && (
+                <span className="inline-flex items-center justify-center px-1.5 py-0.2 text-[10px] font-bold bg-indigo-500/30 text-indigo-200 rounded-full border border-indigo-400/30">
+                  {pinnedBulletins.length} Pinned
+                </span>
+              )}
+            </button>
+
             <button
               onClick={onSelectPortal}
-              className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-emerald-300 hover:text-white bg-emerald-950/60 hover:bg-emerald-900 border border-emerald-700/60 transition-colors font-medium"
+              className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-emerald-300 hover:text-white bg-emerald-950/60 hover:bg-emerald-900 border border-emerald-700/60 transition-colors font-medium cursor-pointer"
             >
               <Users className="w-3.5 h-3.5" />
               <span>Coach & Parent Portal</span>
@@ -314,6 +375,99 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             </div>
           </div>
         </div>
+
+        {/* Pinned Bulletins at Top of Landing Page */}
+        {pinnedBulletins.length > 0 && (
+          <div className="max-w-5xl mx-auto w-full bg-gradient-to-r from-slate-900 via-indigo-950/40 to-slate-900 border-2 border-indigo-500/40 rounded-3xl p-5 sm:p-6 space-y-4 shadow-xl">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-7 h-7 rounded-lg bg-indigo-600 text-white flex items-center justify-center font-bold shadow-md shadow-indigo-950/50">
+                  <Pin className="w-3.5 h-3.5 fill-white" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-white tracking-tight flex items-center gap-2">
+                    <span>Pinned League Announcements</span>
+                    <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                      {pinnedBulletins.length} Pinned
+                    </span>
+                  </h3>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={scrollToBulletins}
+                className="text-xs text-emerald-400 hover:text-emerald-300 font-semibold hover:underline inline-flex items-center gap-1 cursor-pointer self-start sm:self-auto"
+              >
+                <span>Jump to Full Bulletins Section ({activeBulletins.length}) ↓</span>
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+              {pinnedBulletins.map((bulletin) => {
+                const isUrgent = bulletin.priority === 'urgent';
+                return (
+                  <div
+                    key={bulletin.id}
+                    className={`rounded-2xl p-4 border transition-all flex flex-col justify-between space-y-2.5 ${
+                      isUrgent
+                        ? 'bg-gradient-to-br from-rose-950/40 via-slate-900 to-slate-900 border-rose-500/50 shadow-md shadow-rose-950/20'
+                        : 'bg-slate-900/90 border-slate-800 hover:border-slate-700'
+                    }`}
+                  >
+                    <div>
+                      <div className="flex items-center justify-between gap-2 mb-1.5">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                            <Pin className="w-2.5 h-2.5 fill-indigo-300" />
+                            Pinned
+                          </span>
+                          <span
+                            className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
+                              bulletin.category === 'Field Closure'
+                                ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
+                                : bulletin.category === 'Weather'
+                                ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                                : bulletin.category === 'Schedule Update'
+                                ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
+                                : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                            }`}
+                          >
+                            {bulletin.category}
+                          </span>
+                          {isUrgent && (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-600 text-white uppercase animate-pulse">
+                              Urgent
+                            </span>
+                          )}
+                        </div>
+                        <span className="text-[11px] font-mono text-slate-400">{bulletin.createdAt}</span>
+                      </div>
+
+                      <h4 className="text-sm font-bold text-white tracking-tight leading-snug">
+                        {bulletin.title}
+                      </h4>
+                      <p className="text-xs text-slate-300 mt-1 leading-relaxed line-clamp-2">
+                        {bulletin.content}
+                      </p>
+                    </div>
+
+                    <div className="pt-2 border-t border-slate-800 flex items-center justify-between text-xs">
+                      <span className="text-slate-400 text-[11px]">By {bulletin.author || 'League Admin'}</span>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedBulletinDetail(bulletin)}
+                        className="font-bold text-emerald-400 hover:text-emerald-300 cursor-pointer text-xs"
+                      >
+                        Read Notice →
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Portal Gateway Options Cards */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8 max-w-5xl mx-auto w-full">
@@ -504,6 +658,166 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               </div>
             </div>
           </div>
+        </div>
+
+        {/* ========================================================================= */}
+        {/* LEAGUE BULLETINS & ANNOUNCEMENTS SECTION                                 */}
+        {/* ========================================================================= */}
+        <div id="bulletins-section" className="max-w-5xl mx-auto w-full bg-slate-900/90 border border-slate-800 rounded-3xl p-6 sm:p-8 space-y-6 shadow-2xl backdrop-blur-sm scroll-mt-20">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-5">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-emerald-600/90 text-white flex items-center justify-center font-bold shadow-md shadow-emerald-950/40">
+                  <Megaphone className="w-4 h-4" />
+                </div>
+                <h3 className="text-xl font-bold text-white tracking-tight">
+                  League Bulletins & Official Notices
+                </h3>
+                {urgentBulletins.length > 0 && (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-rose-500/20 text-rose-400 border border-rose-500/30">
+                    <span className="w-1.5 h-1.5 rounded-full bg-rose-400 animate-pulse" />
+                    {urgentBulletins.length} Urgent Alert{urgentBulletins.length === 1 ? '' : 's'}
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-slate-400">
+                Official announcements, weather advisories, field closures, and critical season schedule updates.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2.5 shrink-0">
+              <button
+                type="button"
+                onClick={() => setIsPrintBulletinsModalOpen(true)}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white border border-slate-700 text-xs font-semibold transition-colors shadow-sm cursor-pointer"
+                title="Print bulletins separately without match schedule"
+              >
+                <Printer className="w-3.5 h-3.5 text-emerald-400" />
+                <span>Print Bulletins (PDF)</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Category Filter Pills */}
+          <div className="flex flex-wrap items-center gap-1.5 text-xs">
+            <span className="text-slate-400 text-[11px] font-medium mr-1">Filter:</span>
+            {[
+              { id: 'all', label: `All Notices (${activeBulletins.length})` },
+              { id: 'Field Closure', label: 'Field Closures' },
+              { id: 'Weather', label: 'Weather' },
+              { id: 'Schedule Update', label: 'Schedule Updates' },
+              { id: 'General', label: 'General' },
+            ].map((f) => (
+              <button
+                key={f.id}
+                type="button"
+                onClick={() => setBulletinCategoryFilter(f.id)}
+                className={`px-3 py-1 rounded-lg font-medium transition-colors cursor-pointer ${
+                  bulletinCategoryFilter === f.id
+                    ? 'bg-emerald-600 text-white shadow-xs'
+                    : 'bg-slate-800/80 hover:bg-slate-800 text-slate-300 border border-slate-700/60'
+                }`}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Bulletins Grid */}
+          {displayedBulletins.length === 0 ? (
+            <div className="p-8 text-center text-slate-500 text-xs border border-dashed border-slate-800 rounded-2xl bg-slate-950/40">
+              No bulletins found in this category. Check back soon for announcements.
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {displayedBulletins.map((bulletin) => {
+                const isUrgent = bulletin.priority === 'urgent';
+                const isImportant = bulletin.priority === 'important';
+
+                return (
+                  <div
+                    key={bulletin.id}
+                    className={`rounded-2xl p-5 border transition-all flex flex-col justify-between space-y-3 ${
+                      isUrgent
+                        ? 'bg-gradient-to-br from-rose-950/40 via-slate-900 to-slate-900 border-rose-500/50 shadow-lg shadow-rose-950/20 ring-1 ring-rose-500/30'
+                        : isImportant
+                        ? 'bg-gradient-to-br from-amber-950/30 via-slate-900 to-slate-900 border-amber-500/40'
+                        : 'bg-slate-900 border-slate-800 hover:border-slate-700'
+                    }`}
+                  >
+                    <div className="space-y-2.5">
+                      {/* Top Badges */}
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          {bulletin.isPinned && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                              <Pin className="w-2.5 h-2.5 fill-indigo-300" />
+                              Pinned
+                            </span>
+                          )}
+
+                          <span
+                            className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide ${
+                              bulletin.category === 'Field Closure'
+                                ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
+                                : bulletin.category === 'Weather'
+                                ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                                : bulletin.category === 'Schedule Update'
+                                ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
+                                : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                            }`}
+                          >
+                            {bulletin.category}
+                          </span>
+
+                          {isUrgent && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-600 text-white uppercase tracking-wider animate-pulse">
+                              Urgent
+                            </span>
+                          )}
+                        </div>
+
+                        <span className="text-[11px] font-mono text-slate-400">
+                          {bulletin.createdAt}
+                        </span>
+                      </div>
+
+                      {/* Title */}
+                      <h4 className="text-base font-bold text-white tracking-tight leading-snug">
+                        {bulletin.title}
+                      </h4>
+
+                      {/* Content excerpt */}
+                      <p className="text-xs text-slate-300 leading-relaxed line-clamp-3">
+                        {bulletin.content}
+                      </p>
+                    </div>
+
+                    {/* Bottom footer & Read More action */}
+                    <div className="pt-3 border-t border-slate-800/80 flex items-center justify-between text-xs">
+                      <div className="flex items-center gap-2 text-slate-400 text-[11px]">
+                        <span>By {bulletin.author || 'League Admin'}</span>
+                        {bulletin.targetAudience && bulletin.targetAudience !== 'All' && (
+                          <span className="text-slate-500 bg-slate-800 px-1.5 py-0.5 rounded text-[10px]">
+                            {bulletin.targetAudience}
+                          </span>
+                        )}
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => setSelectedBulletinDetail(bulletin)}
+                        className="inline-flex items-center gap-1 text-emerald-400 hover:text-emerald-300 font-semibold text-xs cursor-pointer"
+                      >
+                        <span>Read full notice</span>
+                        <ArrowRight className="w-3 h-3" />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {/* ========================================================================= */}
@@ -938,6 +1252,85 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             </div>
           </div>
         </div>
+      )}
+
+      {/* Bulletin Detail Reading Modal */}
+      {selectedBulletinDetail && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-4 overflow-y-auto animate-in fade-in">
+          <div className="bg-slate-900 border border-slate-700 rounded-3xl w-full max-w-lg p-6 space-y-4 shadow-2xl relative">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex flex-wrap items-center gap-1.5">
+                {selectedBulletinDetail.isPinned && (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                    <Pin className="w-2.5 h-2.5 fill-indigo-300" />
+                    Pinned
+                  </span>
+                )}
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 uppercase">
+                  {selectedBulletinDetail.category}
+                </span>
+                {selectedBulletinDetail.priority === 'urgent' && (
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-600 text-white uppercase">
+                    Urgent
+                  </span>
+                )}
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setSelectedBulletinDetail(null)}
+                className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <h3 className="text-xl font-bold text-white tracking-tight">
+              {selectedBulletinDetail.title}
+            </h3>
+
+            <div className="p-4 rounded-xl bg-slate-950/60 border border-slate-800 text-slate-200 text-xs sm:text-sm leading-relaxed whitespace-pre-line max-h-80 overflow-y-auto">
+              {selectedBulletinDetail.content}
+            </div>
+
+            <div className="pt-2 border-t border-slate-800 flex items-center justify-between text-xs text-slate-400">
+              <div className="space-y-0.5">
+                <div>Posted by <strong className="text-slate-300">{selectedBulletinDetail.author || 'League Admin'}</strong></div>
+                <div className="font-mono text-[11px] text-slate-500">Date: {selectedBulletinDetail.createdAt}</div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedBulletinDetail(null);
+                    setIsPrintBulletinsModalOpen(true);
+                  }}
+                  className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5"
+                >
+                  <Printer className="w-3.5 h-3.5" />
+                  <span>Print</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedBulletinDetail(null)}
+                  className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold transition-colors"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Print Bulletins Modal */}
+      {isPrintBulletinsModalOpen && (
+        <PrintBulletinsModal
+          bulletins={activeBulletins}
+          seasonName={seasonName}
+          onClose={() => setIsPrintBulletinsModalOpen(false)}
+        />
       )}
     </div>
   );

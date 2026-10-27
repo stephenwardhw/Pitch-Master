@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { AppData, Division, Field, Game, Team } from '../types';
+import { AppData, Bulletin, Division, Field, Game, Team } from '../types';
 import {
   Calendar,
   Clock,
@@ -25,6 +25,9 @@ import {
   Home,
   Shield,
   Github,
+  Megaphone,
+  Pin,
+  X,
 } from 'lucide-react';
 import {
   buildEventPayload,
@@ -36,6 +39,7 @@ import {
 import { fetchServerLeagueSchedule } from '../utils/serverSync';
 import { ExportCalendarModal } from './modals/ExportCalendarModal';
 import { PrintScheduleView } from './PrintScheduleView';
+import { PrintBulletinsModal } from './modals/PrintBulletinsModal';
 import { ErrorBoundary } from './ErrorBoundary';
 import { TeamContactModal } from './modals/TeamContactModal';
 import { MatchContactModal } from './modals/MatchContactModal';
@@ -72,6 +76,11 @@ export const StandaloneParentPortal: React.FC<StandaloneParentPortalProps> = ({
   const [activeMapField, setActiveMapField] = useState<Field | null>(null);
   const [activeCalDropdownGameId, setActiveCalDropdownGameId] = useState<string | null>(null);
   const [copyLinkNotice, setCopyLinkNotice] = useState(false);
+
+  // Bulletins state
+  const [isPrintBulletinsModalOpen, setIsPrintBulletinsModalOpen] = useState(false);
+  const [selectedBulletinDetail, setSelectedBulletinDetail] = useState<Bulletin | null>(null);
+  const [bulletinAudienceFilter, setBulletinAudienceFilter] = useState<string>('all');
 
   // Fetch the server-hosted league_schedule.json file
   const loadServerSchedule = useCallback(async () => {
@@ -195,6 +204,40 @@ export const StandaloneParentPortal: React.FC<StandaloneParentPortalProps> = ({
   const sortedDates = useMemo(() => {
     return Object.keys(groupedByDate).sort();
   }, [groupedByDate]);
+
+  // Bulletins data for portal sidebar
+  const activeBulletins = useMemo(() => {
+    const list = activeData.bulletins || [];
+    return list
+      .filter((b) => b.isActive)
+      .sort((a, b) => {
+        if (a.isPinned && !b.isPinned) return -1;
+        if (!a.isPinned && b.isPinned) return 1;
+        const pOrder: Record<string, number> = { urgent: 0, important: 1, normal: 2 };
+        const aOrder = pOrder[a.priority] ?? 2;
+        const bOrder = pOrder[b.priority] ?? 2;
+        if (aOrder !== bOrder) return aOrder - bOrder;
+        return b.createdAt.localeCompare(a.createdAt);
+      });
+  }, [activeData.bulletins]);
+
+  const displayedBulletins = useMemo(() => {
+    if (bulletinAudienceFilter === 'all') return activeBulletins;
+    return activeBulletins.filter(
+      (b) => !b.targetAudience || b.targetAudience === 'All' || b.targetAudience === bulletinAudienceFilter
+    );
+  }, [activeBulletins, bulletinAudienceFilter]);
+
+  const pinnedBulletins = useMemo(() => {
+    return activeBulletins.filter((b) => b.isPinned);
+  }, [activeBulletins]);
+
+  const scrollToBulletins = () => {
+    const el = document.getElementById('bulletins-sidebar');
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
 
   // Copy shareable link
   const handleCopyShareLink = () => {
@@ -326,6 +369,21 @@ export const StandaloneParentPortal: React.FC<StandaloneParentPortalProps> = ({
                   <span className="hidden sm:inline">Home</span>
                 </button>
               )}
+
+              <button
+                type="button"
+                onClick={scrollToBulletins}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-emerald-900 bg-emerald-50 border border-emerald-300 rounded-lg hover:bg-emerald-100 transition-colors shadow-2xs cursor-pointer"
+                title="Jump to full league bulletins & notices"
+              >
+                <Megaphone className="w-3.5 h-3.5 text-emerald-700" />
+                <span className="hidden sm:inline">Bulletins</span>
+                {pinnedBulletins.length > 0 && (
+                  <span className="inline-flex items-center justify-center px-1.5 py-0.2 text-[10px] font-bold bg-indigo-100 text-indigo-800 rounded-full border border-indigo-200">
+                    {pinnedBulletins.length} Pinned
+                  </span>
+                )}
+              </button>
 
               <button
                 onClick={() => setIsPrintViewOpen(true)}
@@ -467,6 +525,16 @@ export const StandaloneParentPortal: React.FC<StandaloneParentPortalProps> = ({
                 <Share2 className="w-3.5 h-3.5" />
                 <span>{copyLinkNotice ? 'Link Copied!' : 'Share Portal Link'}</span>
               </button>
+
+              <button
+                type="button"
+                onClick={scrollToBulletins}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-emerald-200 hover:text-white bg-emerald-800/70 hover:bg-emerald-700 border border-emerald-600/70 rounded-lg transition-colors cursor-pointer"
+                title="Jump down to the full bulletins and announcements section"
+              >
+                <Megaphone className="w-3.5 h-3.5 text-emerald-300" />
+                <span>Full Bulletins Board ({activeBulletins.length}) ↓</span>
+              </button>
             </div>
           </div>
 
@@ -476,8 +544,101 @@ export const StandaloneParentPortal: React.FC<StandaloneParentPortalProps> = ({
           </div>
         </div>
 
-        {/* Quick Team & Division Selector Card */}
-        <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-xs space-y-4 no-print">
+        {/* Pinned Bulletins at Top of Page */}
+        {pinnedBulletins.length > 0 && (
+          <section className="bg-gradient-to-r from-amber-50/80 via-emerald-50/40 to-indigo-50/80 border-2 border-emerald-300 rounded-2xl p-4 sm:p-5 shadow-xs space-y-3 no-print">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-emerald-200/60 pb-2.5">
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded-md bg-indigo-600 text-white flex items-center justify-center font-bold shadow-2xs">
+                  <Pin className="w-3.5 h-3.5 fill-white" />
+                </div>
+                <h2 className="text-sm font-bold text-slate-900 tracking-tight flex items-center gap-2">
+                  <span>Pinned League Announcements</span>
+                  <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-800 border border-indigo-200">
+                    {pinnedBulletins.length} Pinned
+                  </span>
+                </h2>
+              </div>
+
+              <button
+                type="button"
+                onClick={scrollToBulletins}
+                className="text-xs text-emerald-800 hover:text-emerald-950 font-bold hover:underline inline-flex items-center gap-1 cursor-pointer self-start sm:self-auto"
+              >
+                <span>View Full Bulletins Board & Archive ↓</span>
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {pinnedBulletins.map((bulletin) => {
+                const isUrgent = bulletin.priority === 'urgent';
+                return (
+                  <div
+                    key={bulletin.id}
+                    className={`p-3.5 rounded-xl border bg-white shadow-2xs flex flex-col justify-between space-y-2.5 transition-all hover:shadow-xs ${
+                      isUrgent ? 'border-rose-300 ring-1 ring-rose-200' : 'border-slate-200'
+                    }`}
+                  >
+                    <div>
+                      <div className="flex items-center justify-between gap-2 mb-1.5">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="inline-flex items-center gap-1 text-[10px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded-full">
+                            <Pin className="w-2.5 h-2.5 fill-indigo-600" />
+                            Pinned Notice
+                          </span>
+                          <span
+                            className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${
+                              bulletin.category === 'Field Closure'
+                                ? 'bg-rose-100 text-rose-800 border border-rose-200'
+                                : bulletin.category === 'Weather'
+                                ? 'bg-amber-100 text-amber-800 border border-amber-200'
+                                : bulletin.category === 'Schedule Update'
+                                ? 'bg-blue-100 text-blue-800 border border-blue-200'
+                                : 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                            }`}
+                          >
+                            {bulletin.category}
+                          </span>
+                          {isUrgent && (
+                            <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-rose-600 text-white animate-pulse">
+                              Urgent Alert
+                            </span>
+                          )}
+                        </div>
+                        <span className="text-[11px] font-mono text-slate-500">{bulletin.createdAt}</span>
+                      </div>
+
+                      <h3 className="font-bold text-sm text-slate-900 leading-snug">
+                        {bulletin.title}
+                      </h3>
+                      <p className="text-xs text-slate-600 mt-1 leading-relaxed line-clamp-2">
+                        {bulletin.content}
+                      </p>
+                    </div>
+
+                    <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500">
+                      <span>By {bulletin.author || 'League Admin'}</span>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedBulletinDetail(bulletin)}
+                        className="font-bold text-emerald-700 hover:text-emerald-900 cursor-pointer"
+                      >
+                        Read Full Notice →
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        )}
+
+        {/* Main Grid: Schedule Section (3 cols on lg) + Bulletins Sidebar (1 col on lg) */}
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
+          {/* Main Schedule Column (3 cols) */}
+          <div className="lg:col-span-3 space-y-6">
+            {/* Quick Team & Division Selector Card */}
+            <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-xs space-y-4 no-print">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
             <div>
               <h2 className="text-base font-bold text-slate-900 tracking-tight">
@@ -992,7 +1153,147 @@ export const StandaloneParentPortal: React.FC<StandaloneParentPortalProps> = ({
             })}
           </div>
         </div>
-      </main>
+      </div>
+
+      {/* Dedicated Bulletins Sidebar (1 col on lg) - Marked no-print so schedule printing strictly excludes it */}
+      <aside id="bulletins-sidebar" className="lg:col-span-1 space-y-4 no-print w-full scroll-mt-20">
+        <div className="bg-white rounded-xl border border-slate-200 shadow-2xs overflow-hidden">
+          {/* Sidebar Header */}
+          <div className="p-3.5 bg-gradient-to-r from-emerald-900 to-slate-900 text-white flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-lg bg-emerald-600 text-white flex items-center justify-center font-bold shadow-xs">
+                <Megaphone className="w-3.5 h-3.5" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold tracking-tight text-white leading-tight">
+                  League Bulletins
+                </h3>
+                <span className="text-[10px] text-emerald-300 font-medium">
+                  Official Notices ({activeBulletins.length})
+                </span>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setIsPrintBulletinsModalOpen(true)}
+              className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold text-white bg-emerald-700/80 hover:bg-emerald-600 rounded-md transition-colors cursor-pointer shadow-xs"
+              title="Print bulletins separately without match schedule"
+            >
+              <Printer className="w-3 h-3" />
+              <span>Print</span>
+            </button>
+          </div>
+
+          {/* Target Audience Filter Chips */}
+          <div className="p-2.5 bg-slate-50 border-b border-slate-100 flex flex-wrap gap-1 text-[11px]">
+            {['all', 'Parents', 'Coaches', 'Referees'].map((aud) => (
+              <button
+                key={aud}
+                type="button"
+                onClick={() => setBulletinAudienceFilter(aud)}
+                className={`px-2 py-0.5 rounded-md font-medium transition-colors cursor-pointer ${
+                  bulletinAudienceFilter === aud
+                    ? 'bg-slate-900 text-white shadow-2xs'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
+                }`}
+              >
+                {aud === 'all' ? 'All' : aud}
+              </button>
+            ))}
+          </div>
+
+          {/* Bulletins List in Sidebar */}
+          <div className="p-3 space-y-3 max-h-[640px] overflow-y-auto">
+            {displayedBulletins.length === 0 ? (
+              <div className="text-center py-6 px-2 text-slate-400 text-xs">
+                No announcements posted for this audience filter.
+              </div>
+            ) : (
+              displayedBulletins.map((b) => {
+                const isUrgent = b.priority === 'urgent';
+                const isImportant = b.priority === 'important';
+
+                return (
+                  <div
+                    key={b.id}
+                    className={`p-3 rounded-xl border text-left transition-all ${
+                      isUrgent
+                        ? 'bg-rose-50/70 border-rose-200 text-rose-950 shadow-2xs'
+                        : isImportant
+                        ? 'bg-amber-50/60 border-amber-200 text-amber-950'
+                        : 'bg-white border-slate-200 hover:border-slate-300'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-1.5 mb-1.5">
+                      <div className="flex flex-wrap items-center gap-1">
+                        {b.isPinned && (
+                          <span className="text-[10px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-1.5 py-0.2 rounded-full inline-flex items-center gap-0.5">
+                            <Pin className="w-2.5 h-2.5 fill-indigo-600" />
+                            Pinned
+                          </span>
+                        )}
+                        <span
+                          className={`text-[9px] font-bold uppercase px-1.5 py-0.2 rounded ${
+                            b.category === 'Field Closure'
+                              ? 'bg-rose-100 text-rose-800'
+                              : b.category === 'Weather'
+                              ? 'bg-amber-100 text-amber-800'
+                              : b.category === 'Schedule Update'
+                              ? 'bg-blue-100 text-blue-800'
+                              : 'bg-emerald-100 text-emerald-800'
+                          }`}
+                        >
+                          {b.category}
+                        </span>
+                        {isUrgent && (
+                          <span className="text-[9px] font-black uppercase px-1.5 py-0.2 rounded bg-rose-600 text-white animate-pulse">
+                            Urgent
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-[10px] font-mono text-slate-500">{b.createdAt}</span>
+                    </div>
+
+                    <h4 className="font-bold text-xs text-slate-900 leading-snug line-clamp-2">
+                      {b.title}
+                    </h4>
+
+                    <p className="text-[11px] text-slate-600 mt-1 line-clamp-3 leading-relaxed">
+                      {b.content}
+                    </p>
+
+                    <div className="pt-2 mt-2 border-t border-slate-100 flex items-center justify-between text-[10px]">
+                      <span className="text-slate-400">By {b.author || 'League Admin'}</span>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedBulletinDetail(b)}
+                        className="font-bold text-emerald-700 hover:text-emerald-900 cursor-pointer"
+                      >
+                        Read More →
+                      </button>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+
+          {/* Sidebar Footer Link */}
+          <div className="p-2.5 bg-slate-50 border-t border-slate-100 text-center">
+            <button
+              type="button"
+              onClick={() => setIsPrintBulletinsModalOpen(true)}
+              className="w-full py-1.5 text-xs font-semibold text-emerald-800 hover:text-emerald-900 hover:bg-emerald-50 rounded-lg transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+            >
+              <Printer className="w-3.5 h-3.5 text-emerald-600" />
+              <span>Print All Bulletins (PDF)</span>
+            </button>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </main>
 
       {/* ================= STANDALONE PORTAL FOOTER ================= */}
       <footer className="border-t border-slate-200 bg-white py-6 px-4 text-xs text-slate-500 no-print mt-auto">
@@ -1087,6 +1388,85 @@ export const StandaloneParentPortal: React.FC<StandaloneParentPortalProps> = ({
           field={activeMapField}
           divisions={activeData.divisions}
           onClose={() => setActiveMapField(null)}
+        />
+      )}
+
+      {/* 6. Bulletin Detail Reading Modal */}
+      {selectedBulletinDetail && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 overflow-y-auto animate-in fade-in no-print">
+          <div className="bg-white rounded-2xl w-full max-w-lg p-6 space-y-4 shadow-2xl relative border border-slate-200">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex flex-wrap items-center gap-1.5">
+                {selectedBulletinDetail.isPinned && (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-indigo-100 text-indigo-800 border border-indigo-200">
+                    <Pin className="w-3 h-3 fill-indigo-600" />
+                    Pinned
+                  </span>
+                )}
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200 uppercase">
+                  {selectedBulletinDetail.category}
+                </span>
+                {selectedBulletinDetail.priority === 'urgent' && (
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-600 text-white uppercase">
+                    Urgent
+                  </span>
+                )}
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setSelectedBulletinDetail(null)}
+                className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-100 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <h3 className="text-lg font-bold text-slate-900 tracking-tight">
+              {selectedBulletinDetail.title}
+            </h3>
+
+            <div className="p-4 rounded-xl bg-slate-50 border border-slate-100 text-slate-700 text-xs sm:text-sm leading-relaxed whitespace-pre-line max-h-80 overflow-y-auto">
+              {selectedBulletinDetail.content}
+            </div>
+
+            <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+              <div className="space-y-0.5">
+                <div>Posted by <strong className="text-slate-700">{selectedBulletinDetail.author || 'League Admin'}</strong></div>
+                <div className="font-mono text-[11px] text-slate-400">Date: {selectedBulletinDetail.createdAt}</div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedBulletinDetail(null);
+                    setIsPrintBulletinsModalOpen(true);
+                  }}
+                  className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Printer className="w-3.5 h-3.5" />
+                  <span>Print</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedBulletinDetail(null)}
+                  className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition-colors cursor-pointer"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 7. Print Bulletins Modal */}
+      {isPrintBulletinsModalOpen && (
+        <PrintBulletinsModal
+          bulletins={activeBulletins}
+          seasonName={activeData.seasonConfig?.seasonName}
+          onClose={() => setIsPrintBulletinsModalOpen(false)}
         />
       )}
     </div>

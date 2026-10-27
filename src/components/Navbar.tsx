@@ -25,6 +25,7 @@ import {
   RefreshCw,
   History,
   Megaphone,
+  UploadCloud,
 } from 'lucide-react';
 import { AdminUser } from '../utils/authClient';
 
@@ -55,6 +56,7 @@ interface NavbarProps {
   onOpenAdminUsersModal?: () => void;
   onLogoutAdmin?: () => void;
   onUnifiedSave?: () => Promise<{ success: boolean; message: string }>;
+  onPublishServer?: () => Promise<{ success: boolean; message: string }>;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -71,6 +73,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenAdminUsersModal,
   onLogoutAdmin,
   onUnifiedSave,
+  onPublishServer,
 }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [portalMenuOpen, setPortalMenuOpen] = useState(false);
@@ -79,6 +82,8 @@ export const Navbar: React.FC<NavbarProps> = ({
   const [copyNotice, setCopyNotice] = useState(false);
   const [isSavingUnified, setIsSavingUnified] = useState(false);
   const [saveSuccessState, setSaveSuccessState] = useState(false);
+  const [isPublishingServer, setIsPublishingServer] = useState(false);
+  const [publishSuccessState, setPublishSuccessState] = useState(false);
 
   const handleQuickSave = async () => {
     if (!onUnifiedSave || isSavingUnified) return;
@@ -91,6 +96,20 @@ export const Navbar: React.FC<NavbarProps> = ({
       }
     } finally {
       setIsSavingUnified(false);
+    }
+  };
+
+  const handleQuickPublish = async () => {
+    if (!onPublishServer || isPublishingServer) return;
+    setIsPublishingServer(true);
+    try {
+      const res = await onPublishServer();
+      if (res?.success) {
+        setPublishSuccessState(true);
+        setTimeout(() => setPublishSuccessState(false), 2500);
+      }
+    } finally {
+      setIsPublishingServer(false);
     }
   };
 
@@ -312,7 +331,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 type="button"
                 onClick={handleQuickSave}
                 disabled={isSavingUnified}
-                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow-xs cursor-pointer shrink-0 ${
+                className={`inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow-xs cursor-pointer shrink-0 ${
                   saveSuccessState
                     ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
                     : 'bg-indigo-600 hover:bg-indigo-700 text-white active:scale-95'
@@ -332,6 +351,36 @@ export const Navbar: React.FC<NavbarProps> = ({
                     : saveSuccessState
                     ? 'Saved!'
                     : 'Save'}
+                </span>
+              </button>
+            )}
+
+            {/* Server Publish Button (uploads public league_schedule.json to server) */}
+            {onPublishServer && (
+              <button
+                type="button"
+                onClick={handleQuickPublish}
+                disabled={isPublishingServer}
+                className={`inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow-xs cursor-pointer shrink-0 ${
+                  publishSuccessState
+                    ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                    : 'bg-emerald-600 hover:bg-emerald-700 text-white active:scale-95'
+                }`}
+                title="Publish: Uploads and deploys public league_schedule.json to the server for portal & landing page viewers"
+              >
+                {isPublishingServer ? (
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                ) : publishSuccessState ? (
+                  <Check className="w-3.5 h-3.5" />
+                ) : (
+                  <UploadCloud className="w-3.5 h-3.5" />
+                )}
+                <span>
+                  {isPublishingServer
+                    ? 'Publishing...'
+                    : publishSuccessState
+                    ? 'Published!'
+                    : 'Publish'}
                 </span>
               </button>
             )}
@@ -632,6 +681,24 @@ export const Navbar: React.FC<NavbarProps> = ({
                   <span>Save (MySQL + Local JSON)</span>
                 </div>
                 {isSavingUnified && <RefreshCw className="w-4 h-4 animate-spin" />}
+              </button>
+            )}
+
+            {onPublishServer && (
+              <button
+                type="button"
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  handleQuickPublish();
+                }}
+                disabled={isPublishingServer}
+                className="w-full flex items-center justify-between px-3 py-2 rounded-lg font-bold text-white bg-emerald-600 hover:bg-emerald-700 shadow-xs"
+              >
+                <div className="flex items-center gap-2">
+                  <UploadCloud className="w-4 h-4" />
+                  <span>Publish (Upload league_schedule.json)</span>
+                </div>
+                {isPublishingServer && <RefreshCw className="w-4 h-4 animate-spin" />}
               </button>
             )}
 

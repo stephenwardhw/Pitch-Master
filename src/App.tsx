@@ -30,6 +30,7 @@ import { ActivityLogModal } from './components/modals/ActivityLogModal';
 import { AdminUser, checkAdminSession, getStoredUser, logoutAdmin } from './utils/authClient';
 import { saveOrExportJson } from './utils/fileExport';
 import { saveMySqlBackup, getMySqlBackup } from './utils/mysqlBackupClient';
+import { publishScheduleToServer } from './utils/serverSync';
 import { Github, Database } from 'lucide-react';
 
 export type AppMode = 'landing' | 'admin' | 'portal';
@@ -236,6 +237,28 @@ export default function App() {
       return { success: false, message: err.message };
     }
   }, [appData, adminUser, handleUpdateFullData]);
+
+  // Publish Schedule directly to server file league_schedule.json for public coach/parent access
+  const handlePublishToServer = useCallback(async () => {
+    try {
+      const res = await publishScheduleToServer(appData);
+      const successMsg =
+        res.message ||
+        'Successfully published schedule to server file "league_schedule.json"! Public portals and landing page are updated.';
+      setScheduleNotice({
+        message: successMsg,
+        type: 'success',
+      });
+      return { success: true, message: successMsg };
+    } catch (err: any) {
+      const errorMsg = `Publish error: ${err.message || 'Failed to upload league_schedule.json to server.'}`;
+      setScheduleNotice({
+        message: errorMsg,
+        type: 'error',
+      });
+      return { success: false, message: errorMsg };
+    }
+  }, [appData]);
 
   // Game update
   const handleUpdateGame = useCallback((updatedGame: Game) => {
@@ -588,6 +611,7 @@ export default function App() {
         onOpenAdminUsersModal={() => setIsAdminUsersModalOpen(true)}
         onLogoutAdmin={handleLogoutAdmin}
         onUnifiedSave={handleUnifiedSave}
+        onPublishServer={handlePublishToServer}
       />
 
       {/* Main Content Viewport */}

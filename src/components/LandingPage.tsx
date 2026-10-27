@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { AppData, Bulletin, Game } from '../types';
 import { fetchServerLeagueSchedule, downloadLeagueScheduleJson } from '../utils/serverSync';
 import { PrintBulletinsModal } from './modals/PrintBulletinsModal';
+import { BulletinContent, stripHtmlTags } from './BulletinContent';
 import {
   Users,
   Shield,
@@ -448,7 +449,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                         {bulletin.title}
                       </h4>
                       <p className="text-xs text-slate-300 mt-1 leading-relaxed line-clamp-2">
-                        {bulletin.content}
+                        {stripHtmlTags(bulletin.content)}
                       </p>
                     </div>
 
@@ -789,7 +790,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
 
                       {/* Content excerpt */}
                       <p className="text-xs text-slate-300 leading-relaxed line-clamp-3">
-                        {bulletin.content}
+                        {stripHtmlTags(bulletin.content)}
                       </p>
                     </div>
 
@@ -1289,8 +1290,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({
               {selectedBulletinDetail.title}
             </h3>
 
-            <div className="p-4 rounded-xl bg-slate-950/60 border border-slate-800 text-slate-200 text-xs sm:text-sm leading-relaxed whitespace-pre-line max-h-80 overflow-y-auto">
-              {selectedBulletinDetail.content}
+            <div className="p-4 rounded-xl bg-slate-950/60 border border-slate-800 text-slate-200 text-xs sm:text-sm leading-relaxed max-h-80 overflow-y-auto">
+              <BulletinContent content={selectedBulletinDetail.content} theme="dark" />
             </div>
 
             <div className="pt-2 border-t border-slate-800 flex items-center justify-between text-xs text-slate-400">

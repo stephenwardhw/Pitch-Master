@@ -40,6 +40,7 @@ import { fetchServerLeagueSchedule } from '../utils/serverSync';
 import { ExportCalendarModal } from './modals/ExportCalendarModal';
 import { PrintScheduleView } from './PrintScheduleView';
 import { PrintBulletinsModal } from './modals/PrintBulletinsModal';
+import { BulletinContent, stripHtmlTags } from './BulletinContent';
 import { ErrorBoundary } from './ErrorBoundary';
 import { TeamContactModal } from './modals/TeamContactModal';
 import { MatchContactModal } from './modals/MatchContactModal';
@@ -612,7 +613,7 @@ export const StandaloneParentPortal: React.FC<StandaloneParentPortalProps> = ({
                         {bulletin.title}
                       </h3>
                       <p className="text-xs text-slate-600 mt-1 leading-relaxed line-clamp-2">
-                        {bulletin.content}
+                        {stripHtmlTags(bulletin.content)}
                       </p>
                     </div>
 
@@ -1260,7 +1261,7 @@ export const StandaloneParentPortal: React.FC<StandaloneParentPortalProps> = ({
                     </h4>
 
                     <p className="text-[11px] text-slate-600 mt-1 line-clamp-3 leading-relaxed">
-                      {b.content}
+                      {stripHtmlTags(b.content)}
                     </p>
 
                     <div className="pt-2 mt-2 border-t border-slate-100 flex items-center justify-between text-[10px]">
@@ -1426,8 +1427,8 @@ export const StandaloneParentPortal: React.FC<StandaloneParentPortalProps> = ({
               {selectedBulletinDetail.title}
             </h3>
 
-            <div className="p-4 rounded-xl bg-slate-50 border border-slate-100 text-slate-700 text-xs sm:text-sm leading-relaxed whitespace-pre-line max-h-80 overflow-y-auto">
-              {selectedBulletinDetail.content}
+            <div className="p-4 rounded-xl bg-slate-50 border border-slate-100 text-slate-700 text-xs sm:text-sm leading-relaxed max-h-80 overflow-y-auto">
+              <BulletinContent content={selectedBulletinDetail.content} theme="light" />
             </div>
 
             <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">

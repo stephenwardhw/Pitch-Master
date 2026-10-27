@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Bulletin, BulletinCategory, BulletinTargetAudience } from '../../types';
 import { Printer, X, Megaphone, AlertCircle, Calendar, Shield, Tag } from 'lucide-react';
+import { BulletinContent } from '../BulletinContent';
 
 interface PrintBulletinsModalProps {
   bulletins: Bulletin[];
@@ -218,9 +219,7 @@ export const PrintBulletinsModal: React.FC<PrintBulletinsModalProps> = ({
                       {b.title}
                     </h3>
 
-                    <p className="text-xs sm:text-sm text-slate-700 leading-relaxed whitespace-pre-line font-normal">
-                      {b.content}
-                    </p>
+                    <BulletinContent content={b.content} className="font-normal" />
 
                     {b.expiresAt && (
                       <div className="mt-2 pt-2 border-t border-slate-200/60 text-[11px] text-slate-500 flex items-center gap-1.5">

@@ -13,6 +13,21 @@ export interface FieldSizeOption {
   name: string;
 }
 
+export interface FieldDimensions {
+  lengthYards?: number;
+  widthYards?: number;
+  lengthMeters?: number;
+  widthMeters?: number;
+  penaltyBoxDepthYards?: number;
+  penaltyBoxWidthYards?: number;
+  goalBoxDepthYards?: number;
+  goalBoxWidthYards?: number;
+  centerCircleRadiusYards?: number;
+  penaltySpotDistanceYards?: number;
+  goalWidthYards?: number;
+  goalHeightFeet?: number;
+}
+
 export interface Field {
   id: string;
   name: string;
@@ -23,6 +38,15 @@ export interface Field {
   size: string; // matches TeamSizeOption name or generic size like "11v11", "9v9", "7v7"
   surfaceType?: 'Natural Grass' | 'Artificial Turf' | 'Indoor / Futsal' | 'Hybrid';
   notes?: string;
+  // Dimensions and graphical layout markings
+  lengthYards?: number;
+  widthYards?: number;
+  goalSize?: string; // e.g. "8ft × 24ft (FIFA Regulation)", "7ft × 21ft (U11-U12)", "6.5ft × 18.5ft (U9-U10)"
+  markings?: string[]; // e.g. ["Touchlines & Goal Lines", "Halfway Line", "Center Circle", "Penalty Area", "Goal Area", "Penalty Spot", "Penalty Arc", "Corner Arcs", "Build-Out Line", "Technical Areas", "Corner Flags"]
+  orientation?: 'North-South' | 'East-West';
+  hasLighting?: boolean;
+  hasTeamBenches?: boolean;
+  dimensions?: FieldDimensions;
 }
 
 export interface Team {

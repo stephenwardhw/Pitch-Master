@@ -113,6 +113,12 @@ export const FieldsPage: React.FC<FieldsPageProps> = ({
   const [formMapsUrl, setFormMapsUrl] = useState('');
   const [formSize, setFormSize] = useState('11v11 Full');
   const [formSurface, setFormSurface] = useState<Field['surfaceType']>('Natural Grass');
+  const [formLength, setFormLength] = useState<number | string>(115);
+  const [formWidth, setFormWidth] = useState<number | string>(75);
+  const [formGoalSize, setFormGoalSize] = useState('8ft × 24ft (FIFA Regulation)');
+  const [formOrientation, setFormOrientation] = useState<'North-South' | 'East-West'>('North-South');
+  const [formHasLighting, setFormHasLighting] = useState<boolean>(true);
+  const [formHasTeamBenches, setFormHasTeamBenches] = useState<boolean>(true);
   const [formDivisionIds, setFormDivisionIds] = useState<string[]>([]);
   const [formBlackoutDates, setFormBlackoutDates] = useState<string[]>([]);
   const [newBlackoutDate, setNewBlackoutDate] = useState('');
@@ -352,6 +358,12 @@ export const FieldsPage: React.FC<FieldsPageProps> = ({
     setFormMapsUrl(field.googleMapsUrl || '');
     setFormSize(field.size || '11v11 Full');
     setFormSurface(field.surfaceType || 'Natural Grass');
+    setFormLength(field.lengthYards ?? (field.size?.includes('7v7') ? 60 : field.size?.includes('9v9') ? 75 : field.size?.includes('5v5') ? 40 : field.size?.includes('4v4') ? 30 : 115));
+    setFormWidth(field.widthYards ?? (field.size?.includes('7v7') ? 40 : field.size?.includes('9v9') ? 50 : field.size?.includes('5v5') ? 25 : field.size?.includes('4v4') ? 20 : 75));
+    setFormGoalSize(field.goalSize || (field.size?.includes('7v7') ? '6.5ft × 18.5ft (Youth)' : field.size?.includes('9v9') ? '7ft × 21ft (Intermediate)' : '8ft × 24ft (FIFA Regulation)'));
+    setFormOrientation(field.orientation || 'North-South');
+    setFormHasLighting(field.hasLighting ?? true);
+    setFormHasTeamBenches(field.hasTeamBenches ?? true);
     setFormDivisionIds([...(field.assignedDivisionIds || [])]);
     setFormBlackoutDates([...(field.blackoutDates || [])]);
     setFormNotes(field.notes || '');
@@ -365,9 +377,40 @@ export const FieldsPage: React.FC<FieldsPageProps> = ({
     setFormMapsUrl('');
     setFormSize('11v11 Full');
     setFormSurface('Natural Grass');
+    setFormLength(115);
+    setFormWidth(75);
+    setFormGoalSize('8ft × 24ft (FIFA Regulation)');
+    setFormOrientation('North-South');
+    setFormHasLighting(true);
+    setFormHasTeamBenches(true);
     setFormDivisionIds(appData.divisions.map((d) => d.id));
     setFormBlackoutDates([]);
     setFormNotes('');
+  };
+
+  const handleSizeChange = (newSize: string) => {
+    setFormSize(newSize);
+    if (newSize.includes('7v7')) {
+      setFormLength(60);
+      setFormWidth(40);
+      setFormGoalSize('6.5ft × 18.5ft (Youth)');
+    } else if (newSize.includes('9v9')) {
+      setFormLength(75);
+      setFormWidth(50);
+      setFormGoalSize('7ft × 21ft (Intermediate)');
+    } else if (newSize.includes('5v5')) {
+      setFormLength(40);
+      setFormWidth(25);
+      setFormGoalSize('6.5ft × 10ft (Futsal 2×3m)');
+    } else if (newSize.includes('4v4')) {
+      setFormLength(30);
+      setFormWidth(20);
+      setFormGoalSize('4ft × 6ft (Grassroots)');
+    } else {
+      setFormLength(115);
+      setFormWidth(75);
+      setFormGoalSize('8ft × 24ft (FIFA Regulation)');
+    }
   };
 
   const handleToggleDivision = (divId: string) => {
@@ -398,13 +441,48 @@ export const FieldsPage: React.FC<FieldsPageProps> = ({
         formAddress.trim() || formName.trim()
       )}`;
 
+    const parsedLength = typeof formLength === 'number' ? formLength : parseInt(formLength, 10) || 115;
+    const parsedWidth = typeof formWidth === 'number' ? formWidth : parseInt(formWidth, 10) || 75;
+
     const fieldToSave: Field = {
+      ...(editingField || {}),
       id: editingField ? editingField.id : `f-${Date.now()}`,
       name: formName.trim(),
       address: formAddress.trim(),
       googleMapsUrl: mapsUrl,
       size: formSize,
       surfaceType: formSurface,
+      lengthYards: parsedLength,
+      widthYards: parsedWidth,
+      goalSize: formGoalSize.trim(),
+      orientation: formOrientation,
+      hasLighting: formHasLighting,
+      hasTeamBenches: formHasTeamBenches,
+      markings: editingField?.markings || (formSize.includes('7v7') ? [
+        'Touchlines & Goal Lines',
+        'Halfway Line',
+        'Center Circle',
+        'Penalty Area',
+        'Goal Area',
+        'Penalty Spot',
+        'Build-Out Lines',
+        'Corner Arcs',
+        'Corner Flags',
+        'Goals',
+        'Technical Areas',
+      ] : [
+        'Touchlines & Goal Lines',
+        'Halfway Line',
+        'Center Circle',
+        'Penalty Area',
+        'Goal Area',
+        'Penalty Spot',
+        'Penalty Arc',
+        'Corner Arcs',
+        'Corner Flags',
+        'Goals',
+        'Technical Areas',
+      ]),
       assignedDivisionIds: formDivisionIds,
       blackoutDates: formBlackoutDates,
       notes: formNotes.trim(),
@@ -1139,8 +1217,13 @@ export const FieldsPage: React.FC<FieldsPageProps> = ({
                       <h3 className="text-base font-bold text-slate-900 leading-tight">
                         {field.name}
                       </h3>
-                      <p className="text-xs text-slate-500 mt-0.5">
-                        {field.size} · {field.surfaceType || 'Pitch'}
+                      <p className="text-xs text-slate-500 mt-0.5 flex items-center gap-1.5 flex-wrap">
+                        <span>{field.size} · {field.surfaceType || 'Pitch'}</span>
+                        {field.lengthYards && field.widthYards && (
+                          <span className="font-mono text-[11px] text-emerald-800 bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-200">
+                            {field.lengthYards}×{field.widthYards}yd
+                          </span>
+                        )}
                       </p>
                     </div>
                     <div className="flex items-center gap-1 shrink-0">
@@ -1174,7 +1257,7 @@ export const FieldsPage: React.FC<FieldsPageProps> = ({
                       </span>
                     </div>
 
-                    <div className="flex items-center gap-3 pt-1 border-t border-slate-200">
+                    <div className="flex items-center justify-between gap-3 pt-1 border-t border-slate-200">
                       <a
                         href={mapsUrl}
                         target="_blank"
@@ -1182,15 +1265,15 @@ export const FieldsPage: React.FC<FieldsPageProps> = ({
                         className="text-blue-600 hover:text-blue-800 font-medium inline-flex items-center gap-1"
                       >
                         <ExternalLink className="w-3 h-3" />
-                        <span>Google Maps Link</span>
+                        <span>Google Maps</span>
                       </a>
 
                       <button
                         type="button"
                         onClick={() => onSelectFieldMap(field)}
-                        className="text-slate-600 hover:text-slate-900 underline"
+                        className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 px-2.5 py-1 rounded-md border border-emerald-200 transition-colors"
                       >
-                        View Map Details
+                        <span>Pitch Diagram & Map</span>
                       </button>
                     </div>
                   </div>
@@ -1405,7 +1488,7 @@ export const FieldsPage: React.FC<FieldsPageProps> = ({
                   </label>
                   <select
                     value={formSize}
-                    onChange={(e) => setFormSize(e.target.value)}
+                    onChange={(e) => handleSizeChange(e.target.value)}
                     className="w-full text-xs rounded-lg border border-slate-300 p-2 bg-white"
                   >
                     <option value="11v11 Full">11v11 Full Regulation</option>
@@ -1431,6 +1514,93 @@ export const FieldsPage: React.FC<FieldsPageProps> = ({
                     <option value="Indoor / Futsal">Indoor / Futsal</option>
                     <option value="Hybrid">Hybrid Pitch</option>
                   </select>
+                </div>
+              </div>
+
+              {/* Pitch Dimensions & Physical Layout Specs */}
+              <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                    Pitch Dimensions & Goal Specs
+                  </span>
+                  <span className="text-[11px] text-slate-400">Drives visual field layout diagram</span>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                  <div>
+                    <label className="block text-[11px] font-medium text-slate-600 mb-0.5">
+                      Length (Yards)
+                    </label>
+                    <input
+                      type="number"
+                      min="20"
+                      max="140"
+                      value={formLength}
+                      onChange={(e) => setFormLength(e.target.value)}
+                      className="w-full text-xs font-mono rounded-lg border border-slate-300 p-1.5 bg-white"
+                      placeholder="e.g. 115"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-medium text-slate-600 mb-0.5">
+                      Width (Yards)
+                    </label>
+                    <input
+                      type="number"
+                      min="15"
+                      max="100"
+                      value={formWidth}
+                      onChange={(e) => setFormWidth(e.target.value)}
+                      className="w-full text-xs font-mono rounded-lg border border-slate-300 p-1.5 bg-white"
+                      placeholder="e.g. 75"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-medium text-slate-600 mb-0.5">
+                      Goal Size
+                    </label>
+                    <input
+                      type="text"
+                      value={formGoalSize}
+                      onChange={(e) => setFormGoalSize(e.target.value)}
+                      className="w-full text-xs rounded-lg border border-slate-300 p-1.5 bg-white"
+                      placeholder="8ft × 24ft"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-medium text-slate-600 mb-0.5">
+                      Sun Orientation
+                    </label>
+                    <select
+                      value={formOrientation}
+                      onChange={(e) => setFormOrientation(e.target.value as any)}
+                      className="w-full text-xs rounded-lg border border-slate-300 p-1.5 bg-white"
+                    >
+                      <option value="North-South">North-South</option>
+                      <option value="East-West">East-West</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-4 pt-1 border-t border-slate-200 text-xs">
+                  <label className="flex items-center gap-1.5 cursor-pointer text-slate-700">
+                    <input
+                      type="checkbox"
+                      checked={formHasLighting}
+                      onChange={(e) => setFormHasLighting(e.target.checked)}
+                      className="rounded border-slate-300 text-slate-900 focus:ring-slate-900 w-3.5 h-3.5"
+                    />
+                    <span className="font-medium">Has Floodlighting for Evening Games</span>
+                  </label>
+                  <label className="flex items-center gap-1.5 cursor-pointer text-slate-700">
+                    <input
+                      type="checkbox"
+                      checked={formHasTeamBenches}
+                      onChange={(e) => setFormHasTeamBenches(e.target.checked)}
+                      className="rounded border-slate-300 text-slate-900 focus:ring-slate-900 w-3.5 h-3.5"
+                    />
+                    <span className="font-medium">Technical Dugouts & Team Benches</span>
+                  </label>
                 </div>
               </div>
 

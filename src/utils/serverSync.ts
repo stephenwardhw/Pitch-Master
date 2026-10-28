@@ -1,4 +1,35 @@
-import { AppData } from '../types';
+import { AppData, Referee } from '../types';
+import { saveOrExportJson } from './fileExport';
+
+/**
+ * Strips confidential referee contact information (phone, email, notes)
+ * from the dataset before publishing to the publicly accessible league_schedule.json file.
+ * Referee id, name, certificationLevel, and match assignments are preserved
+ * so the public schedule displays properly without exposing personal contacts.
+ */
+export function sanitizeRefereesForPublicSchedule(referees?: Referee[]): Referee[] | undefined {
+  if (!referees || !Array.isArray(referees)) return referees;
+  return referees.map((r) => {
+    const { email: _email, phone: _phone, notes: _notes, ...rest } = r;
+    return {
+      ...rest,
+      email: '',
+      phone: '',
+    };
+  });
+}
+
+/**
+ * Prepares a sanitized copy of AppData for public publication in league_schedule.json.
+ * All referee contact information (email, phone, private notes) is stripped.
+ * Teams, fields, divisions, games, and bulletins remain intact.
+ */
+export function sanitizeDataForPublicPublish(data: AppData): AppData {
+  return {
+    ...data,
+    referees: sanitizeRefereesForPublicSchedule(data.referees),
+  };
+}
 
 /**
  * Fetches the league schedule data from the server-hosted league_schedule.json file.
@@ -47,11 +78,16 @@ export async function fetchServerLeagueSchedule(): Promise<AppData> {
 
 /**
  * Publishes the current league dataset to the server's league_schedule.json file via /api/publish-schedule.
- * If running on a static Apache server without a Node.js backend, handles HTML responses gracefully.
+ * Note: Referee contact information (phone, email, notes) is automatically stripped before publishing
+ * to guarantee that private contacts are never publicly accessible in league_schedule.json.
+ * Full contact information remains safe in the admin's downloaded JSON dataset and database backups.
  */
 export async function publishScheduleToServer(
   data: AppData
 ): Promise<{ success: boolean; message: string; updatedAt?: string }> {
+  // Strip private referee contact details exclusively for the public file
+  const publicData = sanitizeDataForPublicPublish(data);
+
   let response: Response;
   try {
     response = await fetch('/api/publish-schedule', {
@@ -59,7 +95,7 @@ export async function publishScheduleToServer(
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(data),
+      body: JSON.stringify(publicData),
     });
   } catch (err: any) {
     throw new Error(`Network error connecting to /api/publish-schedule: ${err.message}`);
@@ -98,10 +134,9 @@ export async function publishScheduleToServer(
   return result;
 }
 
-import { saveOrExportJson } from './fileExport';
-
 /**
  * Helper to download or directly overwrite the current AppData as a ready-to-deploy league_schedule.json file.
+ * Automatically sanitizes referee contact details (phone, email, notes) for public deployment.
  * If preferOverwrite is true and supported (Chrome/Edge), it prompts the browser's native file picker
  * allowing the user to select the existing file and overwrite it in-place without appending (1).
  */
@@ -110,6 +145,8 @@ export async function downloadLeagueScheduleJson(
   fileName = 'league_schedule.json',
   preferOverwrite = true
 ) {
-  return saveOrExportJson(data, fileName, { preferOverwrite });
+  // Strip private referee contact details when generating public league_schedule.json
+  const publicData = sanitizeDataForPublicPublish(data);
+  return saveOrExportJson(publicData, fileName, { preferOverwrite });
 }
 

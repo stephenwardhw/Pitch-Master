@@ -559,7 +559,7 @@ export const DatasetModal: React.FC<DatasetModalProps> = ({
               </span>
             </div>
             <p className="text-xs text-purple-900/80 leading-relaxed">
-              Push your updated divisions, teams, and schedule directly into <code className="font-mono text-purple-950 bg-white/80 px-1 py-0.5 rounded">league_schedule.json</code> on the server. Coaches and parents on the read-only portal will instantly view this schedule.
+              Push your updated divisions, teams, and schedule directly into <code className="font-mono text-purple-950 bg-white/80 px-1 py-0.5 rounded">league_schedule.json</code> on the server. Referee personal contact details (phone, email, notes) are automatically stripped to safeguard referee privacy on the public portal, while remaining completely intact in your downloaded JSON and database backups.
             </p>
             <button
               type="button"

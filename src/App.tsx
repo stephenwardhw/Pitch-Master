@@ -244,7 +244,7 @@ export default function App() {
       const res = await publishScheduleToServer(appData);
       const successMsg =
         res.message ||
-        'Successfully published schedule to server file "league_schedule.json"! Public portals and landing page are updated.';
+        'Successfully published schedule to server file "league_schedule.json"! Public portal is updated with referee contacts kept private.';
       setScheduleNotice({
         message: successMsg,
         type: 'success',

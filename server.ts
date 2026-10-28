@@ -160,6 +160,19 @@ app.post('/api/publish-schedule', (req, res) => {
       return res.status(400).json({ error: 'Invalid dataset payload.' });
     }
 
+    // Sanitize referee contact information for public league_schedule.json:
+    // Contact info (phone, email, notes) must only be in downloaded admin JSON and backups, not publicly accessible.
+    if (Array.isArray(data.referees)) {
+      data.referees = data.referees.map((r: any) => {
+        const { email: _email, phone: _phone, notes: _notes, ...rest } = r;
+        return {
+          ...rest,
+          email: '',
+          phone: '',
+        };
+      });
+    }
+
     const payloadStr = JSON.stringify(data, null, 2);
 
     const targetPaths: string[] = [];

@@ -27,6 +27,8 @@ import {
   Award,
   IdCard,
   Upload,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 import { downloadCsv, escapeCsvCell, exportRefereesToCsv } from '../utils/csvImporter';
 
@@ -669,6 +671,21 @@ export const RefereesPage: React.FC<RefereesPageProps> = ({
                           {ref.phone}
                         </a>
                       </div>
+
+                      {/* Public Contact Privacy Badge */}
+                      <div className="pt-1.5">
+                        {ref.hideContactPublicly ? (
+                          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-semibold bg-amber-50 text-amber-800 border border-amber-200">
+                            <EyeOff className="w-3 h-3 text-amber-600" />
+                            <span>Public Portal: Name Only (Contact Hidden)</span>
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-medium text-emerald-800 bg-emerald-50 border border-emerald-200">
+                            <Eye className="w-3 h-3 text-emerald-600" />
+                            <span>Public Portal: Name & Contact Visible</span>
+                          </span>
+                        )}
+                      </div>
                     </div>
 
                     {/* Preferred Divisions & Blackout summary */}
@@ -1171,6 +1188,9 @@ const RefereeFormModal: React.FC<RefereeFormModalProps> = ({
     (referee?.blackoutDates || []).join(', ')
   );
   const [isActive, setIsActive] = useState<boolean>(referee ? referee.isActive : true);
+  const [hideContactPublicly, setHideContactPublicly] = useState<boolean>(
+    referee ? Boolean(referee.hideContactPublicly) : false
+  );
   const [notes, setNotes] = useState(referee?.notes || '');
 
   const handleToggleDivision = (divId: string) => {
@@ -1200,6 +1220,7 @@ const RefereeFormModal: React.FC<RefereeFormModalProps> = ({
       preferredDivisionIds,
       blackoutDates: parsedBlackouts,
       isActive,
+      hideContactPublicly,
       notes: notes.trim() || undefined,
     };
 
@@ -1399,6 +1420,27 @@ const RefereeFormModal: React.FC<RefereeFormModalProps> = ({
             <label htmlFor="isActiveRef" className="font-medium text-slate-700 cursor-pointer">
               Active Official (Available for game assignments)
             </label>
+          </div>
+
+          {/* Public Portal Contact Privacy Flag */}
+          <div className="p-3 rounded-xl border border-indigo-200 bg-indigo-50/70 space-y-1.5">
+            <div className="flex items-start gap-2.5">
+              <input
+                type="checkbox"
+                id="hideContactPubliclyRef"
+                checked={hideContactPublicly}
+                onChange={(e) => setHideContactPublicly(e.target.checked)}
+                className="mt-0.5 rounded border-indigo-300 text-indigo-600 focus:ring-indigo-500 h-4 w-4"
+              />
+              <div>
+                <label htmlFor="hideContactPubliclyRef" className="font-bold text-slate-900 cursor-pointer text-xs">
+                  Hide Contact Details on Public Portal (Show Name Only)
+                </label>
+                <p className="text-[11px] text-slate-600 mt-0.5 leading-snug">
+                  When checked, only this official&apos;s name and badge/certification will appear in the public match coordination popup. Phone number and email address will remain hidden from coaches and parents.
+                </p>
+              </div>
+            </div>
           </div>
 
           {/* Notes */}

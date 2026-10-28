@@ -95,6 +95,7 @@ export interface Referee {
   maxGamesPerDay?: number;
   notes?: string;
   isActive: boolean;
+  hideContactPublicly?: boolean; // When true, only the referee's name is shown on the public portal; contact info (email/phone) is hidden
 }
 
 export interface SeasonConfig {

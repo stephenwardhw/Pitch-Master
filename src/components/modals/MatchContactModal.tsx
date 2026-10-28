@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Field, Game, Team } from '../../types';
+import { Field, Game, Referee, Team } from '../../types';
 import {
   X,
   Phone,
@@ -16,6 +16,10 @@ import {
   Shirt,
   AlertCircle,
   Users,
+  UserCheck,
+  EyeOff,
+  Eye,
+  Award,
 } from 'lucide-react';
 
 interface MatchContactModalProps {
@@ -25,6 +29,7 @@ interface MatchContactModalProps {
   divisionName?: string;
   field?: Field;
   fields: Field[];
+  referees?: Referee[];
   onClose: () => void;
 }
 
@@ -35,6 +40,7 @@ export const MatchContactModal: React.FC<MatchContactModalProps> = ({
   divisionName,
   field,
   fields,
+  referees = [],
   onClose,
 }) => {
   const [copiedState, setCopiedState] = useState<string | null>(null);
@@ -86,6 +92,21 @@ export const MatchContactModal: React.FC<MatchContactModalProps> = ({
     }
   };
 
+  // Referee lookups
+  const refMap = new Map((referees || []).map((r) => [r.id, r]));
+  const centerRef = game.refereeId ? refMap.get(game.refereeId) : null;
+  const ar1 = game.assistantReferee1Id ? refMap.get(game.assistantReferee1Id) : null;
+  const ar2 = game.assistantReferee2Id ? refMap.get(game.assistantReferee2Id) : null;
+
+  const assignedOfficials = [
+    { role: 'Center Referee', officialRole: 'Lead Match Official', ref: centerRef, isLead: true },
+    { role: 'Assistant Referee 1', officialRole: 'AR1 Linesperson', ref: ar1, isLead: false },
+    { role: 'Assistant Referee 2', officialRole: 'AR2 Linesperson', ref: ar2, isLead: false },
+  ].filter(
+    (item): item is { role: string; officialRole: string; ref: Referee; isLead: boolean } =>
+      item.ref !== null && item.ref !== undefined
+  );
+
   // Collect emails
   const homeEmail = homeTeam?.contactEmail?.trim() || '';
   const awayEmail = awayTeam?.contactEmail?.trim() || '';
@@ -100,7 +121,7 @@ export const MatchContactModal: React.FC<MatchContactModalProps> = ({
   );
 
   const emailBody = encodeURIComponent(
-    `Hello Coaches,\n\nReaching out regarding our upcoming match:\n\n• Division: ${
+    `Hello Coaches & Match Officials,\n\nReaching out regarding our upcoming match:\n\n• Division: ${
       divisionName || 'Youth Soccer League'
     }\n• Matchup: ${homeTeam?.name || 'Home Team'} (HOME) vs ${
       awayTeam?.name || 'Away Team'
@@ -138,7 +159,7 @@ export const MatchContactModal: React.FC<MatchContactModalProps> = ({
             <div className="flex items-center gap-2">
               <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-xs font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200">
                 <Users className="w-3.5 h-3.5 text-emerald-700" />
-                <span>Match Coach Contacts</span>
+                <span>Match Contacts: Coaches & Referees</span>
               </span>
               {divisionName && (
                 <span className="text-xs font-semibold text-slate-600 bg-slate-200/80 px-2 py-0.5 rounded">
@@ -498,6 +519,165 @@ export const MatchContactModal: React.FC<MatchContactModalProps> = ({
                 )}
               </div>
             </div>
+          </div>
+
+          {/* 3. Match Officials & Referee Contacts */}
+          <div className="pt-3 border-t border-slate-200 space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 pb-1">
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded-md bg-slate-900 text-white flex items-center justify-center font-bold shadow-2xs">
+                  <UserCheck className="w-3.5 h-3.5 text-emerald-400" />
+                </div>
+                <h4 className="font-bold text-slate-900 text-sm tracking-tight">
+                  Assigned Match Officials & Referee Contacts
+                </h4>
+              </div>
+              <span className="text-[11px] text-slate-500">
+                Official officiating crew assigned to this match fixture
+              </span>
+            </div>
+
+            {assignedOfficials.length === 0 ? (
+              <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/70 text-slate-600 text-xs flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-slate-200/80 flex items-center justify-center shrink-0 text-slate-500">
+                  <UserCheck className="w-4 h-4" />
+                </div>
+                <div>
+                  <span className="font-semibold text-slate-800 block">No Match Officials Assigned Yet</span>
+                  <span className="text-[11px] text-slate-500">
+                    Center referees and assistant referees will appear here once appointed by the league scheduler.
+                  </span>
+                </div>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                {assignedOfficials.map(({ role, ref, isLead }) => {
+                  const isContactHidden = Boolean(ref.hideContactPublicly) || (!ref.email && !ref.phone);
+
+                  return (
+                    <div
+                      key={ref.id + role}
+                      className={`p-3.5 rounded-xl border bg-white shadow-2xs flex flex-col justify-between space-y-3 transition-all ${
+                        isLead ? 'border-emerald-200 ring-1 ring-emerald-100' : 'border-slate-200'
+                      }`}
+                    >
+                      <div className="space-y-2.5">
+                        {/* Header: Role & Privacy Pill */}
+                        <div className="flex items-start justify-between gap-2 border-b border-slate-100 pb-2">
+                          <div>
+                            <span
+                              className={`inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${
+                                isLead
+                                  ? 'bg-emerald-100 text-emerald-900 border border-emerald-200'
+                                  : 'bg-slate-100 text-slate-700 border border-slate-200'
+                              }`}
+                            >
+                              {role}
+                            </span>
+                            <h5 className="font-bold text-slate-900 text-sm mt-1">{ref.name}</h5>
+                          </div>
+
+                          {/* Privacy Indicator Badge */}
+                          {isContactHidden ? (
+                            <span
+                              className="inline-flex items-center gap-1 text-[10px] font-semibold text-amber-800 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200 shrink-0"
+                              title="Referee contact info is set to private (Name only shown)"
+                            >
+                              <EyeOff className="w-3 h-3 text-amber-600" />
+                              <span>Name Only</span>
+                            </span>
+                          ) : (
+                            <span
+                              className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 shrink-0"
+                              title="Referee contact info is visible"
+                            >
+                              <Eye className="w-3 h-3 text-emerald-600" />
+                              <span>Contact Visible</span>
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Certification & License */}
+                        <div className="text-[11px] text-slate-600 flex items-center gap-1.5 flex-wrap">
+                          <span className="font-semibold text-slate-800">{ref.certificationLevel}</span>
+                          {ref.badgeNumber && (
+                            <>
+                              <span className="text-slate-300">·</span>
+                              <span className="font-mono text-slate-500">{ref.badgeNumber}</span>
+                            </>
+                          )}
+                        </div>
+
+                        {/* Contact Details vs Private Flag Mode */}
+                        {isContactHidden ? (
+                          <div className="p-2.5 rounded-lg bg-amber-50/70 border border-amber-200/80 text-[11px] text-amber-900 flex items-start gap-2">
+                            <EyeOff className="w-3.5 h-3.5 text-amber-600 shrink-0 mt-0.5" />
+                            <p className="leading-snug">
+                              Official contact details (phone & email) are kept private per this referee&apos;s privacy preference.
+                            </p>
+                          </div>
+                        ) : (
+                          <div className="space-y-2 text-xs pt-1">
+                            {/* Phone */}
+                            <div className="flex items-center justify-between gap-2 p-2 rounded-lg bg-slate-50 border border-slate-100">
+                              <div className="flex items-center gap-1.5 min-w-0">
+                                <Phone className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                                {ref.phone ? (
+                                  <a
+                                    href={`tel:${ref.phone}`}
+                                    className="font-mono font-medium text-emerald-700 hover:underline truncate"
+                                  >
+                                    {ref.phone}
+                                  </a>
+                                ) : (
+                                  <span className="text-slate-400 italic">No phone listed</span>
+                                )}
+                              </div>
+                              {ref.phone && (
+                                <button
+                                  onClick={() => copyToClipboard(ref.phone, `ref-phone-${ref.id}`)}
+                                  className="px-2 py-0.5 text-[10px] font-semibold text-slate-600 hover:text-slate-900 bg-white border border-slate-200 rounded hover:bg-slate-100 transition-colors shrink-0"
+                                  title="Copy phone number"
+                                >
+                                  {copiedState === `ref-phone-${ref.id}` ? 'Copied' : 'Copy'}
+                                </button>
+                              )}
+                            </div>
+
+                            {/* Email */}
+                            <div className="flex items-center justify-between gap-2 p-2 rounded-lg bg-slate-50 border border-slate-100">
+                              <div className="flex items-center gap-1.5 min-w-0">
+                                <Mail className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                                {ref.email ? (
+                                  <a
+                                    href={`mailto:${ref.email}`}
+                                    className="font-medium text-blue-600 hover:underline truncate"
+                                    title={ref.email}
+                                  >
+                                    {ref.email}
+                                  </a>
+                                ) : (
+                                  <span className="text-slate-400 italic">No email listed</span>
+                                )}
+                              </div>
+                              {ref.email && (
+                                <button
+                                  onClick={() => copyToClipboard(ref.email, `ref-email-${ref.id}`)}
+                                  className="px-2 py-0.5 text-[10px] font-semibold text-slate-600 hover:text-slate-900 bg-white border border-slate-200 rounded hover:bg-slate-100 transition-colors shrink-0"
+                                  title="Copy email address"
+                                >
+                                  {copiedState === `ref-email-${ref.id}` ? 'Copied' : 'Copy'}
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
 

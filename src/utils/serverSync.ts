@@ -2,19 +2,22 @@ import { AppData, Referee } from '../types';
 import { saveOrExportJson } from './fileExport';
 
 /**
- * Strips confidential referee contact information (phone, email, notes)
- * from the dataset before publishing to the publicly accessible league_schedule.json file.
- * Referee id, name, certificationLevel, and match assignments are preserved
- * so the public schedule displays properly without exposing personal contacts.
+ * Sanitizes referee records for the publicly accessible league_schedule.json file.
+ * Referees with `hideContactPublicly === true` have their phone and email cleared so only
+ * their name appears publicly. Referees with `hideContactPublicly !== true` have their contact
+ * information included alongside coach contact information. Internal administrative notes are
+ * always omitted from the public file.
  */
 export function sanitizeRefereesForPublicSchedule(referees?: Referee[]): Referee[] | undefined {
   if (!referees || !Array.isArray(referees)) return referees;
   return referees.map((r) => {
-    const { email: _email, phone: _phone, notes: _notes, ...rest } = r;
+    const { notes: _notes, ...rest } = r;
+    const hideContact = Boolean(r.hideContactPublicly);
     return {
       ...rest,
-      email: '',
-      phone: '',
+      email: hideContact ? '' : (r.email || ''),
+      phone: hideContact ? '' : (r.phone || ''),
+      hideContactPublicly: hideContact,
     };
   });
 }

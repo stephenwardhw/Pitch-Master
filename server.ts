@@ -161,14 +161,18 @@ app.post('/api/publish-schedule', (req, res) => {
     }
 
     // Sanitize referee contact information for public league_schedule.json:
-    // Contact info (phone, email, notes) must only be in downloaded admin JSON and backups, not publicly accessible.
+    // If hideContactPublicly is true, phone and email are stripped (name only).
+    // If hideContactPublicly is false, phone and email are published with coach contacts.
+    // Internal administrative notes are always stripped from the public file.
     if (Array.isArray(data.referees)) {
       data.referees = data.referees.map((r: any) => {
-        const { email: _email, phone: _phone, notes: _notes, ...rest } = r;
+        const { notes: _notes, ...rest } = r;
+        const hideContact = Boolean(r.hideContactPublicly);
         return {
           ...rest,
-          email: '',
-          phone: '',
+          email: hideContact ? '' : (r.email || ''),
+          phone: hideContact ? '' : (r.phone || ''),
+          hideContactPublicly: hideContact,
         };
       });
     }

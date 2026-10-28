@@ -1558,6 +1558,8 @@
     {
       "id": "ref-1",
       "name": "Marcus Vance",
+      "email": "marcus.vance@socalrefs.org",
+      "phone": "(310) 555-0321",
       "certificationLevel": "Regional / Grade 7",
       "badgeNumber": "USSF-884210",
       "experienceYears": 8,
@@ -1570,12 +1572,13 @@
       ],
       "maxGamesPerDay": 3,
       "isActive": true,
-      "email": "",
-      "phone": ""
+      "hideContactPublicly": false
     },
     {
       "id": "ref-2",
       "name": "Elena Rostova",
+      "email": "",
+      "phone": "",
       "certificationLevel": "Grassroots / Grade 8",
       "badgeNumber": "USSF-912440",
       "experienceYears": 4,
@@ -1586,12 +1589,13 @@
       "blackoutDates": [],
       "maxGamesPerDay": 4,
       "isActive": true,
-      "email": "",
-      "phone": ""
+      "hideContactPublicly": true
     },
     {
       "id": "ref-3",
       "name": "David Okafor",
+      "email": "d.okafor@coastalreferees.net",
+      "phone": "(310) 555-0612",
       "certificationLevel": "National / Grade 6",
       "badgeNumber": "USSF-720195",
       "experienceYears": 12,
@@ -1604,12 +1608,13 @@
       ],
       "maxGamesPerDay": 2,
       "isActive": true,
-      "email": "",
-      "phone": ""
+      "hideContactPublicly": false
     },
     {
       "id": "ref-4",
       "name": "Chloe Tremblay",
+      "email": "",
+      "phone": "",
       "certificationLevel": "Grassroots / Grade 8",
       "badgeNumber": "USSF-954118",
       "experienceYears": 3,
@@ -1620,12 +1625,13 @@
       "blackoutDates": [],
       "maxGamesPerDay": 3,
       "isActive": true,
-      "email": "",
-      "phone": ""
+      "hideContactPublicly": true
     },
     {
       "id": "ref-5",
       "name": "Julian Castillo",
+      "email": "julian.c@ayso-officials.org",
+      "phone": "(310) 555-0834",
       "certificationLevel": "Regional / Grade 7",
       "badgeNumber": "USSF-831092",
       "experienceYears": 6,
@@ -1636,12 +1642,13 @@
       "blackoutDates": [],
       "maxGamesPerDay": 4,
       "isActive": true,
-      "email": "",
-      "phone": ""
+      "hideContactPublicly": false
     },
     {
       "id": "ref-6",
       "name": "Maya Patel",
+      "email": "maya.patel@socalsoccer.org",
+      "phone": "(310) 555-0921",
       "certificationLevel": "Junior Apprentice",
       "badgeNumber": "USSF-991204",
       "experienceYears": 1,
@@ -1653,8 +1660,7 @@
       ],
       "maxGamesPerDay": 2,
       "isActive": true,
-      "email": "",
-      "phone": ""
+      "hideContactPublicly": false
     }
   ],
   "refereeCertifications": [
@@ -1751,5 +1757,5 @@
       "targetAudience": "All"
     }
   ],
-  "lastModified": "2026-10-28T15:20:44.089Z"
+  "lastModified": "2026-10-28T16:39:21.966Z"
 }

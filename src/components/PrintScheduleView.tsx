@@ -647,10 +647,18 @@ export const PrintScheduleView: React.FC<PrintScheduleViewProps> = ({
                         <td className="py-2.5 px-3 text-slate-700">{r.certificationLevel}</td>
                         <td className="py-2.5 px-3 font-mono text-slate-700">{r.badgeNumber || '—'}</td>
                         <td className="py-2.5 px-3 text-slate-800 font-medium">
-                          {r.email || '—'}
+                          {r.hideContactPublicly ? (
+                            <span className="text-slate-400 italic">Name Only (Private)</span>
+                          ) : (
+                            r.email || '—'
+                          )}
                         </td>
                         <td className="py-2.5 px-3 font-mono text-slate-600">
-                          {r.phone || '—'}
+                          {r.hideContactPublicly ? (
+                            <span className="text-slate-400 italic">Private</span>
+                          ) : (
+                            r.phone || '—'
+                          )}
                         </td>
                       </tr>
                     ))}

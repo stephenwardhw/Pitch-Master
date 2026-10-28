@@ -1003,10 +1003,10 @@ export const StandaloneParentPortal: React.FC<StandaloneParentPortalProps> = ({
                                     });
                                   }}
                                   className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:text-slate-900 bg-slate-50 hover:bg-slate-100 rounded-lg border border-slate-200 transition-colors shadow-2xs"
-                                  title="View coach contact details for both teams"
+                                  title="View coach and assigned referee contact details for this match"
                                 >
                                   <Phone className="w-3.5 h-3.5 text-emerald-600" />
-                                  <span>Coach Contacts</span>
+                                  <span>Match Contacts</span>
                                 </button>
 
                                 {/* Field Map */}
@@ -1369,6 +1369,7 @@ export const StandaloneParentPortal: React.FC<StandaloneParentPortalProps> = ({
           divisionName={activeMatchContacts.divisionName}
           field={activeMatchContacts.field}
           fields={activeData.fields}
+          referees={activeData.referees || []}
           onClose={() => setActiveMatchContacts(null)}
         />
       )}

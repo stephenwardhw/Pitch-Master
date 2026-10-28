@@ -1339,6 +1339,7 @@ export interface ParsedRefereeRow {
   preferredDivisionIds: string[];
   blackoutDates: string[];
   isActive: boolean;
+  hideContactPublicly?: boolean;
   notes: string;
   rowStatus: 'valid' | 'warning' | 'error';
   messages: string[];
@@ -1367,6 +1368,7 @@ const REFEREE_HEADER_ALIASES: Record<string, string[]> = {
   preferredDivisions: ['preferred divisions', 'divisions', 'preferred divs', 'divisions preferred', 'age groups', 'preferred_divisions'],
   blackoutDates: ['blackout dates', 'blackouts', 'unavailable dates', 'blackout', 'unavailability', 'off dates', 'blackout_dates'],
   isActive: ['active status', 'status', 'active', 'is active', 'is_active', 'active_status'],
+  hideContactPublicly: ['hide contact publicly', 'hide contact', 'public privacy', 'name only', 'privacy', 'show name only', 'hide_contact_publicly', 'contact private'],
   notes: ['notes', 'comments', 'remarks', 'info', 'bio', 'evaluator notes'],
 };
 
@@ -1533,6 +1535,23 @@ export function parseRefereesFromCsv(csvText: string, currentAppData: AppData): 
       }
     }
 
+    // Parse public contact privacy status
+    const hideContactRaw = getVal('hideContactPublicly');
+    let hideContactPublicly = false;
+    if (hideContactRaw) {
+      const lower = hideContactRaw.toLowerCase();
+      if (
+        lower === 'yes' ||
+        lower === 'true' ||
+        lower === '1' ||
+        lower.includes('name only') ||
+        lower.includes('hide') ||
+        lower.includes('private')
+      ) {
+        hideContactPublicly = true;
+      }
+    }
+
     parsedRows.push({
       rowIndex: index + 2,
       raw,
@@ -1547,6 +1566,7 @@ export function parseRefereesFromCsv(csvText: string, currentAppData: AppData): 
       preferredDivisionIds,
       blackoutDates,
       isActive,
+      hideContactPublicly,
       notes,
       rowStatus,
       messages,
@@ -1594,6 +1614,7 @@ export function applyRefereesImport(
     preferredDivisionIds: r.preferredDivisionIds,
     blackoutDates: r.blackoutDates,
     isActive: r.isActive,
+    hideContactPublicly: r.hideContactPublicly,
     notes: r.notes || '',
   }));
 
@@ -1630,6 +1651,10 @@ export function applyRefereesImport(
           preferredDivisionIds: Array.from(new Set([...existing.preferredDivisionIds, ...newRef.preferredDivisionIds])),
           blackoutDates: Array.from(new Set([...(existing.blackoutDates || []), ...(newRef.blackoutDates || [])])),
           isActive: newRef.isActive,
+          hideContactPublicly:
+            newRef.hideContactPublicly !== undefined
+              ? newRef.hideContactPublicly
+              : existing.hideContactPublicly,
           notes: newRef.notes || existing.notes,
         });
       } else {
@@ -1813,6 +1838,7 @@ export function exportRefereesToCsv(appData: AppData, refereesToExport?: Referee
     'Preferred Divisions',
     'Blackout Dates',
     'Active Status',
+    'Public Privacy (Show Name Only)',
     'Total Assigned Games',
     'Notes',
   ];
@@ -1835,6 +1861,7 @@ export function exportRefereesToCsv(appData: AppData, refereesToExport?: Referee
       escapeCsvCell(preferredDivNames),
       escapeCsvCell(blackoutStr),
       escapeCsvCell(r.isActive ? 'Active' : 'Inactive'),
+      escapeCsvCell(r.hideContactPublicly ? 'Yes (Name Only)' : 'No (Visible)'),
       escapeCsvCell(gamesCount),
       escapeCsvCell(r.notes || ''),
     ].join(',');

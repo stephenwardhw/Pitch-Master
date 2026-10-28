@@ -316,6 +316,7 @@ export const initialReferees: Referee[] = [
     maxGamesPerDay: 3,
     notes: 'Certified for competitive U12-U16. Available Saturdays and Sundays.',
     isActive: true,
+    hideContactPublicly: false,
   },
   {
     id: 'ref-2',
@@ -330,6 +331,7 @@ export const initialReferees: Referee[] = [
     maxGamesPerDay: 4,
     notes: 'Youth development specialist. Excellent with U10 small-sided rules.',
     isActive: true,
+    hideContactPublicly: true, // Only show name publicly on portal; contact info hidden
   },
   {
     id: 'ref-3',
@@ -344,6 +346,7 @@ export const initialReferees: Referee[] = [
     maxGamesPerDay: 2,
     notes: 'State tournament referee evaluator. Prefers high-tempo Premier matches.',
     isActive: true,
+    hideContactPublicly: false,
   },
   {
     id: 'ref-4',
@@ -358,6 +361,7 @@ export const initialReferees: Referee[] = [
     maxGamesPerDay: 3,
     notes: 'Available for morning Saturday slots at Clover and Memorial.',
     isActive: true,
+    hideContactPublicly: true, // Only show name publicly on portal; contact info hidden
   },
   {
     id: 'ref-5',
@@ -372,6 +376,7 @@ export const initialReferees: Referee[] = [
     maxGamesPerDay: 4,
     notes: 'Bilingual (English/Spanish). High reliability and punctual.',
     isActive: true,
+    hideContactPublicly: false,
   },
   {
     id: 'ref-6',
@@ -386,6 +391,7 @@ export const initialReferees: Referee[] = [
     maxGamesPerDay: 2,
     notes: 'Mentored official for grassroots U10 7v7 matches.',
     isActive: true,
+    hideContactPublicly: false,
   },
 ];
 

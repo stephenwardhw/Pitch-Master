@@ -111,7 +111,14 @@ const MARKING_DETAILS: Record<string, MarkingExplanation> = {
   },
 };
 
-export const FieldMapModal: React.FC<FieldMapModalProps> = ({
+interface FieldMapModalContentProps {
+  field: Field;
+  divisions: Division[];
+  onClose: () => void;
+  onEditField?: (field: Field) => void;
+}
+
+const FieldMapModalContent: React.FC<FieldMapModalContentProps> = ({
   field,
   divisions,
   onClose,
@@ -121,8 +128,6 @@ export const FieldMapModal: React.FC<FieldMapModalProps> = ({
   const [styleMode, setStyleMode] = useState<'realistic' | 'blueprint'>('realistic');
   const [showDimensions, setShowDimensions] = useState<boolean>(true);
   const [selectedMarking, setSelectedMarking] = useState<string | null>(null);
-
-  if (!field) return null;
 
   const dim = getFieldDimensions(field);
   const assignedDivisions = divisions.filter((d) => field.assignedDivisionIds?.includes(d.id));
@@ -624,3 +629,22 @@ export const FieldMapModal: React.FC<FieldMapModalProps> = ({
     </div>
   );
 };
+
+export const FieldMapModal: React.FC<FieldMapModalProps> = ({
+  field,
+  divisions,
+  onClose,
+  onEditField,
+}) => {
+  if (!field) return null;
+
+  return (
+    <FieldMapModalContent
+      field={field}
+      divisions={divisions}
+      onClose={onClose}
+      onEditField={onEditField}
+    />
+  );
+};
+

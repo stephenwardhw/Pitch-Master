@@ -12,7 +12,17 @@ interface EditGameModalProps {
   onClose: () => void;
 }
 
-export const EditGameModal: React.FC<EditGameModalProps> = ({
+interface EditGameModalContentProps {
+  game: Game;
+  divisions: Division[];
+  teams: Team[];
+  fields: Field[];
+  referees?: Referee[];
+  onSave: (updatedGame: Game) => void;
+  onClose: () => void;
+}
+
+const EditGameModalContent: React.FC<EditGameModalContentProps> = ({
   game,
   divisions,
   teams,
@@ -21,8 +31,6 @@ export const EditGameModal: React.FC<EditGameModalProps> = ({
   onSave,
   onClose,
 }) => {
-  if (!game) return null;
-
   const [date, setDate] = useState(game.date);
   const [time, setTime] = useState(game.time);
   const [fieldId, setFieldId] = useState(game.fieldId);
@@ -469,3 +477,28 @@ export const EditGameModal: React.FC<EditGameModalProps> = ({
     </div>
   );
 };
+
+export const EditGameModal: React.FC<EditGameModalProps> = ({
+  game,
+  divisions,
+  teams,
+  fields,
+  referees,
+  onSave,
+  onClose,
+}) => {
+  if (!game) return null;
+
+  return (
+    <EditGameModalContent
+      game={game}
+      divisions={divisions}
+      teams={teams}
+      fields={fields}
+      referees={referees}
+      onSave={onSave}
+      onClose={onClose}
+    />
+  );
+};
+

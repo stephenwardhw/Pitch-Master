@@ -812,36 +812,42 @@ export default function App() {
 
       {/* Modals */}
       {/* 1. Team Contact Modal */}
-      <TeamContactModal
-        team={activeContactTeam?.team || null}
-        divisionName={activeContactTeam?.divisionName}
-        fields={appData.fields}
-        onClose={() => setActiveContactTeam(null)}
-        onEditTeam={(team) => {
-          setCurrentTab('teams');
-        }}
-      />
+      {activeContactTeam && (
+        <TeamContactModal
+          team={activeContactTeam.team || null}
+          divisionName={activeContactTeam.divisionName}
+          fields={appData.fields}
+          onClose={() => setActiveContactTeam(null)}
+          onEditTeam={(team) => {
+            setCurrentTab('teams');
+          }}
+        />
+      )}
 
       {/* 2. Field Map Modal */}
-      <FieldMapModal
-        field={activeMapField}
-        divisions={appData.divisions}
-        onClose={() => setActiveMapField(null)}
-        onEditField={(field) => {
-          setCurrentTab('fields');
-        }}
-      />
+      {activeMapField && (
+        <FieldMapModal
+          field={activeMapField}
+          divisions={appData.divisions}
+          onClose={() => setActiveMapField(null)}
+          onEditField={(field) => {
+            setCurrentTab('fields');
+          }}
+        />
+      )}
 
       {/* 3. Edit Game Modal */}
-      <EditGameModal
-        game={activeEditingGame}
-        divisions={appData.divisions}
-        teams={appData.teams}
-        fields={appData.fields}
-        referees={appData.referees}
-        onSave={handleUpdateGame}
-        onClose={() => setActiveEditingGame(null)}
-      />
+      {activeEditingGame && (
+        <EditGameModal
+          game={activeEditingGame}
+          divisions={appData.divisions}
+          teams={appData.teams}
+          fields={appData.fields}
+          referees={appData.referees}
+          onSave={handleUpdateGame}
+          onClose={() => setActiveEditingGame(null)}
+        />
+      )}
 
       {/* 4. Dataset Manager Modal */}
       {isDatasetModalOpen && (

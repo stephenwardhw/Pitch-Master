@@ -13,6 +13,7 @@ import {
   Mail,
   Share2,
   ChevronDown,
+  ChevronUp,
   Download,
   CheckCircle2,
   Sparkles,
@@ -28,6 +29,9 @@ import {
   Megaphone,
   Pin,
   X,
+  Filter,
+  Menu,
+  ChevronRight,
 } from 'lucide-react';
 import {
   buildEventPayload,
@@ -77,6 +81,14 @@ export const StandaloneParentPortal: React.FC<StandaloneParentPortalProps> = ({
   const [activeMapField, setActiveMapField] = useState<Field | null>(null);
   const [activeCalDropdownGameId, setActiveCalDropdownGameId] = useState<string | null>(null);
   const [copyLinkNotice, setCopyLinkNotice] = useState(false);
+
+  // Collapsible mobile sections state
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isFilterSectionOpen, setIsFilterSectionOpen] = useState(true);
+  const [isBulletinsSectionOpen, setIsBulletinsSectionOpen] = useState(false);
+  const [isFieldsSectionOpen, setIsFieldsSectionOpen] = useState(false);
+  const [isSeasonDetailsOpen, setIsSeasonDetailsOpen] = useState(false);
+  const [collapsedDates, setCollapsedDates] = useState<Record<string, boolean>>({});
 
   // Bulletins state
   const [isPrintBulletinsModalOpen, setIsPrintBulletinsModalOpen] = useState(false);
@@ -233,8 +245,46 @@ export const StandaloneParentPortal: React.FC<StandaloneParentPortalProps> = ({
     return activeBulletins.filter((b) => b.isPinned);
   }, [activeBulletins]);
 
+  const hasUrgentBulletin = useMemo(() => {
+    return activeBulletins.some((b) => b.priority === 'urgent');
+  }, [activeBulletins]);
+
+  // If there are urgent announcements, auto-expand the bulletins section
+  useEffect(() => {
+    if (hasUrgentBulletin) {
+      setIsBulletinsSectionOpen(true);
+    }
+  }, [hasUrgentBulletin]);
+
+  // When a specific team is selected, expand all dates so their games are immediately visible
+  useEffect(() => {
+    if (selectedTeamId !== 'all') {
+      setCollapsedDates({});
+    }
+  }, [selectedTeamId]);
+
+  const toggleDateCollapsed = (dateStr: string) => {
+    setCollapsedDates((prev) => ({
+      ...prev,
+      [dateStr]: !prev[dateStr],
+    }));
+  };
+
+  const collapseAllDates = () => {
+    const next: Record<string, boolean> = {};
+    for (const d of sortedDates) {
+      next[d] = true;
+    }
+    setCollapsedDates(next);
+  };
+
+  const expandAllDates = () => {
+    setCollapsedDates({});
+  };
+
   const scrollToBulletins = () => {
-    const el = document.getElementById('bulletins-sidebar');
+    setIsBulletinsSectionOpen(true);
+    const el = document.getElementById('bulletins-section') || document.getElementById('bulletins-sidebar');
     if (el) {
       el.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
@@ -288,13 +338,13 @@ export const StandaloneParentPortal: React.FC<StandaloneParentPortalProps> = ({
     <div className={`min-h-screen bg-slate-50 flex flex-col text-slate-900 font-sans ${isPrintViewOpen ? 'print:p-0 print:m-0 print:bg-white print:block' : ''}`}>
       {/* ================= STANDALONE PORTAL TOP HEADER ================= */}
       <header className="sticky top-0 z-40 bg-white border-b border-slate-200 shadow-2xs no-print">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between gap-3 h-16">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between gap-2 h-14 sm:h-16">
             {/* Wordmark & Portal Branding */}
-            <div className="flex items-center gap-3 shrink-0">
-              <div className="w-9 h-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-bold shadow-xs">
+            <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+              <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-bold shadow-xs shrink-0">
                 <svg
-                  className="w-5 h-5 text-white"
+                  className="w-4 h-4 sm:w-5 sm:h-5 text-white"
                   viewBox="0 0 24 24"
                   fill="none"
                   stroke="currentColor"
@@ -311,23 +361,23 @@ export const StandaloneParentPortal: React.FC<StandaloneParentPortalProps> = ({
                   <line x1="2.5" y1="9" x2="6" y2="10" />
                 </svg>
               </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="text-base sm:text-lg font-bold tracking-tight text-slate-900 leading-none">
-                    PitchMaster Soccer
+              <div className="min-w-0">
+                <div className="flex items-center gap-1.5 truncate">
+                  <span className="text-sm sm:text-lg font-bold tracking-tight text-slate-900 leading-none truncate">
+                    PitchMaster
                   </span>
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
-                    Coach & Parent Portal
+                  <span className="px-1.5 py-0.5 rounded-full text-[9px] sm:text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200 shrink-0">
+                    Portal
                   </span>
                 </div>
-                <span className="text-[11px] text-slate-500 font-medium">
-                  {activeData.seasonConfig.seasonName || 'Official League Schedule'}
+                <span className="text-[10px] sm:text-[11px] text-slate-500 font-medium truncate block">
+                  {activeData.seasonConfig.seasonName || 'Official Schedule'}
                 </span>
               </div>
             </div>
 
-            {/* Server Connection Pill & Live Sync Status */}
-            <div className="hidden md:flex items-center gap-2">
+            {/* Desktop Server Connection Pill & Live Sync Status */}
+            <div className="hidden lg:flex items-center gap-2">
               {isLoadingServerData ? (
                 <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-full bg-slate-100 text-slate-600 border border-slate-200">
                   <RefreshCw className="w-3 h-3 animate-spin text-emerald-600" />
@@ -358,8 +408,8 @@ export const StandaloneParentPortal: React.FC<StandaloneParentPortalProps> = ({
               </button>
             </div>
 
-            {/* Action Buttons: Home, Print, Calendar, Share */}
-            <div className="flex items-center gap-2 shrink-0">
+            {/* Desktop Action Buttons */}
+            <div className="hidden md:flex items-center gap-2 shrink-0">
               {onGoToHome && (
                 <button
                   onClick={onGoToHome}
@@ -367,7 +417,7 @@ export const StandaloneParentPortal: React.FC<StandaloneParentPortalProps> = ({
                   title="Return to Main Landing Page (/)"
                 >
                   <Home className="w-3.5 h-3.5 text-slate-500" />
-                  <span className="hidden sm:inline">Home</span>
+                  <span>Home</span>
                 </button>
               )}
 
@@ -378,10 +428,10 @@ export const StandaloneParentPortal: React.FC<StandaloneParentPortalProps> = ({
                 title="Jump to full league bulletins & notices"
               >
                 <Megaphone className="w-3.5 h-3.5 text-emerald-700" />
-                <span className="hidden sm:inline">Bulletins</span>
+                <span>Bulletins</span>
                 {pinnedBulletins.length > 0 && (
                   <span className="inline-flex items-center justify-center px-1.5 py-0.2 text-[10px] font-bold bg-indigo-100 text-indigo-800 rounded-full border border-indigo-200">
-                    {pinnedBulletins.length} Pinned
+                    {pinnedBulletins.length}
                   </span>
                 )}
               </button>
@@ -389,10 +439,10 @@ export const StandaloneParentPortal: React.FC<StandaloneParentPortalProps> = ({
               <button
                 onClick={() => setIsPrintViewOpen(true)}
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors shadow-2xs"
-                title="Print friendly PDF schedule with headers and team directory"
+                title="Print friendly PDF schedule"
               >
                 <Printer className="w-3.5 h-3.5 text-slate-500" />
-                <span className="hidden sm:inline">Print (PDF)</span>
+                <span>Print (PDF)</span>
               </button>
 
               <button
@@ -401,7 +451,7 @@ export const StandaloneParentPortal: React.FC<StandaloneParentPortalProps> = ({
                 title="Add games to Google Calendar, Outlook, or Apple Calendar"
               >
                 <CalendarPlus className="w-3.5 h-3.5 text-emerald-600" />
-                <span className="hidden sm:inline">Add to Calendar</span>
+                <span>Calendar</span>
               </button>
 
               <button
@@ -410,7 +460,7 @@ export const StandaloneParentPortal: React.FC<StandaloneParentPortalProps> = ({
                 title="Copy direct standalone link to share with parents"
               >
                 <Share2 className="w-3.5 h-3.5" />
-                <span className="hidden lg:inline">{copyLinkNotice ? 'Copied!' : 'Share'}</span>
+                <span>{copyLinkNotice ? 'Copied!' : 'Share'}</span>
               </button>
 
               <a
@@ -419,11 +469,157 @@ export const StandaloneParentPortal: React.FC<StandaloneParentPortalProps> = ({
                 title="League Administrator Login (/admin)"
               >
                 <Shield className="w-3.5 h-3.5 text-slate-500" />
-                <span className="hidden sm:inline">Admin Login</span>
+                <span>Admin Login</span>
               </a>
+            </div>
+
+            {/* Mobile Action Controls: Bulletins Icon + Calendar Icon + Hamburger Toggle */}
+            <div className="flex md:hidden items-center gap-1 shrink-0">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsBulletinsSectionOpen((prev) => !prev);
+                  if (!isBulletinsSectionOpen) {
+                    const el = document.getElementById('bulletins-section');
+                    if (el) el.scrollIntoView({ behavior: 'smooth' });
+                  }
+                }}
+                className={`p-2 rounded-lg text-xs font-semibold flex items-center justify-center transition-colors relative ${
+                  isBulletinsSectionOpen || activeBulletins.length > 0
+                    ? 'text-emerald-900 bg-emerald-50 border border-emerald-200'
+                    : 'text-slate-600 bg-slate-100'
+                }`}
+                title="Toggle Bulletins"
+                aria-label="Toggle Bulletins"
+              >
+                <Megaphone className="w-4 h-4 text-emerald-700" />
+                {pinnedBulletins.length > 0 && (
+                  <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-indigo-600 ring-1 ring-white"></span>
+                )}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setIsExportCalendarModalOpen(true)}
+                className="p-2 rounded-lg text-emerald-800 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 transition-colors"
+                title="Export Calendar"
+                aria-label="Export Calendar"
+              >
+                <CalendarPlus className="w-4 h-4" />
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setIsMobileMenuOpen((prev) => !prev)}
+                className="p-2 rounded-lg text-slate-700 bg-slate-100 hover:bg-slate-200 transition-colors ml-0.5"
+                aria-label="Toggle mobile portal navigation menu"
+              >
+                {isMobileMenuOpen ? <X className="w-5 h-5 text-slate-800" /> : <Menu className="w-5 h-5 text-slate-800" />}
+              </button>
             </div>
           </div>
         </div>
+
+        {/* Mobile Slide-down Action Menu Drawer */}
+        {isMobileMenuOpen && (
+          <div className="md:hidden border-t border-slate-200 bg-white px-4 py-3 space-y-3 shadow-lg animate-in slide-in-from-top-2 duration-150">
+            {/* Live Server Sync Status on Mobile */}
+            <div className="flex items-center justify-between p-2.5 rounded-lg bg-slate-50 border border-slate-200 text-xs">
+              <div className="flex items-center gap-2">
+                <span className={`w-2 h-2 rounded-full ${serverData ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} />
+                <div className="flex flex-col">
+                  <span className="font-semibold text-slate-800">
+                    {serverData ? 'Live Schedule' : 'Cached Schedule'}
+                  </span>
+                  <span className="font-mono text-[10px] text-slate-500">
+                    {serverFileLoadedAt ? `Synced: ${serverFileLoadedAt}` : 'league_schedule.json'}
+                  </span>
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  loadServerSchedule();
+                }}
+                disabled={isLoadingServerData}
+                className="px-2.5 py-1 text-xs font-semibold text-emerald-800 bg-emerald-100 rounded-md hover:bg-emerald-200 transition-colors flex items-center gap-1 disabled:opacity-50"
+              >
+                <RefreshCw className={`w-3 h-3 ${isLoadingServerData ? 'animate-spin' : ''}`} />
+                <span>Reload</span>
+              </button>
+            </div>
+
+            {/* Menu Links */}
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <button
+                onClick={() => {
+                  setIsPrintViewOpen(true);
+                  setIsMobileMenuOpen(false);
+                }}
+                className="flex items-center gap-2 p-2.5 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-800 font-semibold text-left min-h-[44px]"
+              >
+                <Printer className="w-4 h-4 text-slate-600 shrink-0" />
+                <span>Print Schedule</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  setIsExportCalendarModalOpen(true);
+                  setIsMobileMenuOpen(false);
+                }}
+                className="flex items-center gap-2 p-2.5 rounded-lg border border-emerald-200 bg-emerald-50/70 hover:bg-emerald-100 text-emerald-900 font-semibold text-left min-h-[44px]"
+              >
+                <CalendarPlus className="w-4 h-4 text-emerald-700 shrink-0" />
+                <span>Add to Calendar</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  handleCopyShareLink();
+                  setIsMobileMenuOpen(false);
+                }}
+                className="flex items-center gap-2 p-2.5 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-800 font-semibold text-left min-h-[44px]"
+              >
+                <Share2 className="w-4 h-4 text-slate-600 shrink-0" />
+                <span>{copyLinkNotice ? 'Copied Link!' : 'Share Portal'}</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  setIsFieldsSectionOpen(true);
+                  setIsMobileMenuOpen(false);
+                  const el = document.getElementById('fields-section');
+                  if (el) el.scrollIntoView({ behavior: 'smooth' });
+                }}
+                className="flex items-center gap-2 p-2.5 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-800 font-semibold text-left min-h-[44px]"
+              >
+                <MapPin className="w-4 h-4 text-rose-500 shrink-0" />
+                <span>Pitch Locations</span>
+              </button>
+
+              {onGoToHome && (
+                <button
+                  onClick={() => {
+                    setIsMobileMenuOpen(false);
+                    onGoToHome();
+                  }}
+                  className="flex items-center gap-2 p-2.5 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-800 font-semibold text-left min-h-[44px]"
+                >
+                  <Home className="w-4 h-4 text-slate-600 shrink-0" />
+                  <span>Home Page</span>
+                </button>
+              )}
+
+              <a
+                href="/admin"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="flex items-center gap-2 p-2.5 rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-800 font-semibold text-left min-h-[44px]"
+              >
+                <Shield className="w-4 h-4 text-slate-600 shrink-0" />
+                <span>Admin Login</span>
+              </a>
+            </div>
+          </div>
+        )}
       </header>
 
       {/* ================= STANDALONE PORTAL MAIN CONTENT ================= */}
@@ -450,313 +646,467 @@ export const StandaloneParentPortal: React.FC<StandaloneParentPortalProps> = ({
           </div>
         </div>
 
-        {/* Hero Welcome Banner */}
-        <div className="bg-emerald-900 text-white rounded-2xl p-6 sm:p-8 shadow-md relative overflow-hidden no-print">
-          <div className="relative z-10 space-y-4 max-w-3xl">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-800/80 border border-emerald-700/60 text-emerald-200 text-xs font-semibold">
-              <Users className="w-3.5 h-3.5" />
-              <span>Coach, Player & Parent Schedule Portal</span>
+        {/* Hero Welcome Banner (Mobile Optimized & Collapsible Server Details) */}
+        <div className="bg-emerald-900 text-white rounded-2xl p-4 sm:p-6 shadow-md relative overflow-hidden no-print">
+          <div className="relative z-10 space-y-3 max-w-3xl">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-800/80 border border-emerald-700/60 text-emerald-200 text-xs font-semibold">
+                <Users className="w-3.5 h-3.5" />
+                <span>Coach, Player & Parent Schedule Portal</span>
+              </div>
+
+              {/* Server live indicator pill */}
+              <div className="flex items-center gap-1.5 text-[11px] text-emerald-200 bg-emerald-950/60 px-2 py-0.5 rounded-full border border-emerald-800">
+                <span className={`w-2 h-2 rounded-full ${serverData ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'}`} />
+                <span className="font-mono text-[10px]">
+                  {serverData ? 'league_schedule.json' : 'Cached Data'}
+                </span>
+              </div>
             </div>
 
             <div>
-              <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white">
-                {activeData.seasonConfig.seasonName}
+              <h1 className="text-xl sm:text-2xl lg:text-3xl font-black tracking-tight text-white leading-tight">
+                {activeData.seasonConfig.seasonName || 'Official League Season'}
               </h1>
-              <p className="text-sm text-emerald-100/90 mt-1 leading-relaxed">
-                Official round-robin games, kickoff times, field GPS driving directions, and one-click calendar exports for teams and families.
+              <p className="text-xs sm:text-sm text-emerald-100/90 mt-1 leading-relaxed">
+                Official round-robin games, kickoff times, field GPS driving directions, and one-click calendar exports.
               </p>
             </div>
 
-            {/* Server file data source indicator */}
-            <div className="flex flex-wrap items-center gap-2 pt-1 text-xs">
-              {isLoadingServerData ? (
-                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-800/90 text-emerald-200 border border-emerald-700">
-                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                  <span>Loading schedule from server file (<strong className="font-mono text-white">league_schedule.json</strong>)...</span>
-                </span>
-              ) : serverData ? (
-                <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-800/90 border border-emerald-600/70 text-emerald-200">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                  <span>
-                    Source: Server file <strong className="font-mono text-white bg-emerald-950/60 px-1.5 py-0.5 rounded">league_schedule.json</strong> ·{' '}
-                    <span className="text-emerald-100">{activeData.games.length} games</span>, {activeData.teams.filter((t) => !t.isBye).length} teams · Synced at {serverFileLoadedAt}
-                  </span>
-                </span>
-              ) : (
-                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-900/70 border border-amber-700/60 text-amber-200">
-                  <AlertCircle className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                  <span>Server file status: {serverDataError}. Displaying cached dataset.</span>
-                </span>
-              )}
-
-              <button
-                onClick={loadServerSchedule}
-                disabled={isLoadingServerData}
-                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-emerald-800/80 hover:bg-emerald-700 text-emerald-100 hover:text-white transition-colors border border-emerald-600/60 font-medium disabled:opacity-50"
-                title="Reload latest schedule from server file league_schedule.json"
-              >
-                <RefreshCw className={`w-3.5 h-3.5 ${isLoadingServerData ? 'animate-spin' : ''}`} />
-                <span>Reload Server File</span>
-              </button>
-            </div>
-
-            {/* Action buttons */}
-            <div className="flex flex-wrap items-center gap-2.5 pt-2">
-              <button
-                onClick={() => setIsPrintViewOpen(true)}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-slate-900 bg-white rounded-lg hover:bg-slate-100 transition-colors shadow-xs"
-              >
-                <Printer className="w-3.5 h-3.5 text-slate-700" />
-                <span>Print Schedule (PDF)</span>
-              </button>
-
+            {/* Quick Action Chips on Hero */}
+            <div className="flex flex-wrap items-center gap-2 pt-1">
               <button
                 onClick={() => setIsExportCalendarModalOpen(true)}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-emerald-700/90 hover:bg-emerald-700 border border-emerald-600 rounded-lg transition-colors shadow-xs"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-emerald-700/90 hover:bg-emerald-700 border border-emerald-600 rounded-lg transition-colors shadow-2xs"
               >
                 <CalendarPlus className="w-3.5 h-3.5 text-emerald-300" />
                 <span>Add Season to Calendar</span>
               </button>
 
               <button
+                onClick={() => setIsPrintViewOpen(true)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-900 bg-white rounded-lg hover:bg-slate-100 transition-colors shadow-2xs"
+              >
+                <Printer className="w-3.5 h-3.5 text-slate-700" />
+                <span>Print Schedule (PDF)</span>
+              </button>
+
+              <button
                 onClick={handleCopyShareLink}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-medium text-emerald-100 hover:text-white bg-emerald-800/60 hover:bg-emerald-800 border border-emerald-700 rounded-lg transition-colors"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-emerald-100 hover:text-white bg-emerald-800/70 hover:bg-emerald-800 border border-emerald-700 rounded-lg transition-colors"
                 title="Copy read-only direct link for parents"
               >
                 <Share2 className="w-3.5 h-3.5" />
-                <span>{copyLinkNotice ? 'Link Copied!' : 'Share Portal Link'}</span>
+                <span>{copyLinkNotice ? 'Copied Link!' : 'Share Portal'}</span>
               </button>
 
               <button
                 type="button"
-                onClick={scrollToBulletins}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-emerald-200 hover:text-white bg-emerald-800/70 hover:bg-emerald-700 border border-emerald-600/70 rounded-lg transition-colors cursor-pointer"
-                title="Jump down to the full bulletins and announcements section"
+                onClick={() => setIsSeasonDetailsOpen((prev) => !prev)}
+                className="inline-flex items-center gap-1 text-[11px] text-emerald-200 hover:text-white font-medium py-1 px-2 rounded hover:bg-emerald-800/40 transition-colors"
               >
-                <Megaphone className="w-3.5 h-3.5 text-emerald-300" />
-                <span>Full Bulletins Board ({activeBulletins.length}) ↓</span>
+                <span>Season Details & Server Sync</span>
+                {isSeasonDetailsOpen ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
               </button>
             </div>
+
+            {/* Collapsible Season Details & Sync Box */}
+            {isSeasonDetailsOpen && (
+              <div className="pt-3 border-t border-emerald-800/80 text-xs space-y-2 text-emerald-100 animate-in fade-in">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 bg-emerald-950/40 p-3 rounded-xl border border-emerald-800">
+                  <div>
+                    <span className="text-emerald-400 font-semibold block text-[11px] uppercase tracking-wider">
+                      Season Schedule
+                    </span>
+                    <span className="font-medium text-white">
+                      {activeData.games.length} total matches across {activeData.teams.filter((t) => !t.isBye).length} teams and {activeData.divisions.length} divisions
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-emerald-400 font-semibold block text-[11px] uppercase tracking-wider">
+                      Data Connection
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-[11px] truncate">
+                        {serverData ? `Synced from server at ${serverFileLoadedAt || 'load'}` : `Offline fallback (${serverDataError || 'Server not reachable'})`}
+                      </span>
+                      <button
+                        onClick={loadServerSchedule}
+                        disabled={isLoadingServerData}
+                        className="px-2 py-0.5 rounded bg-emerald-800 hover:bg-emerald-700 text-white text-[11px] font-semibold shrink-0"
+                      >
+                        {isLoadingServerData ? 'Syncing...' : 'Reload'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Decorative background watermark */}
-          <div className="absolute right-[-20px] bottom-[-20px] opacity-10 text-white pointer-events-none select-none text-[180px] font-bold leading-none">
+          <div className="absolute right-[-15px] bottom-[-25px] opacity-10 text-white pointer-events-none select-none text-[140px] sm:text-[180px] font-bold leading-none">
             ⚽
           </div>
         </div>
 
-        {/* Pinned Bulletins at Top of Page */}
-        {pinnedBulletins.length > 0 && (
-          <section className="bg-gradient-to-r from-amber-50/80 via-emerald-50/40 to-indigo-50/80 border-2 border-emerald-300 rounded-2xl p-4 sm:p-5 shadow-xs space-y-3 no-print">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-emerald-200/60 pb-2.5">
-              <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded-md bg-indigo-600 text-white flex items-center justify-center font-bold shadow-2xs">
-                  <Pin className="w-3.5 h-3.5 fill-white" />
+        {/* ================= COLLAPSIBLE SECTION 1: LEAGUE ANNOUNCEMENTS & BULLETINS ================= */}
+        {activeBulletins.length > 0 && (
+          <section
+            id="bulletins-section"
+            className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden no-print scroll-mt-20"
+          >
+            {/* Accordion Header */}
+            <button
+              type="button"
+              onClick={() => setIsBulletinsSectionOpen((prev) => !prev)}
+              className="w-full p-3.5 sm:p-4 bg-gradient-to-r from-emerald-50/70 via-white to-amber-50/40 hover:bg-slate-50 flex items-center justify-between gap-3 text-left transition-colors cursor-pointer"
+            >
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="w-8 h-8 rounded-lg bg-emerald-600 text-white flex items-center justify-center font-bold shadow-xs shrink-0">
+                  <Megaphone className="w-4 h-4" />
                 </div>
-                <h2 className="text-sm font-bold text-slate-900 tracking-tight flex items-center gap-2">
-                  <span>Pinned League Announcements</span>
-                  <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-800 border border-indigo-200">
-                    {pinnedBulletins.length} Pinned
-                  </span>
-                </h2>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h2 className="text-sm sm:text-base font-bold text-slate-900 tracking-tight">
+                      League Announcements & Bulletins
+                    </h2>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                      {activeBulletins.length} {activeBulletins.length === 1 ? 'Notice' : 'Notices'}
+                    </span>
+                    {pinnedBulletins.length > 0 && (
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-100 text-indigo-800 border border-indigo-200 flex items-center gap-1">
+                        <Pin className="w-2.5 h-2.5 fill-indigo-600" />
+                        <span>{pinnedBulletins.length} Pinned</span>
+                      </span>
+                    )}
+                    {hasUrgentBulletin && (
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-rose-600 text-white animate-pulse">
+                        Urgent Alert
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[11px] text-slate-500 truncate">
+                    Field closures, weather alerts, and official notices for players and families
+                  </p>
+                </div>
               </div>
 
-              <button
-                type="button"
-                onClick={scrollToBulletins}
-                className="text-xs text-emerald-800 hover:text-emerald-950 font-bold hover:underline inline-flex items-center gap-1 cursor-pointer self-start sm:self-auto"
-              >
-                <span>View Full Bulletins Board & Archive ↓</span>
-              </button>
-            </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <span className="text-xs font-semibold text-emerald-700 hidden sm:inline">
+                  {isBulletinsSectionOpen ? 'Collapse' : 'Expand'}
+                </span>
+                <div className="w-7 h-7 rounded-md bg-slate-100 text-slate-600 flex items-center justify-center">
+                  {isBulletinsSectionOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                </div>
+              </div>
+            </button>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {pinnedBulletins.map((bulletin) => {
-                const isUrgent = bulletin.priority === 'urgent';
-                return (
-                  <div
-                    key={bulletin.id}
-                    className={`p-3.5 rounded-xl border bg-white shadow-2xs flex flex-col justify-between space-y-2.5 transition-all hover:shadow-xs ${
-                      isUrgent ? 'border-rose-300 ring-1 ring-rose-200' : 'border-slate-200'
-                    }`}
-                  >
-                    <div>
-                      <div className="flex items-center justify-between gap-2 mb-1.5">
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          <span className="inline-flex items-center gap-1 text-[10px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded-full">
-                            <Pin className="w-2.5 h-2.5 fill-indigo-600" />
-                            Pinned Notice
-                          </span>
-                          <span
-                            className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${
-                              bulletin.category === 'Field Closure'
-                                ? 'bg-rose-100 text-rose-800 border border-rose-200'
-                                : bulletin.category === 'Weather'
-                                ? 'bg-amber-100 text-amber-800 border border-amber-200'
-                                : bulletin.category === 'Schedule Update'
-                                ? 'bg-blue-100 text-blue-800 border border-blue-200'
-                                : 'bg-emerald-100 text-emerald-800 border border-emerald-200'
-                            }`}
-                          >
-                            {bulletin.category}
-                          </span>
-                          {isUrgent && (
-                            <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-rose-600 text-white animate-pulse">
-                              Urgent Alert
-                            </span>
-                          )}
-                        </div>
-                        <span className="text-[11px] font-mono text-slate-500">{bulletin.createdAt}</span>
-                      </div>
-
-                      <h3 className="font-bold text-sm text-slate-900 leading-snug">
-                        {bulletin.title}
-                      </h3>
-                      <p className="text-xs text-slate-600 mt-1 leading-relaxed line-clamp-2">
-                        {stripHtmlTags(bulletin.content)}
-                      </p>
-                    </div>
-
-                    <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500">
-                      <span>By {bulletin.author || 'League Admin'}</span>
+            {/* Accordion Body */}
+            {isBulletinsSectionOpen && (
+              <div className="p-3.5 sm:p-5 border-t border-slate-200 space-y-4 animate-in fade-in">
+                {/* Target Audience Filter Chips */}
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-3">
+                  <div className="flex items-center gap-1 text-xs">
+                    <span className="text-slate-500 font-medium mr-1 text-[11px]">Filter by:</span>
+                    {['all', 'Parents', 'Coaches', 'Referees'].map((aud) => (
                       <button
+                        key={aud}
                         type="button"
-                        onClick={() => setSelectedBulletinDetail(bulletin)}
-                        className="font-bold text-emerald-700 hover:text-emerald-900 cursor-pointer"
+                        onClick={() => setBulletinAudienceFilter(aud)}
+                        className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors cursor-pointer ${
+                          bulletinAudienceFilter === aud
+                            ? 'bg-slate-900 text-white shadow-2xs'
+                            : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                        }`}
                       >
-                        Read Full Notice →
+                        {aud === 'all' ? 'All Audiences' : aud}
                       </button>
-                    </div>
+                    ))}
                   </div>
-                );
-              })}
-            </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setIsPrintBulletinsModalOpen(true)}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors cursor-pointer shadow-2xs"
+                  >
+                    <Printer className="w-3.5 h-3.5 text-slate-600" />
+                    <span>Print Bulletins (PDF)</span>
+                  </button>
+                </div>
+
+                {/* Bulletins Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {displayedBulletins.length === 0 ? (
+                    <div className="col-span-full text-center py-6 text-slate-400 text-xs">
+                      No notices found matching the selected audience.
+                    </div>
+                  ) : (
+                    displayedBulletins.map((bulletin) => {
+                      const isUrgent = bulletin.priority === 'urgent';
+                      const isImportant = bulletin.priority === 'important';
+
+                      return (
+                        <div
+                          key={bulletin.id}
+                          className={`p-3.5 rounded-xl border flex flex-col justify-between space-y-2.5 transition-all bg-white hover:shadow-xs ${
+                            isUrgent
+                              ? 'border-rose-300 ring-1 ring-rose-200 bg-rose-50/20'
+                              : isImportant
+                              ? 'border-amber-200 bg-amber-50/20'
+                              : 'border-slate-200'
+                          }`}
+                        >
+                          <div>
+                            <div className="flex items-center justify-between gap-1.5 mb-1.5">
+                              <div className="flex flex-wrap items-center gap-1">
+                                {bulletin.isPinned && (
+                                  <span className="text-[10px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-1.5 py-0.5 rounded-full inline-flex items-center gap-0.5">
+                                    <Pin className="w-2.5 h-2.5 fill-indigo-600" />
+                                    Pinned
+                                  </span>
+                                )}
+                                <span
+                                  className={`text-[9px] font-bold uppercase px-1.5 py-0.5 rounded ${
+                                    bulletin.category === 'Field Closure'
+                                      ? 'bg-rose-100 text-rose-800'
+                                      : bulletin.category === 'Weather'
+                                      ? 'bg-amber-100 text-amber-800'
+                                      : bulletin.category === 'Schedule Update'
+                                      ? 'bg-blue-100 text-blue-800'
+                                      : 'bg-emerald-100 text-emerald-800'
+                                  }`}
+                                >
+                                  {bulletin.category}
+                                </span>
+                                {isUrgent && (
+                                  <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-rose-600 text-white animate-pulse">
+                                    Urgent
+                                  </span>
+                                )}
+                              </div>
+                              <span className="text-[10px] font-mono text-slate-400">{bulletin.createdAt}</span>
+                            </div>
+
+                            <h3 className="font-bold text-sm text-slate-900 leading-snug">
+                              {bulletin.title}
+                            </h3>
+                            <p className="text-xs text-slate-600 mt-1 leading-relaxed line-clamp-3">
+                              {stripHtmlTags(bulletin.content)}
+                            </p>
+                          </div>
+
+                          <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500">
+                            <span>By {bulletin.author || 'League Admin'}</span>
+                            <button
+                              type="button"
+                              onClick={() => setSelectedBulletinDetail(bulletin)}
+                              className="font-bold text-emerald-700 hover:text-emerald-900 cursor-pointer min-h-[36px] flex items-center"
+                            >
+                              Read Full Notice →
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+            )}
           </section>
         )}
 
-        {/* Main Grid: Schedule Section (3 cols on lg) + Bulletins Sidebar (1 col on lg) */}
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
-          {/* Main Schedule Column (3 cols) */}
-          <div className="lg:col-span-3 space-y-6">
-            {/* Quick Team & Division Selector Card */}
-            <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-xs space-y-4 no-print">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-            <div>
-              <h2 className="text-base font-bold text-slate-900 tracking-tight">
-                Find Your Team's Games
-              </h2>
-              <p className="text-xs text-slate-500">
-                Select your team or division below to immediately filter games.
-              </p>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setViewFilter('all')}
-                className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
-                  viewFilter === 'all'
-                    ? 'bg-slate-900 text-white font-semibold'
-                    : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                }`}
-              >
-                All Season Games
-              </button>
-              <button
-                onClick={() => setViewFilter('upcoming')}
-                className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
-                  viewFilter === 'upcoming'
-                    ? 'bg-slate-900 text-white font-semibold'
-                    : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                }`}
-              >
-                Upcoming Only
-              </button>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 border-t border-slate-100">
-            {/* Select My Team */}
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Select My Team:
-              </label>
-              <select
-                value={selectedTeamId}
-                onChange={(e) => {
-                  setSelectedTeamId(e.target.value);
-                  if (e.target.value !== 'all') {
-                    const t = teamMap.get(e.target.value);
-                    if (t) setSelectedDivisionId(t.divisionId);
-                  }
-                }}
-                className="w-full text-xs rounded-lg border border-slate-300 bg-slate-50 p-2.5 text-slate-900 focus:bg-white focus:ring-2 focus:ring-emerald-600 focus:outline-hidden"
-              >
-                <option value="all">All Teams</option>
-                {activeData.teams
-                  .filter((t) => !t.isBye)
-                  .map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.name} ({divisionMap.get(t.divisionId)?.name || 'League'})
-                    </option>
-                  ))}
-              </select>
-            </div>
-
-            {/* Select Division */}
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Filter Division:
-              </label>
-              <select
-                value={selectedDivisionId}
-                onChange={(e) => {
-                  setSelectedDivisionId(e.target.value);
-                  if (e.target.value !== 'all' && selectedTeam && selectedTeam.divisionId !== e.target.value) {
-                    setSelectedTeamId('all');
-                  }
-                }}
-                className="w-full text-xs rounded-lg border border-slate-300 bg-slate-50 p-2.5 text-slate-900 focus:bg-white focus:ring-2 focus:ring-emerald-600 focus:outline-hidden"
-              >
-                <option value="all">All Divisions ({activeData.divisions.length})</option>
-                {activeData.divisions.map((d) => (
-                  <option key={d.id} value={d.id}>
-                    {d.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Keyword Search */}
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Search by Opponent / Pitch:
-              </label>
-              <div className="relative">
-                <Search className="w-3.5 h-3.5 absolute left-3 top-3 text-slate-400" />
-                <input
-                  type="text"
-                  placeholder="e.g. Memorial Park, Strikers..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-8 pr-3 py-2 text-xs rounded-lg border border-slate-300 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-emerald-600 focus:outline-hidden"
-                />
+        {/* ================= COLLAPSIBLE SECTION 2: SEARCH & FILTER GAMES ================= */}
+        <section className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden no-print">
+          {/* Accordion Header */}
+          <button
+            type="button"
+            onClick={() => setIsFilterSectionOpen((prev) => !prev)}
+            className="w-full p-3.5 sm:p-4 bg-slate-50 hover:bg-slate-100 flex items-center justify-between gap-3 text-left transition-colors cursor-pointer"
+          >
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="w-8 h-8 rounded-lg bg-slate-900 text-white flex items-center justify-center font-bold shadow-xs shrink-0">
+                <Search className="w-4 h-4" />
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h2 className="text-sm sm:text-base font-bold text-slate-900 tracking-tight">
+                    Find Your Team's Games
+                  </h2>
+                  {selectedTeam ? (
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200 truncate max-w-[200px]">
+                      {selectedTeam.name}
+                    </span>
+                  ) : selectedDivision ? (
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-200 text-slate-800">
+                      {selectedDivision.name}
+                    </span>
+                  ) : (
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-slate-200 text-slate-700">
+                      All Teams
+                    </span>
+                  )}
+                  {viewFilter === 'upcoming' && (
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-blue-100 text-blue-800">
+                      Upcoming Only
+                    </span>
+                  )}
+                </div>
+                <p className="text-[11px] text-slate-500 truncate">
+                  Filter by team, division, or opponent to customize your view
+                </p>
               </div>
             </div>
-          </div>
-        </div>
+
+            <div className="flex items-center gap-2 shrink-0">
+              <span className="text-xs font-semibold text-slate-700 hidden sm:inline">
+                {isFilterSectionOpen ? 'Collapse Filters' : 'Change Filters'}
+              </span>
+              <div className="w-7 h-7 rounded-md bg-white border border-slate-200 text-slate-600 flex items-center justify-center shadow-2xs">
+                {isFilterSectionOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+              </div>
+            </div>
+          </button>
+
+          {/* Accordion Body */}
+          {isFilterSectionOpen && (
+            <div className="p-3.5 sm:p-5 border-t border-slate-200 space-y-4 animate-in fade-in">
+              {/* Season vs Upcoming Filter Bar */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                <span className="text-xs font-semibold text-slate-700">Display Matches:</span>
+                <div className="grid grid-cols-2 gap-1.5 p-1 bg-slate-100 rounded-lg w-full sm:w-auto">
+                  <button
+                    type="button"
+                    onClick={() => setViewFilter('all')}
+                    className={`py-2 px-3 text-xs font-semibold rounded-md transition-colors text-center cursor-pointer min-h-[38px] ${
+                      viewFilter === 'all'
+                        ? 'bg-white text-slate-900 shadow-xs'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    All Season Games
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setViewFilter('upcoming')}
+                    className={`py-2 px-3 text-xs font-semibold rounded-md transition-colors text-center cursor-pointer min-h-[38px] ${
+                      viewFilter === 'upcoming'
+                        ? 'bg-white text-slate-900 shadow-xs'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    Upcoming Only
+                  </button>
+                </div>
+              </div>
+
+              {/* Selectors Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+                {/* Select My Team */}
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    Select My Team:
+                  </label>
+                  <select
+                    value={selectedTeamId}
+                    onChange={(e) => {
+                      setSelectedTeamId(e.target.value);
+                      if (e.target.value !== 'all') {
+                        const t = teamMap.get(e.target.value);
+                        if (t) setSelectedDivisionId(t.divisionId);
+                      }
+                    }}
+                    className="w-full text-xs rounded-xl border border-slate-300 bg-slate-50 p-2.5 text-slate-900 focus:bg-white focus:ring-2 focus:ring-emerald-600 focus:outline-hidden min-h-[44px]"
+                  >
+                    <option value="all">All Teams ({activeData.teams.filter((t) => !t.isBye).length})</option>
+                    {activeData.teams
+                      .filter((t) => !t.isBye)
+                      .map((t) => (
+                        <option key={t.id} value={t.id}>
+                          {t.name} ({divisionMap.get(t.divisionId)?.name || 'League'})
+                        </option>
+                      ))}
+                  </select>
+                </div>
+
+                {/* Select Division */}
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    Filter Division:
+                  </label>
+                  <select
+                    value={selectedDivisionId}
+                    onChange={(e) => {
+                      setSelectedDivisionId(e.target.value);
+                      if (e.target.value !== 'all' && selectedTeam && selectedTeam.divisionId !== e.target.value) {
+                        setSelectedTeamId('all');
+                      }
+                    }}
+                    className="w-full text-xs rounded-xl border border-slate-300 bg-slate-50 p-2.5 text-slate-900 focus:bg-white focus:ring-2 focus:ring-emerald-600 focus:outline-hidden min-h-[44px]"
+                  >
+                    <option value="all">All Divisions ({activeData.divisions.length})</option>
+                    {activeData.divisions.map((d) => (
+                      <option key={d.id} value={d.id}>
+                        {d.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Keyword Search */}
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    Search Opponent or Pitch:
+                  </label>
+                  <div className="relative">
+                    <Search className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
+                    <input
+                      type="text"
+                      placeholder="e.g. Red Bulls, Pitch 2..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="w-full pl-9 pr-3 py-2 text-xs rounded-xl border border-slate-300 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-emerald-600 focus:outline-hidden min-h-[44px]"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Reset button if any filter active */}
+              {(selectedTeamId !== 'all' || selectedDivisionId !== 'all' || searchQuery.trim() !== '' || viewFilter !== 'all') && (
+                <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs">
+                  <span className="text-slate-500">Filtered view active</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedTeamId('all');
+                      setSelectedDivisionId('all');
+                      setSearchQuery('');
+                      setViewFilter('all');
+                    }}
+                    className="font-semibold text-rose-600 hover:text-rose-800 p-1"
+                  >
+                    Clear All Filters
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+        </section>
 
         {/* Selected Team Profile Spotlight Banner (When user picks a team) */}
         {selectedTeam && (
-          <div className="bg-white rounded-xl border border-emerald-200 p-5 shadow-xs bg-gradient-to-r from-emerald-50/50 via-white to-white flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div className="space-y-1.5">
-              <div className="flex items-center gap-2">
-                <span className="font-bold text-lg text-slate-900">{selectedTeam.name}</span>
-                <span className="text-xs font-semibold text-emerald-800 bg-emerald-100 px-2.5 py-0.5 rounded-full">
-                  {divisionMap.get(selectedTeam.divisionId)?.name}
+          <div className="bg-white rounded-2xl border border-emerald-300 p-4 sm:p-5 shadow-xs bg-gradient-to-r from-emerald-50/70 via-white to-white flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="space-y-1.5 min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="font-extrabold text-base sm:text-lg text-slate-900 truncate">
+                  {selectedTeam.name}
+                </span>
+                <span className="text-xs font-semibold text-emerald-800 bg-emerald-100 px-2.5 py-0.5 rounded-full border border-emerald-200">
+                  {divisionMap.get(selectedTeam.divisionId)?.name || 'League'}
                 </span>
               </div>
 
-              <div className="flex flex-wrap items-center gap-3 text-xs text-slate-600">
+              <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-xs text-slate-600">
                 {selectedTeam.contactName && (
                   <span>Coach: <strong>{selectedTeam.contactName}</strong></span>
                 )}
@@ -765,7 +1115,7 @@ export const StandaloneParentPortal: React.FC<StandaloneParentPortalProps> = ({
                     <span>·</span>
                     <a
                       href={`tel:${selectedTeam.contactPhone}`}
-                      className="text-emerald-700 hover:underline font-mono"
+                      className="text-emerald-700 hover:underline font-mono font-medium"
                     >
                       {selectedTeam.contactPhone}
                     </a>
@@ -780,14 +1130,14 @@ export const StandaloneParentPortal: React.FC<StandaloneParentPortalProps> = ({
               </div>
             </div>
 
-            <div className="flex items-center gap-2 shrink-0">
+            <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 shrink-0">
               <button
                 onClick={handleExportSelectedTeamCalendar}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 transition-colors shadow-2xs"
+                className="flex items-center justify-center gap-1.5 px-3.5 py-2.5 text-xs font-semibold text-white bg-emerald-600 rounded-xl hover:bg-emerald-700 transition-colors shadow-2xs min-h-[44px]"
                 title="Download entire season calendar for this team into Apple Calendar, Google, or Outlook"
               >
                 <Download className="w-3.5 h-3.5" />
-                <span>Download {selectedTeam.name} iCal</span>
+                <span className="truncate">Download iCal</span>
               </button>
 
               <button
@@ -797,7 +1147,7 @@ export const StandaloneParentPortal: React.FC<StandaloneParentPortalProps> = ({
                     divisionName: divisionMap.get(selectedTeam.divisionId)?.name,
                   })
                 }
-                className="px-3 py-2 text-xs font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors"
+                className="flex items-center justify-center px-3.5 py-2.5 text-xs font-medium text-slate-700 bg-white border border-slate-300 rounded-xl hover:bg-slate-50 transition-colors min-h-[44px]"
               >
                 Coach Details
               </button>
@@ -805,496 +1155,605 @@ export const StandaloneParentPortal: React.FC<StandaloneParentPortalProps> = ({
           </div>
         )}
 
-        {/* Match Games List */}
-        <div className="space-y-6">
-          <div className="flex items-center justify-between px-1 text-xs text-slate-500">
-            <span>
-              Showing <strong className="font-mono text-slate-900">{filteredGames.length}</strong> scheduled games
-            </span>
-            <span className="font-mono">{sortedDates.length} game dates</span>
-          </div>
+        {/* ================= MAIN CONTENT LAYOUT (SCHEDULE + DESKTOP SIDEBAR) ================= */}
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
+          {/* Main Schedule Column (3 cols on lg, full width on mobile) */}
+          <div className="lg:col-span-3 space-y-4">
+            {/* Schedule Section Toolbar */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-1 text-xs">
+              <div className="text-slate-600 font-medium">
+                Showing <strong className="font-mono text-slate-900 font-bold">{filteredGames.length}</strong> matches across <span className="font-mono text-slate-900 font-bold">{sortedDates.length}</span> match days
+              </div>
 
-          {isLoadingServerData && !serverData ? (
-            <div className="bg-white rounded-xl border border-slate-200 p-12 text-center space-y-3">
-              <RefreshCw className="w-8 h-8 text-emerald-600 animate-spin mx-auto" />
-              <h3 className="text-base font-semibold text-slate-800">
-                Loading League Schedule...
-              </h3>
-              <p className="text-xs text-slate-500 max-w-sm mx-auto">
-                Fetching <code className="font-mono text-slate-700">league_schedule.json</code> from the server.
-              </p>
-            </div>
-          ) : sortedDates.length === 0 ? (
-            <div className="bg-white rounded-xl border border-slate-200 p-12 text-center space-y-3">
-              <Calendar className="w-8 h-8 text-slate-400 mx-auto" />
-              <h3 className="text-base font-semibold text-slate-800">No scheduled games found</h3>
-              <p className="text-xs text-slate-500 max-w-sm mx-auto">
-                There are no games matching your selected team or filters. Try resetting the filters or switching to "All Season Games".
-              </p>
-              <button
-                onClick={() => {
-                  setSelectedTeamId('all');
-                  setSelectedDivisionId('all');
-                  setSearchQuery('');
-                  setViewFilter('all');
-                }}
-                className="px-3 py-1.5 text-xs font-medium text-slate-700 bg-slate-100 rounded-lg hover:bg-slate-200"
-              >
-                Reset Filters
-              </button>
-            </div>
-          ) : (
-            <div className="space-y-6">
-              {sortedDates.map((dateStr) => {
-                const gamesOnDate = groupedByDate[dateStr];
-
-                return (
-                  <div key={dateStr} className="space-y-3 print-day-block day-group">
-                    {/* Date Heading */}
-                    <div className="flex items-center justify-between px-1 print-date-header">
-                      <div className="flex items-center gap-2">
-                        <Calendar className="w-4 h-4 text-emerald-600" />
-                        <h3 className="text-sm font-bold text-slate-900">
-                          {formatDateFriendly(dateStr)}
-                        </h3>
-                        <span className="text-xs font-mono text-slate-400">({dateStr})</span>
-                      </div>
-                      <span className="text-xs font-mono text-slate-500 tabular-nums">
-                        {gamesOnDate.length} {gamesOnDate.length === 1 ? 'game' : 'games'}
-                      </span>
-                    </div>
-
-                    {/* Match Cards */}
-                    <div className="grid grid-cols-1 gap-3">
-                      {gamesOnDate.map((game) => {
-                        const homeTeam = teamMap.get(game.homeTeamId);
-                        const awayTeam = teamMap.get(game.awayTeamId);
-                        const division = divisionMap.get(game.divisionId);
-                        const field = fieldMap.get(game.fieldId);
-
-                        const isSelectedTeamHome = selectedTeamId !== 'all' && game.homeTeamId === selectedTeamId;
-                        const isSelectedTeamAway = selectedTeamId !== 'all' && game.awayTeamId === selectedTeamId;
-
-                        const mapsUrl =
-                          field?.googleMapsUrl ||
-                          `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-                            field?.address || field?.name || ''
-                          )}`;
-
-                        return (
-                          <div
-                            key={game.id}
-                            className={`bg-white rounded-xl border p-4 sm:p-5 transition-shadow shadow-xs hover:border-slate-300 print-match-card break-inside-avoid ${
-                              isSelectedTeamHome || isSelectedTeamAway
-                                ? 'border-emerald-300 ring-1 ring-emerald-200'
-                                : 'border-slate-200'
-                            }`}
-                          >
-                            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-                              {/* Left: Teams & Game info */}
-                              <div className="space-y-2 flex-1">
-                                {/* Metadata */}
-                                <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
-                                  <span className="font-semibold text-slate-800">
-                                    {division?.name || 'League'}
-                                  </span>
-                                  <span>·</span>
-                                  <span className="inline-flex items-center gap-1 font-mono font-bold text-slate-900">
-                                    <Clock className="w-3.5 h-3.5 text-slate-400" />
-                                    {game.time}
-                                  </span>
-                                  <span>·</span>
-                                  <span>Round {game.roundNumber}</span>
-
-                                  {game.isByePractice && (
-                                    <>
-                                      <span>·</span>
-                                      <span className="text-amber-800 font-medium bg-amber-50 px-2 py-0.5 rounded border border-amber-200 text-[11px]">
-                                        Dedicated Practice Session
-                                      </span>
-                                    </>
-                                  )}
-                                </div>
-
-                                {/* Teams Matchup */}
-                                <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 text-base font-bold text-slate-900">
-                                  {/* Home Team */}
-                                  <div className="flex items-center gap-2">
-                                    <span
-                                      className={`px-2 py-0.5 text-xs rounded font-medium ${
-                                        isSelectedTeamHome
-                                          ? 'bg-emerald-600 text-white font-bold'
-                                          : 'bg-slate-100 text-slate-700'
-                                      }`}
-                                    >
-                                      HOME
-                                    </span>
-                                    <span className={isSelectedTeamHome ? 'text-emerald-700 font-extrabold' : ''}>
-                                      {homeTeam?.name || 'Home Team'}
-                                    </span>
-                                    {homeTeam?.jerseyColor && (
-                                      <span className="text-[11px] text-slate-400 font-normal">
-                                        ({homeTeam.jerseyColor})
-                                      </span>
-                                    )}
-                                  </div>
-
-                                  <span className="text-xs text-slate-400 font-semibold px-1">VS</span>
-
-                                  {/* Away Team */}
-                                  <div className="flex items-center gap-2">
-                                    <span
-                                      className={`px-2 py-0.5 text-xs rounded font-medium ${
-                                        isSelectedTeamAway
-                                          ? 'bg-emerald-600 text-white font-bold'
-                                          : 'bg-slate-100 text-slate-700'
-                                      }`}
-                                    >
-                                      AWAY
-                                    </span>
-                                    <span className={isSelectedTeamAway ? 'text-emerald-700 font-extrabold' : ''}>
-                                      {awayTeam?.name || 'Away Team'}
-                                    </span>
-                                    {awayTeam?.jerseyColor && (
-                                      <span className="text-[11px] text-slate-400 font-normal">
-                                        ({awayTeam.jerseyColor})
-                                      </span>
-                                    )}
-                                  </div>
-                                </div>
-
-                                {/* Field & Address */}
-                                <div className="flex flex-wrap items-center gap-2 pt-1 text-xs text-slate-600">
-                                  <div className="flex items-center gap-1.5 font-medium text-slate-800">
-                                    <MapPin className="w-3.5 h-3.5 text-rose-500 shrink-0" />
-                                    <span>{field?.name || 'Assigned Pitch'}</span>
-                                  </div>
-
-                                  {field?.address && (
-                                    <>
-                                      <span>·</span>
-                                      <span className="text-slate-500">{field.address}</span>
-                                    </>
-                                  )}
-
-                                  <a
-                                    href={mapsUrl}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-800 hover:underline font-medium text-[11px] ml-1"
-                                  >
-                                    <ExternalLink className="w-3 h-3" />
-                                    <span>Directions (GPS)</span>
-                                  </a>
-                                </div>
-                              </div>
-
-                              {/* Right: Quick actions for this game */}
-                              <div className="flex items-center gap-2 shrink-0 pt-2 lg:pt-0 border-t lg:border-t-0 border-slate-100">
-                                {/* Coach Contact Info for Both Teams */}
-                                <button
-                                  onClick={() => {
-                                    setActiveMatchContacts({
-                                      game,
-                                      homeTeam,
-                                      awayTeam,
-                                      divisionName: division?.name,
-                                      field,
-                                    });
-                                  }}
-                                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:text-slate-900 bg-slate-50 hover:bg-slate-100 rounded-lg border border-slate-200 transition-colors shadow-2xs"
-                                  title="View coach and assigned referee contact details for this match"
-                                >
-                                  <Phone className="w-3.5 h-3.5 text-emerald-600" />
-                                  <span>Match Contacts</span>
-                                </button>
-
-                                {/* Field Map */}
-                                {field && (
-                                  <button
-                                    onClick={() => setActiveMapField(field)}
-                                    className="px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:text-slate-900 bg-slate-50 hover:bg-slate-100 rounded-lg border border-slate-200 transition-colors"
-                                    title="View pitch location details"
-                                  >
-                                    Pitch Info
-                                  </button>
-                                )}
-
-                                {/* Add Single Game to Calendar */}
-                                <div className="relative">
-                                  <button
-                                    onClick={() =>
-                                      setActiveCalDropdownGameId(
-                                        activeCalDropdownGameId === game.id ? null : game.id
-                                      )
-                                    }
-                                    className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 rounded-lg transition-colors shadow-2xs"
-                                    title="Add this game to your personal calendar"
-                                  >
-                                    <CalendarPlus className="w-3.5 h-3.5 text-emerald-600" />
-                                    <span>Add to Cal</span>
-                                    <ChevronDown className="w-3 h-3 text-emerald-600" />
-                                  </button>
-
-                                  {activeCalDropdownGameId === game.id && (
-                                    <div className="absolute right-0 mt-1 w-52 bg-white rounded-xl shadow-xl border border-slate-200 p-1.5 z-30 animate-in fade-in space-y-0.5 text-xs">
-                                      <a
-                                        href={createGoogleCalendarUrl(
-                                          buildEventPayload(
-                                            game,
-                                            activeData.teams,
-                                            activeData.divisions,
-                                            activeData.fields
-                                          )
-                                        )}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        onClick={() => setActiveCalDropdownGameId(null)}
-                                        className="flex items-center gap-2 px-3 py-2 text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
-                                      >
-                                        <ExternalLink className="w-3.5 h-3.5 text-blue-500" />
-                                        <span>Google Calendar</span>
-                                      </a>
-
-                                      <a
-                                        href={createOutlookCalendarUrl(
-                                          buildEventPayload(
-                                            game,
-                                            activeData.teams,
-                                            activeData.divisions,
-                                            activeData.fields
-                                          )
-                                        )}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        onClick={() => setActiveCalDropdownGameId(null)}
-                                        className="flex items-center gap-2 px-3 py-2 text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
-                                      >
-                                        <ExternalLink className="w-3.5 h-3.5 text-sky-600" />
-                                        <span>Outlook Web</span>
-                                      </a>
-
-                                      <button
-                                        onClick={() => {
-                                          setActiveCalDropdownGameId(null);
-                                          const icsContent = generateIcsContent(
-                                            [game],
-                                            activeData.teams,
-                                            activeData.divisions,
-                                            activeData.fields,
-                                            `${homeTeam?.name || 'Home'} vs ${awayTeam?.name || 'Away'}`
-                                          );
-                                          downloadIcsFile(
-                                            icsContent,
-                                            `game_${game.date}_${homeTeam?.name || 'Home'}.ics`
-                                          );
-                                        }}
-                                        className="w-full flex items-center gap-2 px-3 py-2 text-slate-700 hover:bg-slate-100 rounded-lg text-left transition-colors"
-                                      >
-                                        <Download className="w-3.5 h-3.5 text-slate-500" />
-                                        <span>Download .ics File (Apple / All)</span>
-                                      </button>
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-
-        {/* Fields & Venues Quick Reference Directory */}
-        <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-xs space-y-3">
-          <div className="flex items-center gap-2">
-            <MapPin className="w-4 h-4 text-rose-500" />
-            <h3 className="text-sm font-bold text-slate-900">
-              Field Locations & GPS Navigation Reference
-            </h3>
-          </div>
-          <p className="text-xs text-slate-500">
-            Click any field name or address below to open driving directions in Google Maps.
-          </p>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 pt-2">
-            {activeData.fields.map((field) => {
-              const mapsUrl =
-                field.googleMapsUrl ||
-                `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-                  field.address || field.name
-                )}`;
-
-              return (
-                <div
-                  key={field.id}
-                  className="p-3 bg-slate-50 rounded-lg border border-slate-200 space-y-1.5 text-xs"
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <span className="font-bold text-slate-900">{field.name}</span>
-                    <span className="text-[10px] text-slate-500 font-mono">{field.size}</span>
-                  </div>
-                  <p className="text-slate-600 text-[11px] leading-snug">{field.address}</p>
-                  <a
-                    href={mapsUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-800 font-medium text-[11px] pt-0.5"
+              {sortedDates.length > 0 && (
+                <div className="flex items-center gap-2 self-start sm:self-auto">
+                  <button
+                    type="button"
+                    onClick={expandAllDates}
+                    className="text-emerald-700 hover:text-emerald-900 font-semibold text-xs px-2 py-1 rounded hover:bg-emerald-50 transition-colors"
                   >
-                    <ExternalLink className="w-3 h-3" />
-                    <span>Open Directions</span>
-                  </a>
+                    Expand All Dates
+                  </button>
+                  <span className="text-slate-300">·</span>
+                  <button
+                    type="button"
+                    onClick={collapseAllDates}
+                    className="text-slate-600 hover:text-slate-900 font-semibold text-xs px-2 py-1 rounded hover:bg-slate-100 transition-colors"
+                  >
+                    Collapse All
+                  </button>
                 </div>
-              );
-            })}
-          </div>
-        </div>
-      </div>
-
-      {/* Dedicated Bulletins Sidebar (1 col on lg) - Marked no-print so schedule printing strictly excludes it */}
-      <aside id="bulletins-sidebar" className="lg:col-span-1 space-y-4 no-print w-full scroll-mt-20">
-        <div className="bg-white rounded-xl border border-slate-200 shadow-2xs overflow-hidden">
-          {/* Sidebar Header */}
-          <div className="p-3.5 bg-gradient-to-r from-emerald-900 to-slate-900 text-white flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-lg bg-emerald-600 text-white flex items-center justify-center font-bold shadow-xs">
-                <Megaphone className="w-3.5 h-3.5" />
-              </div>
-              <div>
-                <h3 className="text-sm font-bold tracking-tight text-white leading-tight">
-                  League Bulletins
-                </h3>
-                <span className="text-[10px] text-emerald-300 font-medium">
-                  Official Notices ({activeBulletins.length})
-                </span>
-              </div>
+              )}
             </div>
 
-            <button
-              type="button"
-              onClick={() => setIsPrintBulletinsModalOpen(true)}
-              className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold text-white bg-emerald-700/80 hover:bg-emerald-600 rounded-md transition-colors cursor-pointer shadow-xs"
-              title="Print bulletins separately without match schedule"
-            >
-              <Printer className="w-3 h-3" />
-              <span>Print</span>
-            </button>
-          </div>
-
-          {/* Target Audience Filter Chips */}
-          <div className="p-2.5 bg-slate-50 border-b border-slate-100 flex flex-wrap gap-1 text-[11px]">
-            {['all', 'Parents', 'Coaches', 'Referees'].map((aud) => (
-              <button
-                key={aud}
-                type="button"
-                onClick={() => setBulletinAudienceFilter(aud)}
-                className={`px-2 py-0.5 rounded-md font-medium transition-colors cursor-pointer ${
-                  bulletinAudienceFilter === aud
-                    ? 'bg-slate-900 text-white shadow-2xs'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
-                }`}
-              >
-                {aud === 'all' ? 'All' : aud}
-              </button>
-            ))}
-          </div>
-
-          {/* Bulletins List in Sidebar */}
-          <div className="p-3 space-y-3 max-h-[640px] overflow-y-auto">
-            {displayedBulletins.length === 0 ? (
-              <div className="text-center py-6 px-2 text-slate-400 text-xs">
-                No announcements posted for this audience filter.
+            {/* Empty State or Loading */}
+            {isLoadingServerData && !serverData ? (
+              <div className="bg-white rounded-2xl border border-slate-200 p-10 text-center space-y-3">
+                <RefreshCw className="w-8 h-8 text-emerald-600 animate-spin mx-auto" />
+                <h3 className="text-base font-semibold text-slate-800">
+                  Loading League Schedule...
+                </h3>
+                <p className="text-xs text-slate-500 max-w-sm mx-auto">
+                  Fetching <code className="font-mono text-slate-700">league_schedule.json</code> from the server.
+                </p>
+              </div>
+            ) : sortedDates.length === 0 ? (
+              <div className="bg-white rounded-2xl border border-slate-200 p-10 text-center space-y-3">
+                <Calendar className="w-8 h-8 text-slate-400 mx-auto" />
+                <h3 className="text-base font-semibold text-slate-800">No scheduled games found</h3>
+                <p className="text-xs text-slate-500 max-w-sm mx-auto">
+                  There are no games matching your selected team or filters. Try resetting the filters or switching to "All Season Games".
+                </p>
+                <button
+                  onClick={() => {
+                    setSelectedTeamId('all');
+                    setSelectedDivisionId('all');
+                    setSearchQuery('');
+                    setViewFilter('all');
+                  }}
+                  className="px-4 py-2 text-xs font-semibold text-slate-700 bg-slate-100 rounded-xl hover:bg-slate-200 min-h-[44px]"
+                >
+                  Reset Filters
+                </button>
               </div>
             ) : (
-              displayedBulletins.map((b) => {
-                const isUrgent = b.priority === 'urgent';
-                const isImportant = b.priority === 'important';
+              /* Collapsible Date Groups */
+              <div className="space-y-4">
+                {sortedDates.map((dateStr) => {
+                  const gamesOnDate = groupedByDate[dateStr];
+                  const isDateCollapsed = Boolean(collapsedDates[dateStr]);
 
-                return (
-                  <div
-                    key={b.id}
-                    className={`p-3 rounded-xl border text-left transition-all ${
-                      isUrgent
-                        ? 'bg-rose-50/70 border-rose-200 text-rose-950 shadow-2xs'
-                        : isImportant
-                        ? 'bg-amber-50/60 border-amber-200 text-amber-950'
-                        : 'bg-white border-slate-200 hover:border-slate-300'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between gap-1.5 mb-1.5">
-                      <div className="flex flex-wrap items-center gap-1">
-                        {b.isPinned && (
-                          <span className="text-[10px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-1.5 py-0.2 rounded-full inline-flex items-center gap-0.5">
-                            <Pin className="w-2.5 h-2.5 fill-indigo-600" />
-                            Pinned
-                          </span>
-                        )}
-                        <span
-                          className={`text-[9px] font-bold uppercase px-1.5 py-0.2 rounded ${
-                            b.category === 'Field Closure'
-                              ? 'bg-rose-100 text-rose-800'
-                              : b.category === 'Weather'
-                              ? 'bg-amber-100 text-amber-800'
-                              : b.category === 'Schedule Update'
-                              ? 'bg-blue-100 text-blue-800'
-                              : 'bg-emerald-100 text-emerald-800'
-                          }`}
-                        >
-                          {b.category}
-                        </span>
-                        {isUrgent && (
-                          <span className="text-[9px] font-black uppercase px-1.5 py-0.2 rounded bg-rose-600 text-white animate-pulse">
-                            Urgent
-                          </span>
-                        )}
-                      </div>
-                      <span className="text-[10px] font-mono text-slate-500">{b.createdAt}</span>
-                    </div>
-
-                    <h4 className="font-bold text-xs text-slate-900 leading-snug line-clamp-2">
-                      {b.title}
-                    </h4>
-
-                    <p className="text-[11px] text-slate-600 mt-1 line-clamp-3 leading-relaxed">
-                      {stripHtmlTags(b.content)}
-                    </p>
-
-                    <div className="pt-2 mt-2 border-t border-slate-100 flex items-center justify-between text-[10px]">
-                      <span className="text-slate-400">By {b.author || 'League Admin'}</span>
+                  return (
+                    <div
+                      key={dateStr}
+                      className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden print-day-block day-group"
+                    >
+                      {/* Collapsible Date Accordion Header */}
                       <button
                         type="button"
-                        onClick={() => setSelectedBulletinDetail(b)}
-                        className="font-bold text-emerald-700 hover:text-emerald-900 cursor-pointer"
+                        onClick={() => toggleDateCollapsed(dateStr)}
+                        className="w-full px-4 py-3 sm:py-3.5 bg-slate-50 hover:bg-slate-100/80 border-b border-slate-200 flex items-center justify-between gap-3 text-left transition-colors cursor-pointer print-date-header"
                       >
-                        Read More →
+                        <div className="flex items-center gap-2 min-w-0">
+                          <Calendar className="w-4 h-4 text-emerald-600 shrink-0" />
+                          <h3 className="text-xs sm:text-sm font-bold text-slate-900 truncate">
+                            {formatDateFriendly(dateStr)}
+                          </h3>
+                          <span className="text-[11px] font-mono text-slate-400 hidden sm:inline">
+                            ({dateStr})
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-2.5 shrink-0">
+                          <span className="text-[11px] font-bold text-slate-700 bg-white border border-slate-200 px-2 py-0.5 rounded-full shadow-2xs">
+                            {gamesOnDate.length} {gamesOnDate.length === 1 ? 'game' : 'games'}
+                          </span>
+                          <div className="w-6 h-6 rounded-md bg-white border border-slate-200 text-slate-500 flex items-center justify-center no-print">
+                            {isDateCollapsed ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronUp className="w-3.5 h-3.5" />}
+                          </div>
+                        </div>
                       </button>
+
+                      {/* Games List on Date */}
+                      {!isDateCollapsed && (
+                        <div className="p-3 sm:p-4 space-y-3 bg-slate-50/40">
+                          {gamesOnDate.map((game) => {
+                            const homeTeam = teamMap.get(game.homeTeamId);
+                            const awayTeam = teamMap.get(game.awayTeamId);
+                            const division = divisionMap.get(game.divisionId);
+                            const field = fieldMap.get(game.fieldId);
+
+                            const isSelectedTeamHome = selectedTeamId !== 'all' && game.homeTeamId === selectedTeamId;
+                            const isSelectedTeamAway = selectedTeamId !== 'all' && game.awayTeamId === selectedTeamId;
+
+                            const mapsUrl =
+                              field?.googleMapsUrl ||
+                              `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+                                field?.address || field?.name || ''
+                              )}`;
+
+                            return (
+                              <div
+                                key={game.id}
+                                className={`bg-white rounded-xl border p-3.5 sm:p-4 transition-all shadow-2xs hover:shadow-xs print-match-card break-inside-avoid ${
+                                  isSelectedTeamHome || isSelectedTeamAway
+                                    ? 'border-emerald-300 ring-1 ring-emerald-200'
+                                    : 'border-slate-200'
+                                }`}
+                              >
+                                <div className="space-y-3">
+                                  {/* Top line: Division, Kickoff Time, Round */}
+                                  <div className="flex items-center justify-between gap-2 text-xs text-slate-500 border-b border-slate-100 pb-2">
+                                    <div className="flex items-center gap-1.5 truncate">
+                                      <span className="font-bold text-slate-800 truncate">
+                                        {division?.name || 'League Match'}
+                                      </span>
+                                      <span>·</span>
+                                      <span>Round {game.roundNumber}</span>
+                                    </div>
+
+                                    <div className="flex items-center gap-1.5 shrink-0">
+                                      <span className="inline-flex items-center gap-1 font-mono font-bold text-slate-900 bg-slate-100 px-2 py-0.5 rounded text-[11px]">
+                                        <Clock className="w-3 h-3 text-slate-500" />
+                                        {game.time}
+                                      </span>
+                                      {game.isByePractice && (
+                                        <span className="text-amber-800 font-semibold bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200 text-[10px]">
+                                          Practice
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+
+                                  {/* Teams Matchup Box (High contrast & clean mobile stacking) */}
+                                  <div className="bg-slate-50 rounded-xl p-3 border border-slate-200/80 space-y-2">
+                                    {/* Home Team */}
+                                    <div className="flex items-center justify-between gap-2">
+                                      <div className="flex items-center gap-2 min-w-0">
+                                        <span
+                                          className={`px-1.5 py-0.5 text-[10px] font-bold rounded tracking-wide shrink-0 ${
+                                            isSelectedTeamHome
+                                              ? 'bg-emerald-600 text-white'
+                                              : 'bg-slate-200 text-slate-700'
+                                          }`}
+                                        >
+                                          HOME
+                                        </span>
+                                        <span
+                                          className={`text-xs sm:text-sm font-bold truncate ${
+                                            isSelectedTeamHome ? 'text-emerald-700 font-extrabold' : 'text-slate-900'
+                                          }`}
+                                        >
+                                          {homeTeam?.name || 'Home Team'}
+                                        </span>
+                                      </div>
+                                      {homeTeam?.jerseyColor && (
+                                        <span className="text-[10px] sm:text-[11px] text-slate-500 font-medium shrink-0 bg-white px-2 py-0.5 rounded border border-slate-200">
+                                          {homeTeam.jerseyColor}
+                                        </span>
+                                      )}
+                                    </div>
+
+                                    {/* VS Divider */}
+                                    <div className="relative flex items-center justify-center">
+                                      <div className="border-t border-slate-200 w-full absolute"></div>
+                                      <span className="bg-slate-100 text-slate-400 font-bold text-[9px] px-2 py-0.2 rounded relative z-10 uppercase tracking-widest">
+                                        vs
+                                      </span>
+                                    </div>
+
+                                    {/* Away Team */}
+                                    <div className="flex items-center justify-between gap-2">
+                                      <div className="flex items-center gap-2 min-w-0">
+                                        <span
+                                          className={`px-1.5 py-0.5 text-[10px] font-bold rounded tracking-wide shrink-0 ${
+                                            isSelectedTeamAway
+                                              ? 'bg-emerald-600 text-white'
+                                              : 'bg-slate-200 text-slate-700'
+                                          }`}
+                                        >
+                                          AWAY
+                                        </span>
+                                        <span
+                                          className={`text-xs sm:text-sm font-bold truncate ${
+                                            isSelectedTeamAway ? 'text-emerald-700 font-extrabold' : 'text-slate-900'
+                                          }`}
+                                        >
+                                          {awayTeam?.name || 'Away Team'}
+                                        </span>
+                                      </div>
+                                      {awayTeam?.jerseyColor && (
+                                        <span className="text-[10px] sm:text-[11px] text-slate-500 font-medium shrink-0 bg-white px-2 py-0.5 rounded border border-slate-200">
+                                          {awayTeam.jerseyColor}
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+
+                                  {/* Field & Driving Directions Row */}
+                                  <div className="flex items-center justify-between gap-2 text-xs pt-0.5">
+                                    <div className="flex items-center gap-1.5 min-w-0">
+                                      <MapPin className="w-3.5 h-3.5 text-rose-500 shrink-0" />
+                                      <span className="font-semibold text-slate-800 truncate">
+                                        {field?.name || 'Assigned Pitch'}
+                                      </span>
+                                      {field?.size && (
+                                        <span className="text-[10px] text-slate-400 font-mono hidden sm:inline">
+                                          ({field.size})
+                                        </span>
+                                      )}
+                                    </div>
+
+                                    <a
+                                      href={mapsUrl}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-800 font-semibold text-xs shrink-0 py-0.5"
+                                    >
+                                      <ExternalLink className="w-3 h-3" />
+                                      <span>GPS Directions</span>
+                                    </a>
+                                  </div>
+
+                                  {/* Mobile-Friendly Action Buttons Row (3 Columns) */}
+                                  <div className="grid grid-cols-3 gap-2 pt-2 border-t border-slate-100">
+                                    {/* Match Contacts */}
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setActiveMatchContacts({
+                                          game,
+                                          homeTeam,
+                                          awayTeam,
+                                          divisionName: division?.name,
+                                          field,
+                                        });
+                                      }}
+                                      className="flex items-center justify-center gap-1 px-2 py-2 text-xs font-semibold text-slate-700 hover:text-slate-900 bg-slate-50 hover:bg-slate-100 rounded-lg border border-slate-200 transition-colors min-h-[40px] text-center"
+                                      title="View coach and referee contact details"
+                                    >
+                                      <Phone className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                                      <span className="truncate">Contacts</span>
+                                    </button>
+
+                                    {/* Pitch Info */}
+                                    <button
+                                      type="button"
+                                      onClick={() => field && setActiveMapField(field)}
+                                      className="flex items-center justify-center gap-1 px-2 py-2 text-xs font-medium text-slate-600 hover:text-slate-900 bg-slate-50 hover:bg-slate-100 rounded-lg border border-slate-200 transition-colors min-h-[40px] text-center"
+                                      title="View field details and layout"
+                                    >
+                                      <MapPin className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+                                      <span className="truncate">Pitch Info</span>
+                                    </button>
+
+                                    {/* Add to Calendar with safe dropdown positioning */}
+                                    <div className="relative">
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          setActiveCalDropdownGameId(
+                                            activeCalDropdownGameId === game.id ? null : game.id
+                                          )
+                                        }
+                                        className="w-full flex items-center justify-center gap-1 px-2 py-2 text-xs font-semibold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 rounded-lg transition-colors min-h-[40px] text-center"
+                                        title="Add this match to your phone calendar"
+                                      >
+                                        <CalendarPlus className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                                        <span className="truncate">+ Cal</span>
+                                        <ChevronDown className="w-3 h-3 text-emerald-600 shrink-0" />
+                                      </button>
+
+                                      {activeCalDropdownGameId === game.id && (
+                                        <div className="absolute right-0 bottom-full mb-1 sm:bottom-auto sm:top-full sm:mt-1 w-52 max-w-[calc(100vw-2.5rem)] bg-white rounded-xl shadow-xl border border-slate-200 p-1.5 z-30 animate-in fade-in space-y-0.5 text-xs">
+                                          <a
+                                            href={createGoogleCalendarUrl(
+                                              buildEventPayload(
+                                                game,
+                                                activeData.teams,
+                                                activeData.divisions,
+                                                activeData.fields
+                                              )
+                                            )}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            onClick={() => setActiveCalDropdownGameId(null)}
+                                            className="flex items-center gap-2 px-3 py-2 text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
+                                          >
+                                            <ExternalLink className="w-3.5 h-3.5 text-blue-500" />
+                                            <span>Google Calendar</span>
+                                          </a>
+
+                                          <a
+                                            href={createOutlookCalendarUrl(
+                                              buildEventPayload(
+                                                game,
+                                                activeData.teams,
+                                                activeData.divisions,
+                                                activeData.fields
+                                              )
+                                            )}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            onClick={() => setActiveCalDropdownGameId(null)}
+                                            className="flex items-center gap-2 px-3 py-2 text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
+                                          >
+                                            <ExternalLink className="w-3.5 h-3.5 text-sky-600" />
+                                            <span>Outlook Web</span>
+                                          </a>
+
+                                          <button
+                                            onClick={() => {
+                                              setActiveCalDropdownGameId(null);
+                                              const icsContent = generateIcsContent(
+                                                [game],
+                                                activeData.teams,
+                                                activeData.divisions,
+                                                activeData.fields,
+                                                `${homeTeam?.name || 'Home'} vs ${awayTeam?.name || 'Away'}`
+                                              );
+                                              downloadIcsFile(
+                                                icsContent,
+                                                `game_${game.date}_${homeTeam?.name || 'Home'}.ics`
+                                              );
+                                            }}
+                                            className="w-full flex items-center gap-2 px-3 py-2 text-slate-700 hover:bg-slate-100 rounded-lg text-left transition-colors cursor-pointer"
+                                          >
+                                            <Download className="w-3.5 h-3.5 text-slate-500" />
+                                            <span>Download .ics File</span>
+                                          </button>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
                     </div>
-                  </div>
-                );
-              })
+                  );
+                })}
+              </div>
             )}
+
+            {/* ================= COLLAPSIBLE SECTION 4: FIELD LOCATIONS & GPS NAVIGATION ================= */}
+            <section
+              id="fields-section"
+              className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden no-print scroll-mt-20 mt-6"
+            >
+              {/* Accordion Header */}
+              <button
+                type="button"
+                onClick={() => setIsFieldsSectionOpen((prev) => !prev)}
+                className="w-full p-3.5 sm:p-4 bg-slate-50 hover:bg-slate-100 flex items-center justify-between gap-3 text-left transition-colors cursor-pointer"
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="w-8 h-8 rounded-lg bg-rose-50 text-rose-600 border border-rose-200 flex items-center justify-center font-bold shadow-xs shrink-0">
+                    <MapPin className="w-4 h-4 text-rose-500" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h2 className="text-sm sm:text-base font-bold text-slate-900 tracking-tight">
+                        Pitch Locations & GPS Directions
+                      </h2>
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-200 text-slate-700">
+                        {activeData.fields.length} {activeData.fields.length === 1 ? 'Pitch' : 'Pitches'}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-500 truncate">
+                      Click any venue to launch turn-by-turn driving directions in Google Maps
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="text-xs font-semibold text-slate-700 hidden sm:inline">
+                    {isFieldsSectionOpen ? 'Collapse Pitches' : 'View Pitches'}
+                  </span>
+                  <div className="w-7 h-7 rounded-md bg-white border border-slate-200 text-slate-600 flex items-center justify-center shadow-2xs">
+                    {isFieldsSectionOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                  </div>
+                </div>
+              </button>
+
+              {/* Accordion Body */}
+              {isFieldsSectionOpen && (
+                <div className="p-3.5 sm:p-5 border-t border-slate-200 space-y-3 animate-in fade-in">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {activeData.fields.map((field) => {
+                      const mapsUrl =
+                        field.googleMapsUrl ||
+                        `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+                          field.address || field.name
+                        )}`;
+
+                      return (
+                        <div
+                          key={field.id}
+                          className="p-3.5 bg-slate-50/80 rounded-xl border border-slate-200 flex flex-col justify-between space-y-2 text-xs hover:border-slate-300 transition-colors"
+                        >
+                          <div>
+                            <div className="flex items-start justify-between gap-2">
+                              <span className="font-bold text-slate-900">{field.name}</span>
+                              {field.size && (
+                                <span className="text-[10px] text-slate-500 font-mono bg-white px-1.5 py-0.5 rounded border border-slate-200">
+                                  {field.size}
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-slate-600 text-[11px] mt-1 leading-snug">
+                              {field.address || 'Standard League Soccer Complex'}
+                            </p>
+                          </div>
+
+                          <div className="pt-2 border-t border-slate-200/60 flex items-center justify-between gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setActiveMapField(field)}
+                              className="text-slate-700 hover:text-slate-900 font-semibold text-[11px]"
+                            >
+                              Pitch Layout →
+                            </button>
+                            <a
+                              href={mapsUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-800 font-semibold text-[11px] bg-white px-2 py-1 rounded border border-blue-200 shadow-2xs"
+                            >
+                              <ExternalLink className="w-3 h-3" />
+                              <span>Google Maps GPS</span>
+                            </a>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </section>
           </div>
 
-          {/* Sidebar Footer Link */}
-          <div className="p-2.5 bg-slate-50 border-t border-slate-100 text-center">
-            <button
-              type="button"
-              onClick={() => setIsPrintBulletinsModalOpen(true)}
-              className="w-full py-1.5 text-xs font-semibold text-emerald-800 hover:text-emerald-900 hover:bg-emerald-50 rounded-lg transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
-            >
-              <Printer className="w-3.5 h-3.5 text-emerald-600" />
-              <span>Print All Bulletins (PDF)</span>
-            </button>
-          </div>
+          {/* Dedicated Bulletins Sidebar (1 col on lg, hidden on mobile since mobile uses top collapsible section) */}
+          <aside id="bulletins-sidebar" className="hidden lg:block lg:col-span-1 space-y-4 no-print w-full scroll-mt-20">
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
+              {/* Sidebar Header */}
+              <div className="p-3.5 bg-gradient-to-r from-emerald-900 to-slate-900 text-white flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-lg bg-emerald-600 text-white flex items-center justify-center font-bold shadow-xs">
+                    <Megaphone className="w-3.5 h-3.5" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold tracking-tight text-white leading-tight">
+                      League Bulletins
+                    </h3>
+                    <span className="text-[10px] text-emerald-300 font-medium">
+                      Official Notices ({activeBulletins.length})
+                    </span>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setIsPrintBulletinsModalOpen(true)}
+                  className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold text-white bg-emerald-700/80 hover:bg-emerald-600 rounded-md transition-colors cursor-pointer shadow-xs"
+                  title="Print bulletins separately without match schedule"
+                >
+                  <Printer className="w-3 h-3" />
+                  <span>Print</span>
+                </button>
+              </div>
+
+              {/* Target Audience Filter Chips */}
+              <div className="p-2.5 bg-slate-50 border-b border-slate-100 flex flex-wrap gap-1 text-[11px]">
+                {['all', 'Parents', 'Coaches', 'Referees'].map((aud) => (
+                  <button
+                    key={aud}
+                    type="button"
+                    onClick={() => setBulletinAudienceFilter(aud)}
+                    className={`px-2 py-0.5 rounded-md font-medium transition-colors cursor-pointer ${
+                      bulletinAudienceFilter === aud
+                        ? 'bg-slate-900 text-white shadow-2xs'
+                        : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
+                    }`}
+                  >
+                    {aud === 'all' ? 'All' : aud}
+                  </button>
+                ))}
+              </div>
+
+              {/* Bulletins List in Sidebar */}
+              <div className="p-3 space-y-3 max-h-[640px] overflow-y-auto">
+                {displayedBulletins.length === 0 ? (
+                  <div className="text-center py-6 px-2 text-slate-400 text-xs">
+                    No announcements posted for this audience filter.
+                  </div>
+                ) : (
+                  displayedBulletins.map((b) => {
+                    const isUrgent = b.priority === 'urgent';
+                    const isImportant = b.priority === 'important';
+
+                    return (
+                      <div
+                        key={b.id}
+                        className={`p-3 rounded-xl border text-left transition-all ${
+                          isUrgent
+                            ? 'bg-rose-50/70 border-rose-200 text-rose-950 shadow-2xs'
+                            : isImportant
+                            ? 'bg-amber-50/60 border-amber-200 text-amber-950'
+                            : 'bg-white border-slate-200 hover:border-slate-300'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between gap-1.5 mb-1.5">
+                          <div className="flex flex-wrap items-center gap-1">
+                            {b.isPinned && (
+                              <span className="text-[10px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-1.5 py-0.5 rounded-full inline-flex items-center gap-0.5">
+                                <Pin className="w-2.5 h-2.5 fill-indigo-600" />
+                                Pinned
+                              </span>
+                            )}
+                            <span
+                              className={`text-[9px] font-bold uppercase px-1.5 py-0.5 rounded ${
+                                b.category === 'Field Closure'
+                                  ? 'bg-rose-100 text-rose-800'
+                                  : b.category === 'Weather'
+                                  ? 'bg-amber-100 text-amber-800'
+                                  : b.category === 'Schedule Update'
+                                  ? 'bg-blue-100 text-blue-800'
+                                  : 'bg-emerald-100 text-emerald-800'
+                              }`}
+                            >
+                              {b.category}
+                            </span>
+                            {isUrgent && (
+                              <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-rose-600 text-white animate-pulse">
+                                Urgent
+                              </span>
+                            )}
+                          </div>
+                          <span className="text-[10px] font-mono text-slate-500">{b.createdAt}</span>
+                        </div>
+
+                        <h4 className="font-bold text-xs text-slate-900 leading-snug line-clamp-2">
+                          {b.title}
+                        </h4>
+
+                        <p className="text-[11px] text-slate-600 mt-1 line-clamp-3 leading-relaxed">
+                          {stripHtmlTags(b.content)}
+                        </p>
+
+                        <div className="pt-2 mt-2 border-t border-slate-100 flex items-center justify-between text-[10px]">
+                          <span className="text-slate-400">By {b.author || 'League Admin'}</span>
+                          <button
+                            type="button"
+                            onClick={() => setSelectedBulletinDetail(b)}
+                            className="font-bold text-emerald-700 hover:text-emerald-900 cursor-pointer"
+                          >
+                            Read More →
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+
+              {/* Sidebar Footer Link */}
+              <div className="p-2.5 bg-slate-50 border-t border-slate-100 text-center">
+                <button
+                  type="button"
+                  onClick={() => setIsPrintBulletinsModalOpen(true)}
+                  className="w-full py-1.5 text-xs font-semibold text-emerald-800 hover:text-emerald-900 hover:bg-emerald-50 rounded-lg transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <Printer className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>Print All Bulletins (PDF)</span>
+                </button>
+              </div>
+            </div>
+          </aside>
         </div>
-      </aside>
-    </div>
-  </main>
+      </main>
 
       {/* ================= STANDALONE PORTAL FOOTER ================= */}
       <footer className="border-t border-slate-200 bg-white py-6 px-4 text-xs text-slate-500 no-print mt-auto">

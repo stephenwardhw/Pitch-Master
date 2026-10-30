@@ -9,25 +9,48 @@ import {
   getMySqlConfig,
   setMySqlConfig,
 } from './mysqlService';
+import { validateSessionToken } from './authService';
 
 export const mysqlRouter = express.Router();
 
+function getBearerToken(req: express.Request): string {
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    return authHeader.substring(7).trim();
+  }
+  return (req.query.token as string) || (req.headers['x-admin-token'] as string) || '';
+}
+
 // 1. Status & Table verification
-mysqlRouter.get('/status', async (_req, res) => {
+mysqlRouter.get('/status', async (req, res) => {
   try {
     const status = await initializeTable();
+    const token = getBearerToken(req);
+    const user = validateSessionToken(token);
+    const isSuperAdmin = user?.role === 'superadmin';
+
     res.json({
       ...status,
-      config: getMySqlConfig(),
+      // Only disclose database credentials and connection parameters to superadmins
+      config: isSuperAdmin ? getMySqlConfig() : undefined,
     });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// 2. Test connection with optional custom credentials
+// 2. Test connection with optional custom credentials (Superadmin only)
 mysqlRouter.post('/test-connection', async (req, res) => {
   try {
+    const token = getBearerToken(req);
+    const user = validateSessionToken(token);
+    if (!user || user.role !== 'superadmin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Superadmin privileges required to test database connections.',
+      });
+    }
+
     const result = await testConnection(req.body);
     res.json(result);
   } catch (err: any) {
@@ -35,9 +58,18 @@ mysqlRouter.post('/test-connection', async (req, res) => {
   }
 });
 
-// 3. Update server connection configuration
+// 3. Update server connection configuration (Superadmin only)
 mysqlRouter.post('/config', async (req, res) => {
   try {
+    const token = getBearerToken(req);
+    const user = validateSessionToken(token);
+    if (!user || user.role !== 'superadmin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Superadmin privileges required to modify database configuration.',
+      });
+    }
+
     setMySqlConfig(req.body);
     const status = await initializeTable();
     res.json({

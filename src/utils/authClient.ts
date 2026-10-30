@@ -61,6 +61,13 @@ export function isViewerRole(user: AdminUser | null | undefined): boolean {
   return user?.role === 'viewer';
 }
 
+/**
+ * Returns true if the active account is at the Superadmin level.
+ */
+export function isSuperAdmin(user: AdminUser | null | undefined): boolean {
+  return user?.role === 'superadmin';
+}
+
 const TOKEN_KEY = 'pitchmaster_admin_token';
 const USER_KEY = 'pitchmaster_admin_user';
 

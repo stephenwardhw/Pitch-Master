@@ -1,4 +1,5 @@
 import { AppData, MySqlBackupMetadata, MySqlConfig, ScheduleActivityItem } from '../types';
+import { getStoredToken } from './authClient';
 
 export interface MySqlSaveResult {
   success: boolean;
@@ -84,7 +85,16 @@ async function safeFetchJson<T = any>(
   error?: string;
 }> {
   try {
-    const res = await fetch(url, options);
+    const token = getStoredToken();
+    const headers = new Headers(options?.headers || {});
+    if (token && !headers.has('Authorization')) {
+      headers.set('Authorization', `Bearer ${token}`);
+    }
+
+    const res = await fetch(url, {
+      ...options,
+      headers,
+    });
     const contentType = (res.headers.get('content-type') || '').toLowerCase();
     const rawText = await res.text();
     const isHtml =

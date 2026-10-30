@@ -11,7 +11,7 @@ import {
   MySqlSaveResult,
 } from '../../utils/mysqlBackupClient';
 import { ConflictMergeModal } from './ConflictMergeModal';
-import { AdminUser, isViewerRole } from '../../utils/authClient';
+import { AdminUser, isViewerRole, isSuperAdmin } from '../../utils/authClient';
 import {
   Database,
   X,
@@ -23,6 +23,7 @@ import {
   HardDrive,
   FileJson,
   ShieldCheck,
+  ShieldAlert,
   Clock,
   User as UserIcon,
   Settings,
@@ -58,6 +59,8 @@ export const MySqlBackupModal: React.FC<MySqlBackupModalProps> = ({
   isReadOnly,
 }) => {
   const isViewer = isReadOnly ?? isViewerRole(adminUser);
+  const isSuperAdminUser = isSuperAdmin(adminUser);
+
   // MySQL Status
   const [isLiveMySql, setIsLiveMySql] = useState(false);
   const [statusText, setStatusText] = useState('Connecting to MySQL service...');
@@ -69,10 +72,17 @@ export const MySqlBackupModal: React.FC<MySqlBackupModalProps> = ({
     tableName: 'schedule_backups',
   });
 
-  // Navigation Tab: 'backups' or 'guide'
+  // Navigation Tab: 'backups' or 'guide' (restricted to superadmin)
   const [activeTab, setActiveTab] = useState<'backups' | 'guide'>('backups');
   const [copiedEnv, setCopiedEnv] = useState(false);
   const [copiedSql, setCopiedSql] = useState(false);
+
+  // Auto-switch away from guide tab if user is not superadmin
+  useEffect(() => {
+    if (!isSuperAdminUser && activeTab === 'guide') {
+      setActiveTab('backups');
+    }
+  }, [isSuperAdminUser, activeTab]);
 
   // Settings Panel state
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -536,18 +546,23 @@ ON DUPLICATE KEY UPDATE \`display_name\` = VALUES(\`display_name\`);`;
               <Database className="w-3.5 h-3.5" />
               <span>Backups & Storage</span>
             </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab('guide')}
-              className={`py-3 px-3.5 text-xs font-semibold border-b-2 flex items-center gap-1.5 transition-colors ${
-                activeTab === 'guide'
-                  ? 'border-indigo-600 text-indigo-600 bg-white shadow-2xs'
-                  : 'border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-100/60'
-              }`}
-            >
-              <BookOpen className="w-3.5 h-3.5" />
-              <span>Setup Guide & SQL Schema</span>
-            </button>
+            {isSuperAdminUser && (
+              <button
+                type="button"
+                onClick={() => setActiveTab('guide')}
+                className={`py-3 px-3.5 text-xs font-semibold border-b-2 flex items-center gap-1.5 transition-colors ${
+                  activeTab === 'guide'
+                    ? 'border-indigo-600 text-indigo-600 bg-white shadow-2xs'
+                    : 'border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-100/60'
+                }`}
+              >
+                <BookOpen className="w-3.5 h-3.5" />
+                <span>Setup Guide & SQL Schema</span>
+                <span className="text-[10px] px-1.5 py-0.2 rounded-full font-bold bg-purple-100 text-purple-700 ml-1">
+                  Superadmin
+                </span>
+              </button>
+            )}
 
             {onOpenActivityLog && (
               <button
@@ -571,7 +586,7 @@ ON DUPLICATE KEY UPDATE \`display_name\` = VALUES(\`display_name\`);`;
             {isViewer && (
               <div className="p-3 rounded-xl border border-amber-200 bg-amber-50 text-amber-900 flex items-center justify-between text-xs shadow-2xs">
                 <span className="font-medium">
-                  <strong>Read-Only Mode:</strong> Your account has Viewer access. You can view backups, version metadata, and SQL schema. Creating backups, saving, or restoring snapshots requires Scheduler role or above.
+                  <strong>Read-Only Mode:</strong> Your account has Viewer access. You can inspect backups and version metadata. The MySQL Setup Guide and SQL Schema are restricted to Superadmin users. Creating backups, saving, or restoring snapshots requires Scheduler role or above.
                 </span>
               </div>
             )}
@@ -617,21 +632,27 @@ ON DUPLICATE KEY UPDATE \`display_name\` = VALUES(\`display_name\`);`;
                     </span>
                   </div>
                   <span className="text-[11px] text-slate-500 block">
-                    Host: <code className="font-mono">{config.host}:{config.port}</code> · Database: <code className="font-mono">{config.database}</code> · Table: <code className="font-mono">{config.tableName || 'schedule_backups'}</code>
+                    {isSuperAdminUser ? (
+                      <>Host: <code className="font-mono">{config.host}:{config.port}</code> · Database: <code className="font-mono">{config.database}</code> · Table: <code className="font-mono">{config.tableName || 'schedule_backups'}</code></>
+                    ) : (
+                      <>Target Table: <code className="font-mono">{config.tableName || 'schedule_backups'}</code></>
+                    )}
                   </span>
                 </div>
               </div>
 
-              <div className="flex items-center gap-2 shrink-0">
-                <button
-                  type="button"
-                  onClick={() => setIsSettingsOpen(!isSettingsOpen)}
-                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold transition-colors shadow-2xs"
-                >
-                  <Settings className="w-3.5 h-3.5 text-slate-500" />
-                  <span>Configure DB</span>
-                </button>
-              </div>
+              {isSuperAdminUser && (
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setIsSettingsOpen(!isSettingsOpen)}
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold transition-colors shadow-2xs"
+                  >
+                    <Settings className="w-3.5 h-3.5 text-slate-500" />
+                    <span>Configure DB</span>
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* EXPANDABLE MYSQL CONFIGURATION PANEL */}
@@ -997,8 +1018,29 @@ ON DUPLICATE KEY UPDATE \`display_name\` = VALUES(\`display_name\`);`;
               )}
             </div>
           </>
+        ) : !isSuperAdminUser ? (
+          /* RESTRICTED ACCESS SCREEN FOR NON-SUPERADMIN */
+          <div className="p-8 text-center bg-slate-50 rounded-2xl border border-slate-200 space-y-4 my-4 animate-in fade-in">
+            <div className="w-12 h-12 rounded-2xl bg-amber-100 text-amber-700 flex items-center justify-center mx-auto shadow-xs">
+              <ShieldAlert className="w-6 h-6" />
+            </div>
+            <div className="space-y-1">
+              <h4 className="text-sm font-bold text-slate-900">Access Restricted to Superadmin</h4>
+              <p className="text-xs text-slate-500 max-w-md mx-auto leading-relaxed">
+                Viewing the MySQL Setup Guide, environment configurations, and SQL schema scripts requires Superadmin privileges. Please contact your league superadmin for administrative access.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setActiveTab('backups')}
+              className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-indigo-600 rounded-xl hover:bg-indigo-700 transition-colors shadow-xs"
+            >
+              <Database className="w-3.5 h-3.5" />
+              <span>Return to Backups & Storage</span>
+            </button>
+          </div>
         ) : (
-          /* ACTIVE TAB: SETUP GUIDE & SQL SCHEMA */
+          /* ACTIVE TAB: SETUP GUIDE & SQL SCHEMA (SUPERADMIN ONLY) */
           <div className="space-y-6 animate-in fade-in">
             {/* Overview Banner */}
             <div className="p-4 bg-indigo-50/70 border border-indigo-200 rounded-2xl flex items-start gap-3.5">

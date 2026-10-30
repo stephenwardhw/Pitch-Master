@@ -113,7 +113,8 @@ PitchMaster enforces strict permission checks on both the client interface and s
 | **`scheduler`** | Yes (Dashboard) | Yes | Yes | **Yes** | No user management |
 | **`viewer`** | Read-Only | Read-Only (Disabled) | Disabled | **Disabled** (Hidden/Blocked) | Disabled |
 
-- **Viewer Guard**: Users logged in with `viewer` role can inspect the administrative dashboard, match calendars, team details, and the matchup matrix, but cannot modify records, generate schedules, or publish data.
+- **Setup Guide & SQL Schema Protection**: Viewing database connection parameters, the in-app MySQL Setup Guide, and raw SQL table schema scripts is strictly restricted to `superadmin` users to protect database security and server configurations.
+- **Viewer Guard**: Users logged in with `viewer` role can inspect the administrative dashboard, match calendars, team details, and the matchup matrix, but cannot modify records, generate schedules, view SQL schema, or publish data.
 - **Publish Restriction**: Live publishing to `league_schedule.json` requires `scheduler`, `admin`, or `superadmin` role.
 
 ---

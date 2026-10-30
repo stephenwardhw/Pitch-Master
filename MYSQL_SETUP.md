@@ -183,8 +183,11 @@ PitchMaster enforces a 4-tier permission hierarchy:
 | Manage Divisions, Teams, Pitches & Referees | ❌ | ❌ | ✅ | ✅ |
 | Modify Season Parameters & Date Windows | ❌ | ❌ | ✅ | ✅ |
 | Post, edit, and archive league bulletins | ❌ | ❌ | ✅ | ✅ |
+| **View In-App Setup Guide & SQL Schema** | ❌ | ❌ | ❌ | ✅ |
+| **Configure Database Credentials & Test Connection** | ❌ | ❌ | ❌ | ✅ |
 | Manage Admin Users (Create, Edit Roles, Reset Passwords) | ❌ | ❌ | ❌ | ✅ |
 
+* **Superadmin Privilege**: Viewing database connection parameters, the in-app MySQL Setup Guide, and raw SQL table schema scripts is strictly restricted to `superadmin` users to protect database security and server configurations.
 * **Viewer Enforcement**: Users logged in with the `viewer` role have strict read-only access. Save buttons, publish buttons, add/edit/delete buttons, and automated schedulers are hidden or disabled with explanatory tooltips, and backend endpoints reject modifications with `403 Forbidden`.
 * **Server Publish Restriction**: Calling `POST /api/publish-schedule` requires `scheduler` role or higher.
 

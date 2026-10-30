@@ -33,14 +33,15 @@ export function getSavedLocalConfig(): MySqlConfig {
   };
 }
 
-export function saveLocalConfig(cfg: Partial<MySqlConfig>) {
+export function saveLocalConfig(cfg?: Partial<MySqlConfig>) {
   try {
     const current = getSavedLocalConfig();
+    if (!cfg) return current;
     const updated = { ...current, ...cfg };
     localStorage.setItem(LOCAL_STORAGE_CONFIG_KEY, JSON.stringify(updated));
     return updated;
   } catch {
-    return cfg as MySqlConfig;
+    return (cfg as MySqlConfig) || getSavedLocalConfig();
   }
 }
 
@@ -154,8 +155,12 @@ export async function fetchMySqlStatus(): Promise<{
   }>('/api/mysql/status');
 
   if (result.ok && result.data) {
-    saveLocalConfig(result.data.config);
-    return result.data;
+    const safeConfig = result.data.config || getSavedLocalConfig();
+    saveLocalConfig(safeConfig);
+    return {
+      ...result.data,
+      config: safeConfig,
+    };
   }
 
   const localCfg = getSavedLocalConfig();

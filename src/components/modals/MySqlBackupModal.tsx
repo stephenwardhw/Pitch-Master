@@ -9,6 +9,7 @@ import {
   saveMySqlBackup,
   checkForMySqlConflict,
   MySqlSaveResult,
+  getSavedLocalConfig,
 } from '../../utils/mysqlBackupClient';
 import { ConflictMergeModal } from './ConflictMergeModal';
 import { AdminUser, isViewerRole, isSuperAdmin } from '../../utils/authClient';
@@ -64,13 +65,7 @@ export const MySqlBackupModal: React.FC<MySqlBackupModalProps> = ({
   // MySQL Status
   const [isLiveMySql, setIsLiveMySql] = useState(false);
   const [statusText, setStatusText] = useState('Connecting to MySQL service...');
-  const [config, setConfig] = useState<MySqlConfig>({
-    host: 'localhost',
-    port: 3306,
-    user: 'root',
-    database: 'pitchmaster',
-    tableName: 'schedule_backups',
-  });
+  const [config, setConfig] = useState<MySqlConfig>(() => getSavedLocalConfig());
 
   // Navigation Tab: 'backups' or 'guide' (restricted to superadmin)
   const [activeTab, setActiveTab] = useState<'backups' | 'guide'>('backups');
@@ -86,7 +81,7 @@ export const MySqlBackupModal: React.FC<MySqlBackupModalProps> = ({
 
   // Settings Panel state
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [tempConfig, setTempConfig] = useState<MySqlConfig>(config);
+  const [tempConfig, setTempConfig] = useState<MySqlConfig>(() => getSavedLocalConfig());
   const [isTestingConn, setIsTestingConn] = useState(false);
   const [connTestResult, setConnTestResult] = useState<{ success: boolean; message: string } | null>(null);
 
@@ -199,8 +194,10 @@ ON DUPLICATE KEY UPDATE \`display_name\` = VALUES(\`display_name\`);`;
       const status = await fetchMySqlStatus();
       setIsLiveMySql(status.isLiveMySql);
       setStatusText(status.message);
-      setConfig(status.config);
-      setTempConfig(status.config);
+      if (status && status.config) {
+        setConfig(status.config);
+        setTempConfig(status.config);
+      }
       await refreshBackupsList();
     } catch (err: any) {
       setIsLiveMySql(false);
@@ -633,9 +630,9 @@ ON DUPLICATE KEY UPDATE \`display_name\` = VALUES(\`display_name\`);`;
                   </div>
                   <span className="text-[11px] text-slate-500 block">
                     {isSuperAdminUser ? (
-                      <>Host: <code className="font-mono">{config.host}:{config.port}</code> · Database: <code className="font-mono">{config.database}</code> · Table: <code className="font-mono">{config.tableName || 'schedule_backups'}</code></>
+                      <>Host: <code className="font-mono">{config?.host ?? 'localhost'}:{config?.port ?? 3306}</code> · Database: <code className="font-mono">{config?.database ?? 'pitchmaster'}</code> · Table: <code className="font-mono">{config?.tableName || 'schedule_backups'}</code></>
                     ) : (
-                      <>Target Table: <code className="font-mono">{config.tableName || 'schedule_backups'}</code></>
+                      <>Target Table: <code className="font-mono">{config?.tableName || 'schedule_backups'}</code></>
                     )}
                   </span>
                 </div>
@@ -655,8 +652,8 @@ ON DUPLICATE KEY UPDATE \`display_name\` = VALUES(\`display_name\`);`;
               )}
             </div>
 
-            {/* EXPANDABLE MYSQL CONFIGURATION PANEL */}
-            {isSettingsOpen && (
+            {/* EXPANDABLE MYSQL CONFIGURATION PANEL (SUPERADMIN ONLY) */}
+            {isSuperAdminUser && isSettingsOpen && (
               <div className="p-4 bg-indigo-50/50 border border-indigo-200 rounded-xl space-y-3 animate-in fade-in">
                 <div className="flex items-center justify-between">
                   <span className="font-bold text-slate-900 text-xs flex items-center gap-1.5">
@@ -673,8 +670,8 @@ ON DUPLICATE KEY UPDATE \`display_name\` = VALUES(\`display_name\`);`;
                     <label className="block text-[11px] font-semibold text-slate-700 mb-1">Host</label>
                     <input
                       type="text"
-                      value={tempConfig.host}
-                      onChange={(e) => setTempConfig({ ...tempConfig, host: e.target.value })}
+                      value={tempConfig?.host ?? ''}
+                      onChange={(e) => setTempConfig((prev) => ({ ...(prev || getSavedLocalConfig()), host: e.target.value }))}
                       placeholder="localhost or 127.0.0.1"
                       className="w-full text-xs font-mono p-2 rounded-lg border border-slate-300 bg-white"
                     />
@@ -683,8 +680,8 @@ ON DUPLICATE KEY UPDATE \`display_name\` = VALUES(\`display_name\`);`;
                     <label className="block text-[11px] font-semibold text-slate-700 mb-1">Port</label>
                     <input
                       type="number"
-                      value={tempConfig.port}
-                      onChange={(e) => setTempConfig({ ...tempConfig, port: Number(e.target.value) || 3306 })}
+                      value={tempConfig?.port ?? 3306}
+                      onChange={(e) => setTempConfig((prev) => ({ ...(prev || getSavedLocalConfig()), port: Number(e.target.value) || 3306 }))}
                       placeholder="3306"
                       className="w-full text-xs font-mono p-2 rounded-lg border border-slate-300 bg-white"
                     />
@@ -693,8 +690,8 @@ ON DUPLICATE KEY UPDATE \`display_name\` = VALUES(\`display_name\`);`;
                     <label className="block text-[11px] font-semibold text-slate-700 mb-1">Database Name</label>
                     <input
                       type="text"
-                      value={tempConfig.database}
-                      onChange={(e) => setTempConfig({ ...tempConfig, database: e.target.value })}
+                      value={tempConfig?.database ?? ''}
+                      onChange={(e) => setTempConfig((prev) => ({ ...(prev || getSavedLocalConfig()), database: e.target.value }))}
                       placeholder="pitchmaster"
                       className="w-full text-xs font-mono p-2 rounded-lg border border-slate-300 bg-white"
                     />
@@ -703,8 +700,8 @@ ON DUPLICATE KEY UPDATE \`display_name\` = VALUES(\`display_name\`);`;
                     <label className="block text-[11px] font-semibold text-slate-700 mb-1">Table Name</label>
                     <input
                       type="text"
-                      value={tempConfig.tableName || 'schedule_backups'}
-                      onChange={(e) => setTempConfig({ ...tempConfig, tableName: e.target.value })}
+                      value={tempConfig?.tableName || 'schedule_backups'}
+                      onChange={(e) => setTempConfig((prev) => ({ ...(prev || getSavedLocalConfig()), tableName: e.target.value }))}
                       placeholder="schedule_backups"
                       className="w-full text-xs font-mono p-2 rounded-lg border border-slate-300 bg-white"
                     />
@@ -713,8 +710,8 @@ ON DUPLICATE KEY UPDATE \`display_name\` = VALUES(\`display_name\`);`;
                     <label className="block text-[11px] font-semibold text-slate-700 mb-1">Username</label>
                     <input
                       type="text"
-                      value={tempConfig.user}
-                      onChange={(e) => setTempConfig({ ...tempConfig, user: e.target.value })}
+                      value={tempConfig?.user ?? ''}
+                      onChange={(e) => setTempConfig((prev) => ({ ...(prev || getSavedLocalConfig()), user: e.target.value }))}
                       placeholder="root"
                       className="w-full text-xs font-mono p-2 rounded-lg border border-slate-300 bg-white"
                     />
@@ -723,8 +720,8 @@ ON DUPLICATE KEY UPDATE \`display_name\` = VALUES(\`display_name\`);`;
                     <label className="block text-[11px] font-semibold text-slate-700 mb-1">Password</label>
                     <input
                       type="password"
-                      value={tempConfig.password || ''}
-                      onChange={(e) => setTempConfig({ ...tempConfig, password: e.target.value })}
+                      value={tempConfig?.password || ''}
+                      onChange={(e) => setTempConfig((prev) => ({ ...(prev || getSavedLocalConfig()), password: e.target.value }))}
                       placeholder="Optional"
                       className="w-full text-xs font-mono p-2 rounded-lg border border-slate-300 bg-white"
                     />

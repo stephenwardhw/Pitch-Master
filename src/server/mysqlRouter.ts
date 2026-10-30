@@ -28,11 +28,21 @@ mysqlRouter.get('/status', async (req, res) => {
     const token = getBearerToken(req);
     const user = validateSessionToken(token);
     const isSuperAdmin = user?.role === 'superadmin';
+    const serverConfig = getMySqlConfig();
 
     res.json({
       ...status,
-      // Only disclose database credentials and connection parameters to superadmins
-      config: isSuperAdmin ? getMySqlConfig() : undefined,
+      // Full credentials for superadmin, sanitized safe placeholder for other roles
+      config: isSuperAdmin
+        ? serverConfig
+        : {
+            host: 'protected',
+            port: serverConfig.port || 3306,
+            user: 'protected',
+            password: '',
+            database: serverConfig.database || 'pitchmaster',
+            tableName: serverConfig.tableName || 'schedule_backups',
+          },
     });
   } catch (err: any) {
     res.status(500).json({ error: err.message });

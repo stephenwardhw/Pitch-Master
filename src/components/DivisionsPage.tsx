@@ -20,6 +20,7 @@ interface DivisionsPageProps {
   onDeleteDivision: (divisionId: string) => void;
   onSelectTeam: (team: Team) => void;
   onSelectField: (field: Field) => void;
+  isReadOnly?: boolean;
 }
 
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -31,6 +32,7 @@ export const DivisionsPage: React.FC<DivisionsPageProps> = ({
   onDeleteDivision,
   onSelectTeam,
   onSelectField,
+  isReadOnly = false,
 }) => {
   const [editingDivision, setEditingDivision] = useState<Division | null>(null);
   const [isCreatingNew, setIsCreatingNew] = useState(false);
@@ -47,6 +49,7 @@ export const DivisionsPage: React.FC<DivisionsPageProps> = ({
   const fieldMap = new Map(appData.fields.map((f) => [f.id, f]));
 
   const handleOpenEdit = (div: Division) => {
+    if (isReadOnly) return;
     setEditingDivision(div);
     setIsCreatingNew(false);
     setFormName(div.name);
@@ -57,6 +60,7 @@ export const DivisionsPage: React.FC<DivisionsPageProps> = ({
   };
 
   const handleOpenCreate = () => {
+    if (isReadOnly) return;
     setIsCreatingNew(true);
     setEditingDivision(null);
     setFormName('');
@@ -125,13 +129,15 @@ export const DivisionsPage: React.FC<DivisionsPageProps> = ({
           </p>
         </div>
 
-        <button
-          onClick={handleOpenCreate}
-          className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-medium text-white bg-slate-900 rounded-lg hover:bg-slate-800 transition-colors shadow-2xs self-start sm:self-auto"
-        >
-          <Plus className="w-3.5 h-3.5" />
-          <span>Add New Division</span>
-        </button>
+        {!isReadOnly && (
+          <button
+            onClick={handleOpenCreate}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-medium text-white bg-slate-900 rounded-lg hover:bg-slate-800 transition-colors shadow-2xs self-start sm:self-auto"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>Add New Division</span>
+          </button>
+        )}
       </div>
 
       {/* Divisions Grid */}
@@ -158,30 +164,32 @@ export const DivisionsPage: React.FC<DivisionsPageProps> = ({
                       {division.matchDurationMinutes} min matches · {registeredTeams.length} Teams
                     </p>
                   </div>
-                  <div className="flex items-center gap-1 shrink-0">
-                    <button
-                      onClick={() => handleOpenEdit(division)}
-                      className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg"
-                      title="Edit division"
-                    >
-                      <Edit2 className="w-3.5 h-3.5" />
-                    </button>
-                    <button
-                      onClick={() => {
-                        if (
-                          window.confirm(
-                            `Delete division "${division.name}"? This will not delete teams, but they will become unassigned.`
-                          )
-                        ) {
-                          onDeleteDivision(division.id);
-                        }
-                      }}
-                      className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg"
-                      title="Delete division"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
+                  {!isReadOnly && (
+                    <div className="flex items-center gap-1 shrink-0">
+                      <button
+                        onClick={() => handleOpenEdit(division)}
+                        className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg"
+                        title="Edit division"
+                      >
+                        <Edit2 className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (
+                            window.confirm(
+                              `Delete division "${division.name}"? This will not delete teams, but they will become unassigned.`
+                            )
+                          ) {
+                            onDeleteDivision(division.id);
+                          }
+                        }}
+                        className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg"
+                        title="Delete division"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 {/* Play Days */}

@@ -41,6 +41,7 @@ interface BulletinsPageProps {
   onDeleteBulletin: (bulletinId: string) => void;
   onTogglePinBulletin: (bulletinId: string) => void;
   onToggleActiveBulletin: (bulletinId: string) => void;
+  isReadOnly?: boolean;
 }
 
 export const BulletinsPage: React.FC<BulletinsPageProps> = ({
@@ -50,7 +51,9 @@ export const BulletinsPage: React.FC<BulletinsPageProps> = ({
   onDeleteBulletin,
   onTogglePinBulletin,
   onToggleActiveBulletin,
+  isReadOnly,
 }) => {
+  const isViewer = isReadOnly ?? (adminUser?.role === 'viewer');
   const bulletins = useMemo(() => appData.bulletins || [], [appData.bulletins]);
 
   // UI state
@@ -183,6 +186,7 @@ export const BulletinsPage: React.FC<BulletinsPageProps> = ({
   };
 
   const openCreateModal = () => {
+    if (isViewer) return;
     setEditingBulletin(null);
     setFormTitle('');
     setFormContent('');
@@ -199,6 +203,7 @@ export const BulletinsPage: React.FC<BulletinsPageProps> = ({
   };
 
   const openEditModal = (bulletin: Bulletin) => {
+    if (isViewer) return;
     setEditingBulletin(bulletin);
     setFormTitle(bulletin.title);
     setFormContent(bulletin.content);
@@ -310,14 +315,16 @@ export const BulletinsPage: React.FC<BulletinsPageProps> = ({
             <span>Print Bulletins (PDF)</span>
           </button>
 
-          <button
-            type="button"
-            onClick={openCreateModal}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-colors shadow-xs cursor-pointer"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Post New Bulletin</span>
-          </button>
+          {!isViewer && (
+            <button
+              type="button"
+              onClick={openCreateModal}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-colors shadow-xs cursor-pointer"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Post New Bulletin</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -461,14 +468,16 @@ export const BulletinsPage: React.FC<BulletinsPageProps> = ({
               ? 'No announcements match your search filters. Try clearing filters or creating a new post.'
               : 'You have not created any bulletins yet. Post announcements, field closures, or weather notices for families and coaches.'}
           </p>
-          <button
-            type="button"
-            onClick={openCreateModal}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-colors shadow-xs cursor-pointer"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Create First Bulletin</span>
-          </button>
+          {!isViewer && (
+            <button
+              type="button"
+              onClick={openCreateModal}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-colors shadow-xs cursor-pointer"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Create First Bulletin</span>
+            </button>
+          )}
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-4">
@@ -533,55 +542,57 @@ export const BulletinsPage: React.FC<BulletinsPageProps> = ({
                   </div>
 
                   {/* Actions Toolbar */}
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    <button
-                      type="button"
-                      onClick={() => onTogglePinBulletin(bulletin.id)}
-                      className={`p-1.5 rounded-lg text-xs transition-colors cursor-pointer ${
-                        bulletin.isPinned
-                          ? 'text-indigo-700 bg-indigo-50 hover:bg-indigo-100'
-                          : 'text-slate-400 hover:text-slate-700 hover:bg-slate-100'
-                      }`}
-                      title={bulletin.isPinned ? 'Unpin bulletin' : 'Pin bulletin to top'}
-                    >
-                      {bulletin.isPinned ? <Pin className="w-4 h-4 fill-indigo-600" /> : <Pin className="w-4 h-4" />}
-                    </button>
+                  {!isViewer && (
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => onTogglePinBulletin(bulletin.id)}
+                        className={`p-1.5 rounded-lg text-xs transition-colors cursor-pointer ${
+                          bulletin.isPinned
+                            ? 'text-indigo-700 bg-indigo-50 hover:bg-indigo-100'
+                            : 'text-slate-400 hover:text-slate-700 hover:bg-slate-100'
+                        }`}
+                        title={bulletin.isPinned ? 'Unpin bulletin' : 'Pin bulletin to top'}
+                      >
+                        {bulletin.isPinned ? <Pin className="w-4 h-4 fill-indigo-600" /> : <Pin className="w-4 h-4" />}
+                      </button>
 
-                    <button
-                      type="button"
-                      onClick={() => onToggleActiveBulletin(bulletin.id)}
-                      className={`p-1.5 rounded-lg text-xs transition-colors cursor-pointer ${
-                        bulletin.isActive
-                          ? 'text-emerald-700 bg-emerald-50 hover:bg-emerald-100'
-                          : 'text-slate-400 hover:text-slate-700 hover:bg-slate-100'
-                      }`}
-                      title={bulletin.isActive ? 'Unpublish / Archive' : 'Publish bulletin'}
-                    >
-                      {bulletin.isActive ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
-                    </button>
+                      <button
+                        type="button"
+                        onClick={() => onToggleActiveBulletin(bulletin.id)}
+                        className={`p-1.5 rounded-lg text-xs transition-colors cursor-pointer ${
+                          bulletin.isActive
+                            ? 'text-emerald-700 bg-emerald-50 hover:bg-emerald-100'
+                            : 'text-slate-400 hover:text-slate-700 hover:bg-slate-100'
+                        }`}
+                        title={bulletin.isActive ? 'Unpublish / Archive' : 'Publish bulletin'}
+                      >
+                        {bulletin.isActive ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+                      </button>
 
-                    <button
-                      type="button"
-                      onClick={() => openEditModal(bulletin)}
-                      className="p-1.5 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
-                      title="Edit Bulletin"
-                    >
-                      <Edit2 className="w-4 h-4" />
-                    </button>
+                      <button
+                        type="button"
+                        onClick={() => openEditModal(bulletin)}
+                        className="p-1.5 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
+                        title="Edit Bulletin"
+                      >
+                        <Edit2 className="w-4 h-4" />
+                      </button>
 
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (window.confirm(`Are you sure you want to delete bulletin "${bulletin.title}"?`)) {
-                          onDeleteBulletin(bulletin.id);
-                        }
-                      }}
-                      className="p-1.5 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
-                      title="Delete Bulletin"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (window.confirm(`Are you sure you want to delete bulletin "${bulletin.title}"?`)) {
+                            onDeleteBulletin(bulletin.id);
+                          }
+                        }}
+                        className="p-1.5 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                        title="Delete Bulletin"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 {/* Title & Body */}

@@ -4,6 +4,7 @@ import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { mysqlRouter } from './src/server/mysqlRouter';
 import { authRouter } from './src/server/authRouter';
+import { validateSessionToken } from './src/server/authService';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -155,6 +156,26 @@ app.get('/league_schedule.json', (_req, res) => {
 // Endpoint for league admins to publish updated schedule to the server's league_schedule.json
 app.post('/api/publish-schedule', (req, res) => {
   try {
+    // Restrict publishing to scheduler role and above (scheduler, admin, superadmin)
+    const authHeader = req.headers.authorization;
+    let token = '';
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      token = authHeader.substring(7).trim();
+    }
+    token = token || (req.query.token as string) || (req.headers['x-admin-token'] as string) || '';
+
+    if (token) {
+      const user = validateSessionToken(token);
+      if (!user) {
+        return res.status(401).json({ error: 'Unauthorized: Invalid or expired admin session token.' });
+      }
+      if (user.role === 'viewer') {
+        return res.status(403).json({
+          error: 'Forbidden: Publishing is restricted to Scheduler role and above. Viewer accounts have read-only access.',
+        });
+      }
+    }
+
     const data = req.body;
     if (!data || !data.divisions || !data.teams) {
       return res.status(400).json({ error: 'Invalid dataset payload.' });

@@ -38,6 +38,7 @@ interface TeamsPageProps {
   onOpenCsvImport?: () => void;
   onSelectTeamContact: (team: Team, divisionName?: string) => void;
   onSelectField: (field: Field) => void;
+  isReadOnly?: boolean;
 }
 
 type EmailScope = 'all' | 'division' | 'team';
@@ -51,6 +52,7 @@ export const TeamsPage: React.FC<TeamsPageProps> = ({
   onOpenCsvImport,
   onSelectTeamContact,
   onSelectField,
+  isReadOnly = false,
 }) => {
   const [selectedDivision, setSelectedDivision] = useState<string>('all');
   const [blackoutFilter, setBlackoutFilter] = useState<'all' | 'with-blackouts' | 'no-blackouts'>('all');
@@ -367,6 +369,7 @@ export const TeamsPage: React.FC<TeamsPageProps> = ({
   };
 
   const handleOpenEdit = (team: Team) => {
+    if (isReadOnly) return;
     setEditingTeam(team);
     setIsCreatingNew(false);
     setFormName(team.name);
@@ -384,6 +387,7 @@ export const TeamsPage: React.FC<TeamsPageProps> = ({
   };
 
   const handleOpenCreate = () => {
+    if (isReadOnly) return;
     setIsCreatingNew(true);
     setEditingTeam(null);
     setFormName('');
@@ -474,13 +478,15 @@ export const TeamsPage: React.FC<TeamsPageProps> = ({
           </button>
 
           {/* Editable Team Sizes Button */}
-          <button
-            onClick={onOpenManageTeamSizes}
-            className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors"
-          >
-            <Sliders className="w-3.5 h-3.5 text-slate-500" />
-            <span>Manage Team Sizes</span>
-          </button>
+          {!isReadOnly && (
+            <button
+              onClick={onOpenManageTeamSizes}
+              className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors"
+            >
+              <Sliders className="w-3.5 h-3.5 text-slate-500" />
+              <span>Manage Team Sizes</span>
+            </button>
+          )}
 
           <button
             onClick={() => {
@@ -495,7 +501,7 @@ export const TeamsPage: React.FC<TeamsPageProps> = ({
             <span>Export Teams (CSV)</span>
           </button>
 
-          {onOpenCsvImport && (
+          {!isReadOnly && onOpenCsvImport && (
             <button
               onClick={onOpenCsvImport}
               className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 rounded-lg transition-colors shadow-2xs"
@@ -506,13 +512,15 @@ export const TeamsPage: React.FC<TeamsPageProps> = ({
             </button>
           )}
 
-          <button
-            onClick={handleOpenCreate}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-medium text-white bg-slate-900 rounded-lg hover:bg-slate-800 transition-colors shadow-2xs"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span>Add New Team</span>
-          </button>
+          {!isReadOnly && (
+            <button
+              onClick={handleOpenCreate}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-medium text-white bg-slate-900 rounded-lg hover:bg-slate-800 transition-colors shadow-2xs"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>Add New Team</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -611,26 +619,28 @@ export const TeamsPage: React.FC<TeamsPageProps> = ({
                       {division?.name || 'Unassigned Division'} {team.jerseyColor && `· ${team.jerseyColor}`}
                     </p>
                   </div>
-                  <div className="flex items-center gap-1 shrink-0">
-                    <button
-                      onClick={() => handleOpenEdit(team)}
-                      className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg"
-                      title="Edit team details"
-                    >
-                      <Edit2 className="w-3.5 h-3.5" />
-                    </button>
-                    <button
-                      onClick={() => {
-                        if (window.confirm(`Delete team "${team.name}"?`)) {
-                          onDeleteTeam(team.id);
-                        }
-                      }}
-                      className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg"
-                      title="Delete team"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
+                  {!isReadOnly && (
+                    <div className="flex items-center gap-1 shrink-0">
+                      <button
+                        onClick={() => handleOpenEdit(team)}
+                        className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg"
+                        title="Edit team details"
+                      >
+                        <Edit2 className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (window.confirm(`Delete team "${team.name}"?`)) {
+                            onDeleteTeam(team.id);
+                          }
+                        }}
+                        className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg"
+                        title="Delete team"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 {/* Team Size Specification */}
@@ -790,13 +800,15 @@ export const TeamsPage: React.FC<TeamsPageProps> = ({
                   <span>Send Mailto</span>
                 </button>
 
-                <button
-                  type="button"
-                  onClick={() => handleOpenEdit(team)}
-                  className="font-medium text-slate-600 hover:text-slate-900"
-                >
-                  Edit Profile
-                </button>
+                {!isReadOnly && (
+                  <button
+                    type="button"
+                    onClick={() => handleOpenEdit(team)}
+                    className="font-medium text-slate-600 hover:text-slate-900"
+                  >
+                    Edit Profile
+                  </button>
+                )}
               </div>
             </div>
           );

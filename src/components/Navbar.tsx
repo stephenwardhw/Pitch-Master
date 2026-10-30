@@ -26,8 +26,10 @@ import {
   History,
   Megaphone,
   UploadCloud,
+  Eye,
+  Lock,
 } from 'lucide-react';
-import { AdminUser } from '../utils/authClient';
+import { AdminUser, canPublishSchedule, isViewerRole } from '../utils/authClient';
 
 export type NavTab =
   | 'schedule'
@@ -85,8 +87,11 @@ export const Navbar: React.FC<NavbarProps> = ({
   const [isPublishingServer, setIsPublishingServer] = useState(false);
   const [publishSuccessState, setPublishSuccessState] = useState(false);
 
+  const canPublish = canPublishSchedule(adminUser);
+  const isViewer = isViewerRole(adminUser);
+
   const handleQuickSave = async () => {
-    if (!onUnifiedSave || isSavingUnified) return;
+    if (!onUnifiedSave || isSavingUnified || isViewer) return;
     setIsSavingUnified(true);
     try {
       const res = await onUnifiedSave();
@@ -100,7 +105,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   };
 
   const handleQuickPublish = async () => {
-    if (!onPublishServer || isPublishingServer) return;
+    if (!onPublishServer || isPublishingServer || !canPublish) return;
     setIsPublishingServer(true);
     try {
       const res = await onPublishServer();
@@ -325,8 +330,19 @@ export const Navbar: React.FC<NavbarProps> = ({
               )}
             </div>
 
+            {/* Read-Only Viewer Badge */}
+            {isViewer && (
+              <div
+                className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-amber-50 text-amber-900 border border-amber-200 text-xs font-semibold shadow-2xs select-none"
+                title="Signed in as Viewer. You have read-only access to the admin area."
+              >
+                <Eye className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                <span>Read-Only Viewer</span>
+              </div>
+            )}
+
             {/* Unified Save Button (MySQL Database + Local JSON file) */}
-            {onUnifiedSave && (
+            {!isViewer && onUnifiedSave && (
               <button
                 type="button"
                 onClick={handleQuickSave}
@@ -355,8 +371,8 @@ export const Navbar: React.FC<NavbarProps> = ({
               </button>
             )}
 
-            {/* Server Publish Button (uploads public league_schedule.json to server) */}
-            {onPublishServer && (
+            {/* Server Publish Button (uploads public league_schedule.json to server) - Restricted to Scheduler and above */}
+            {canPublish && onPublishServer && (
               <button
                 type="button"
                 onClick={handleQuickPublish}
@@ -366,7 +382,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                     ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
                     : 'bg-emerald-600 hover:bg-emerald-700 text-white active:scale-95'
                 }`}
-                title="Publish: Uploads and deploys public league_schedule.json to the server for portal & landing page viewers"
+                title="Publish: Uploads and deploys public league_schedule.json to the server for portal & landing page viewers (Scheduler and above)"
               >
                 {isPublishingServer ? (
                   <RefreshCw className="w-3.5 h-3.5 animate-spin" />
@@ -666,7 +682,15 @@ export const Navbar: React.FC<NavbarProps> = ({
               <ExternalLink className="w-3.5 h-3.5 text-emerald-600" />
             </button>
 
-            {onUnifiedSave && (
+            {/* Mobile Read-Only Viewer notice */}
+            {isViewer && (
+              <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-50 border border-amber-200 text-amber-900 text-xs font-semibold">
+                <Eye className="w-4 h-4 text-amber-600 shrink-0" />
+                <span>Viewer Account · Read-Only Mode</span>
+              </div>
+            )}
+
+            {!isViewer && onUnifiedSave && (
               <button
                 type="button"
                 onClick={() => {
@@ -674,7 +698,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   handleQuickSave();
                 }}
                 disabled={isSavingUnified}
-                className="w-full flex items-center justify-between px-3 py-2 rounded-lg font-bold text-white bg-indigo-600 hover:bg-indigo-700 shadow-xs"
+                className="w-full flex items-center justify-between px-3 py-2 rounded-lg font-bold text-white bg-indigo-600 hover:bg-indigo-700 shadow-xs cursor-pointer"
               >
                 <div className="flex items-center gap-2">
                   <Save className="w-4 h-4" />
@@ -684,7 +708,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               </button>
             )}
 
-            {onPublishServer && (
+            {canPublish && onPublishServer && (
               <button
                 type="button"
                 onClick={() => {
@@ -692,7 +716,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   handleQuickPublish();
                 }}
                 disabled={isPublishingServer}
-                className="w-full flex items-center justify-between px-3 py-2 rounded-lg font-bold text-white bg-emerald-600 hover:bg-emerald-700 shadow-xs"
+                className="w-full flex items-center justify-between px-3 py-2 rounded-lg font-bold text-white bg-emerald-600 hover:bg-emerald-700 shadow-xs cursor-pointer"
               >
                 <div className="flex items-center gap-2">
                   <UploadCloud className="w-4 h-4" />

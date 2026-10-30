@@ -67,6 +67,8 @@ interface SchedulePageProps {
   onRecheckConflicts?: () => void;
   onSwitchToPublicPortal?: () => void;
   onOpenCsvImport?: () => void;
+  canPublish?: boolean;
+  isReadOnly?: boolean;
 }
 
 export const SchedulePage: React.FC<SchedulePageProps> = ({
@@ -86,6 +88,8 @@ export const SchedulePage: React.FC<SchedulePageProps> = ({
   onSwitchToPublicPortal,
   onOpenCsvImport,
   onNavigateToTab,
+  canPublish = true,
+  isReadOnly = false,
 }) => {
   const [activeSubTab, setActiveSubTab] = useState<ScheduleSubTab>(() => {
     return activeRefinementTab || 'schedule';
@@ -436,6 +440,18 @@ export const SchedulePage: React.FC<SchedulePageProps> = ({
       {/* Main Schedule View */}
       {activeSubTab === 'schedule' && (
         <>
+          {/* Read-Only Viewer Notice Banner */}
+          {isReadOnly && (
+            <div className="bg-amber-50 border border-amber-200 text-amber-900 rounded-xl p-3 px-4 text-xs flex items-center justify-between gap-3 shadow-2xs no-print">
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-amber-500 shrink-0" />
+                <span className="font-medium">
+                  <strong>Read-Only Mode:</strong> Your account has Viewer access. You can view schedules, head-to-head matchups, and export/print reports. Scheduling modifications and server publishing require Scheduler role or above.
+                </span>
+              </div>
+            </div>
+          )}
+
           {/* Conflict Summary Dashboard Widget */}
           <div className="no-print">
             <ConflictSummaryWidget
@@ -513,15 +529,17 @@ export const SchedulePage: React.FC<SchedulePageProps> = ({
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            <button
-              onClick={handlePublishToServer}
-              disabled={isPublishing}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-purple-900 bg-purple-50 border border-purple-200 rounded-lg hover:bg-purple-100 transition-colors shadow-2xs disabled:opacity-50"
-              title="Publish active schedule directly to server file league_schedule.json for the public portal"
-            >
-              <Globe className={`w-3.5 h-3.5 text-purple-600 ${isPublishing ? 'animate-spin' : ''}`} />
-              <span>{isPublishing ? 'Publishing...' : 'Publish to Server'}</span>
-            </button>
+            {canPublish && (
+              <button
+                onClick={handlePublishToServer}
+                disabled={isPublishing}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-purple-900 bg-purple-50 border border-purple-200 rounded-lg hover:bg-purple-100 transition-colors shadow-2xs disabled:opacity-50"
+                title="Publish active schedule directly to server file league_schedule.json for the public portal"
+              >
+                <Globe className={`w-3.5 h-3.5 text-purple-600 ${isPublishing ? 'animate-spin' : ''}`} />
+                <span>{isPublishing ? 'Publishing...' : 'Publish to Server'}</span>
+              </button>
+            )}
             <button
               onClick={() => setIsCalendarModalOpen(true)}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-emerald-800 bg-emerald-50 border border-emerald-300 rounded-lg hover:bg-emerald-100 transition-colors shadow-2xs"
@@ -560,7 +578,7 @@ export const SchedulePage: React.FC<SchedulePageProps> = ({
               <span>Export CSV</span>
             </button>
 
-            {onOpenCsvImport && (
+            {!isReadOnly && onOpenCsvImport && (
               <button
                 onClick={onOpenCsvImport}
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 rounded-lg transition-colors shadow-2xs"
@@ -571,37 +589,41 @@ export const SchedulePage: React.FC<SchedulePageProps> = ({
               </button>
             )}
 
-            <button
-              onClick={onRegenerateSchedule}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 rounded-lg transition-colors shadow-2xs"
-              title="Re-run round-robin generator with alternating home/away and conflict handling"
-            >
-              <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
-              <span>Re-run Scheduler</span>
-            </button>
+            {!isReadOnly && (
+              <button
+                onClick={onRegenerateSchedule}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 rounded-lg transition-colors shadow-2xs"
+                title="Re-run round-robin generator with alternating home/away and conflict handling"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+                <span>Re-run Scheduler</span>
+              </button>
+            )}
 
-            <button
-              onClick={() => {
-                const sampleDiv = appData.divisions[0]?.id || '';
-                const sampleTeams = appData.teams.filter((t) => t.divisionId === sampleDiv);
-                onAddGame({
-                  id: `g-custom-${Date.now()}`,
-                  divisionId: sampleDiv,
-                  date: appData.seasonConfig.startDate,
-                  time: '10:00',
-                  fieldId: appData.fields[0]?.id || 'f1',
-                  homeTeamId: sampleTeams[0]?.id || '',
-                  awayTeamId: sampleTeams[1]?.id || '',
-                  isByePractice: false,
-                  roundNumber: 1,
-                  status: 'scheduled',
-                });
-              }}
-              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-medium text-white bg-slate-900 rounded-lg hover:bg-slate-800 transition-colors"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>Add Custom Match</span>
-            </button>
+            {!isReadOnly && (
+              <button
+                onClick={() => {
+                  const sampleDiv = appData.divisions[0]?.id || '';
+                  const sampleTeams = appData.teams.filter((t) => t.divisionId === sampleDiv);
+                  onAddGame({
+                    id: `g-custom-${Date.now()}`,
+                    divisionId: sampleDiv,
+                    date: appData.seasonConfig.startDate,
+                    time: '10:00',
+                    fieldId: appData.fields[0]?.id || 'f1',
+                    homeTeamId: sampleTeams[0]?.id || '',
+                    awayTeamId: sampleTeams[1]?.id || '',
+                    isByePractice: false,
+                    roundNumber: 1,
+                    status: 'scheduled',
+                  });
+                }}
+                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-medium text-white bg-slate-900 rounded-lg hover:bg-slate-800 transition-colors"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Add Custom Match</span>
+              </button>
+            )}
           </div>
         </div>
 
@@ -943,12 +965,14 @@ export const SchedulePage: React.FC<SchedulePageProps> = ({
             >
               Clear All Filters
             </button>
-            <button
-              onClick={onRegenerateSchedule}
-              className="ml-2 px-3.5 py-1.5 text-xs font-semibold text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 transition-colors shadow-2xs"
-            >
-              Re-run Scheduler
-            </button>
+            {!isReadOnly && (
+              <button
+                onClick={onRegenerateSchedule}
+                className="ml-2 px-3.5 py-1.5 text-xs font-semibold text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 transition-colors shadow-2xs"
+              >
+                Re-run Scheduler
+              </button>
+            )}
           </div>
         </div>
       ) : (
@@ -1140,7 +1164,7 @@ export const SchedulePage: React.FC<SchedulePageProps> = ({
                                       <span className="font-medium text-slate-800" title="Assigned Match Official">
                                         Ref: {refereeMap.get(game.refereeId)?.name}
                                       </span>
-                                    ) : (
+                                    ) : !isReadOnly ? (
                                       <button
                                         type="button"
                                         onClick={() => onEditGame(game)}
@@ -1149,6 +1173,10 @@ export const SchedulePage: React.FC<SchedulePageProps> = ({
                                       >
                                         Assign Referee
                                       </button>
+                                    ) : (
+                                      <span className="text-slate-400 italic text-[11px]" title="No referee assigned">
+                                        Unassigned
+                                      </span>
                                     )}
                                   </div>
                                 </>
@@ -1159,7 +1187,7 @@ export const SchedulePage: React.FC<SchedulePageProps> = ({
                           {/* Quick Interactive Actions */}
                           <div className="flex items-center gap-1.5 shrink-0 pt-2 lg:pt-0 border-t lg:border-t-0 border-slate-100 no-print">
                             {/* Swap Home/Away button */}
-                            {!game.isByePractice && (
+                            {!game.isByePractice && !isReadOnly && (
                               <button
                                 type="button"
                                 onClick={() => handleSwapHomeAway(game)}
@@ -1237,29 +1265,33 @@ export const SchedulePage: React.FC<SchedulePageProps> = ({
                             </div>
 
                             {/* Edit Game button */}
-                            <button
-                              type="button"
-                              onClick={() => onEditGame(game)}
-                              className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
-                              title="Manually adjust pitch, date, time or teams"
-                            >
-                              <Edit className="w-3.5 h-3.5" />
-                              <span>Edit Match</span>
-                            </button>
+                            {!isReadOnly && (
+                              <button
+                                type="button"
+                                onClick={() => onEditGame(game)}
+                                className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
+                                title="Manually adjust pitch, date, time or teams"
+                              >
+                                <Edit className="w-3.5 h-3.5" />
+                                <span>Edit Match</span>
+                              </button>
+                            )}
 
                             {/* Delete button */}
-                            <button
-                              type="button"
-                              onClick={() => {
-                                if (window.confirm('Delete this scheduled match?')) {
-                                  onDeleteGame(game.id);
-                                }
-                              }}
-                              className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
-                              title="Delete match"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
+                            {!isReadOnly && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (window.confirm('Delete this scheduled match?')) {
+                                    onDeleteGame(game.id);
+                                  }
+                                }}
+                                className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+                                title="Delete match"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            )}
                           </div>
                         </div>
 

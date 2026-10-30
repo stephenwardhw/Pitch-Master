@@ -11,6 +11,7 @@ import {
   MySqlSaveResult,
 } from '../../utils/mysqlBackupClient';
 import { ConflictMergeModal } from './ConflictMergeModal';
+import { AdminUser, isViewerRole } from '../../utils/authClient';
 import {
   Database,
   X,
@@ -44,6 +45,8 @@ interface MySqlBackupModalProps {
   onUpdateAppData: (newData: AppData) => void;
   onClose: () => void;
   onOpenActivityLog?: () => void;
+  adminUser?: AdminUser | null;
+  isReadOnly?: boolean;
 }
 
 export const MySqlBackupModal: React.FC<MySqlBackupModalProps> = ({
@@ -51,7 +54,10 @@ export const MySqlBackupModal: React.FC<MySqlBackupModalProps> = ({
   onUpdateAppData,
   onClose,
   onOpenActivityLog,
+  adminUser,
+  isReadOnly,
 }) => {
+  const isViewer = isReadOnly ?? isViewerRole(adminUser);
   // MySQL Status
   const [isLiveMySql, setIsLiveMySql] = useState(false);
   const [statusText, setStatusText] = useState('Connecting to MySQL service...');
@@ -561,6 +567,15 @@ ON DUPLICATE KEY UPDATE \`display_name\` = VALUES(\`display_name\`);`;
 
           {/* Modal Body */}
           <div className="p-6 overflow-y-auto space-y-5 text-xs text-slate-700 flex-1">
+            {/* Viewer Read-Only Banner */}
+            {isViewer && (
+              <div className="p-3 rounded-xl border border-amber-200 bg-amber-50 text-amber-900 flex items-center justify-between text-xs shadow-2xs">
+                <span className="font-medium">
+                  <strong>Read-Only Mode:</strong> Your account has Viewer access. You can view backups, version metadata, and SQL schema. Creating backups, saving, or restoring snapshots requires Scheduler role or above.
+                </span>
+              </div>
+            )}
+
             {/* Status Message Alert */}
             {statusMessage && (
               <div
@@ -761,25 +776,29 @@ ON DUPLICATE KEY UPDATE \`display_name\` = VALUES(\`display_name\`);`;
                       <span>Check Updates</span>
                     </button>
 
-                    <button
-                      type="button"
-                      onClick={() => handleSaveToMySql(false)}
-                      disabled={isSaving}
-                      className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition-colors shadow-xs disabled:opacity-60"
-                      title="Update MySQL record with your changes"
-                    >
-                      <Save className="w-3.5 h-3.5" />
-                      <span>Save to MySQL</span>
-                    </button>
+                    {!isViewer && (
+                      <button
+                        type="button"
+                        onClick={() => handleSaveToMySql(false)}
+                        disabled={isSaving}
+                        className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition-colors shadow-xs disabled:opacity-60"
+                        title="Update MySQL record with your changes"
+                      >
+                        <Save className="w-3.5 h-3.5" />
+                        <span>Save to MySQL</span>
+                      </button>
+                    )}
 
-                    <button
-                      type="button"
-                      onClick={handleUnlink}
-                      className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
-                      title="Unlink backup connection"
-                    >
-                      <Unlink className="w-4 h-4" />
-                    </button>
+                    {!isViewer && (
+                      <button
+                        type="button"
+                        onClick={handleUnlink}
+                        className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+                        title="Unlink backup connection"
+                      >
+                        <Unlink className="w-4 h-4" />
+                      </button>
+                    )}
                   </div>
                 </div>
 
@@ -813,14 +832,16 @@ ON DUPLICATE KEY UPDATE \`display_name\` = VALUES(\`display_name\`);`;
                 </span>
 
                 <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setIsCreatingNew(!isCreatingNew)}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 font-semibold text-xs transition-colors shadow-2xs"
-                  >
-                    <Plus className="w-3.5 h-3.5 text-indigo-600" />
-                    <span>Create New Backup</span>
-                  </button>
+                  {!isViewer && (
+                    <button
+                      type="button"
+                      onClick={() => setIsCreatingNew(!isCreatingNew)}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 font-semibold text-xs transition-colors shadow-2xs"
+                    >
+                      <Plus className="w-3.5 h-3.5 text-indigo-600" />
+                      <span>Create New Backup</span>
+                    </button>
+                  )}
 
                   <button
                     type="button"
@@ -953,15 +974,19 @@ ON DUPLICATE KEY UPDATE \`display_name\` = VALUES(\`display_name\`);`;
                               v{b.versionNumber}
                             </td>
                             <td className="px-3.5 py-2.5 text-right space-x-1.5">
-                              <button
-                                type="button"
-                                onClick={() => handleLoadBackup(b)}
-                                disabled={isSaving}
-                                className="px-2.5 py-1 rounded-md bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 text-[11px] font-semibold transition-colors disabled:opacity-60"
-                                title="Load this backup document into PitchMaster"
-                              >
-                                Load
-                              </button>
+                              {!isViewer ? (
+                                <button
+                                  type="button"
+                                  onClick={() => handleLoadBackup(b)}
+                                  disabled={isSaving}
+                                  className="px-2.5 py-1 rounded-md bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 text-[11px] font-semibold transition-colors disabled:opacity-60"
+                                  title="Load this backup document into PitchMaster"
+                                >
+                                  Load
+                                </button>
+                              ) : (
+                                <span className="text-[10px] text-slate-400 italic">Snapshot</span>
+                              )}
                             </td>
                           </tr>
                         );

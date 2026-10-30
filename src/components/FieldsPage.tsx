@@ -35,6 +35,7 @@ interface FieldsPageProps {
   onDeleteField: (fieldId: string) => void;
   onSelectFieldMap: (field: Field) => void;
   onOpenCsvImport?: (type?: 'fields') => void;
+  isReadOnly?: boolean;
 }
 
 type ViewMode = 'matrix' | 'calendar' | 'cards';
@@ -69,6 +70,7 @@ export const FieldsPage: React.FC<FieldsPageProps> = ({
   onDeleteField,
   onSelectFieldMap,
   onOpenCsvImport,
+  isReadOnly = false,
 }) => {
   // Primary View Mode
   const [viewMode, setViewMode] = useState<ViewMode>('matrix');
@@ -301,6 +303,10 @@ export const FieldsPage: React.FC<FieldsPageProps> = ({
 
   // Toggle blackout date for a field
   const handleToggleFieldBlackout = (field: Field, dateStr: string) => {
+    if (isReadOnly) {
+      showFeedback('Pitch availability is read-only for Viewer accounts.');
+      return;
+    }
     const isCurrentlyBlackout = (field.blackoutDates || []).includes(dateStr);
 
     if (isCurrentlyBlackout) {
@@ -333,7 +339,7 @@ export const FieldsPage: React.FC<FieldsPageProps> = ({
   };
 
   const handleConfirmConflictBlackout = () => {
-    if (!conflictWarning) return;
+    if (isReadOnly || !conflictWarning) return;
     const { field, date } = conflictWarning;
     const updatedDates = [...(field.blackoutDates || []), date].sort();
     onSaveField({
@@ -351,6 +357,7 @@ export const FieldsPage: React.FC<FieldsPageProps> = ({
 
   // Edit / Form Handlers
   const handleOpenEdit = (field: Field) => {
+    if (isReadOnly) return;
     setEditingField(field);
     setIsCreatingNew(false);
     setFormName(field.name);
@@ -370,6 +377,7 @@ export const FieldsPage: React.FC<FieldsPageProps> = ({
   };
 
   const handleOpenCreate = () => {
+    if (isReadOnly) return;
     setIsCreatingNew(true);
     setEditingField(null);
     setFormName('');
@@ -564,7 +572,7 @@ export const FieldsPage: React.FC<FieldsPageProps> = ({
             <span>Export Fields (CSV)</span>
           </button>
 
-          {onOpenCsvImport && (
+          {!isReadOnly && onOpenCsvImport && (
             <button
               onClick={() => onOpenCsvImport('fields')}
               className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 rounded-lg transition-colors shadow-2xs"
@@ -575,13 +583,15 @@ export const FieldsPage: React.FC<FieldsPageProps> = ({
             </button>
           )}
 
-          <button
-            onClick={handleOpenCreate}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-slate-900 rounded-lg hover:bg-slate-800 transition-colors shadow-2xs"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span>Add New Pitch</span>
-          </button>
+          {!isReadOnly && (
+            <button
+              onClick={handleOpenCreate}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-slate-900 rounded-lg hover:bg-slate-800 transition-colors shadow-2xs"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>Add New Pitch</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -1226,26 +1236,28 @@ export const FieldsPage: React.FC<FieldsPageProps> = ({
                         )}
                       </p>
                     </div>
-                    <div className="flex items-center gap-1 shrink-0">
-                      <button
-                        onClick={() => handleOpenEdit(field)}
-                        className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg"
-                        title="Edit pitch"
-                      >
-                        <Edit2 className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        onClick={() => {
-                          if (window.confirm(`Delete pitch "${field.name}"?`)) {
-                            onDeleteField(field.id);
-                          }
-                        }}
-                        className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg"
-                        title="Delete pitch"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
+                    {!isReadOnly && (
+                      <div className="flex items-center gap-1 shrink-0">
+                        <button
+                          onClick={() => handleOpenEdit(field)}
+                          className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg"
+                          title="Edit pitch"
+                        >
+                          <Edit2 className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => {
+                            if (window.confirm(`Delete pitch "${field.name}"?`)) {
+                              onDeleteField(field.id);
+                            }
+                          }}
+                          className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg"
+                          title="Delete pitch"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    )}
                   </div>
 
                   {/* Static Address & Google Maps reference */}

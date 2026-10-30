@@ -37,6 +37,7 @@ interface TeamStatisticsPageProps {
   onSelectFieldMap?: (field: Field) => void;
   onEditGame?: (game: Game) => void;
   onNavigateToMatchups?: () => void;
+  isReadOnly?: boolean;
 }
 
 type SortField =
@@ -62,6 +63,7 @@ export const TeamStatisticsPage: React.FC<TeamStatisticsPageProps> = ({
   onSelectFieldMap,
   onEditGame,
   onNavigateToMatchups,
+  isReadOnly = false,
 }) => {
   const [selectedDivision, setSelectedDivision] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -306,6 +308,7 @@ export const TeamStatisticsPage: React.FC<TeamStatisticsPageProps> = ({
 
   // Quick Score Entry Open
   const handleOpenScoreModal = (game: Game) => {
+    if (isReadOnly) return;
     setActiveScoreGame(game);
     setModalHomeScore(game.score?.home !== undefined ? String(game.score.home) : '0');
     setModalAwayScore(game.score?.away !== undefined ? String(game.score.away) : '0');
@@ -334,6 +337,7 @@ export const TeamStatisticsPage: React.FC<TeamStatisticsPageProps> = ({
 
   // Simulate Sample Scores for Testing Standings
   const handleSimulateSampleScores = () => {
+    if (isReadOnly) return;
     if (
       !window.confirm(
         'Simulate sample game scores for Round 1 and Round 2? This will populate realistic scores and update all team wins, losses, goals, and standings.'
@@ -378,6 +382,7 @@ export const TeamStatisticsPage: React.FC<TeamStatisticsPageProps> = ({
 
   // Clear/Reset all game scores back to scheduled
   const handleResetScores = () => {
+    if (isReadOnly) return;
     if (
       !window.confirm(
         'Reset all recorded scores? All matches will revert to "scheduled" and standings will reset to 0 games played.'
@@ -476,16 +481,18 @@ export const TeamStatisticsPage: React.FC<TeamStatisticsPageProps> = ({
 
           {/* Action Buttons */}
           <div className="flex flex-wrap items-center gap-2">
-            <button
-              onClick={handleSimulateSampleScores}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-purple-900 bg-purple-50 border border-purple-200 rounded-lg hover:bg-purple-100 transition-colors shadow-2xs"
-              title="Populate realistic sample match scores for Round 1 & 2 to test and preview league standings"
-            >
-              <Sparkles className="w-3.5 h-3.5 text-purple-600" />
-              <span>Simulate Sample Scores</span>
-            </button>
+            {!isReadOnly && (
+              <button
+                onClick={handleSimulateSampleScores}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-purple-900 bg-purple-50 border border-purple-200 rounded-lg hover:bg-purple-100 transition-colors shadow-2xs"
+                title="Populate realistic sample match scores for Round 1 & 2 to test and preview league standings"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-purple-600" />
+                <span>Simulate Sample Scores</span>
+              </button>
+            )}
 
-            {summaryTotals.completedGames > 0 && (
+            {!isReadOnly && summaryTotals.completedGames > 0 && (
               <button
                 onClick={handleResetScores}
                 className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-slate-600 bg-white border border-slate-300 rounded-lg hover:bg-rose-50 hover:text-rose-700 hover:border-rose-200 transition-colors shadow-2xs"
@@ -1119,15 +1126,17 @@ export const TeamStatisticsPage: React.FC<TeamStatisticsPageProps> = ({
                                             {outcomeLabel}
                                           </span>
 
-                                          <button
-                                            type="button"
-                                            onClick={() => handleOpenScoreModal(game)}
-                                            className="px-2 py-1 text-xs font-semibold text-slate-700 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded transition-colors"
-                                          >
-                                            {hasScore ? 'Edit Score' : 'Record Score'}
-                                          </button>
+                                          {!isReadOnly && (
+                                            <button
+                                              type="button"
+                                              onClick={() => handleOpenScoreModal(game)}
+                                              className="px-2 py-1 text-xs font-semibold text-slate-700 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded transition-colors"
+                                            >
+                                              {hasScore ? 'Edit Score' : 'Record Score'}
+                                            </button>
+                                          )}
 
-                                          {onEditGame && (
+                                          {!isReadOnly && onEditGame && (
                                             <button
                                               type="button"
                                               onClick={() => onEditGame(game)}

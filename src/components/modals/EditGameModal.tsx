@@ -10,6 +10,7 @@ interface EditGameModalProps {
   referees?: Referee[];
   onSave: (updatedGame: Game) => void;
   onClose: () => void;
+  isReadOnly?: boolean;
 }
 
 interface EditGameModalContentProps {
@@ -20,6 +21,7 @@ interface EditGameModalContentProps {
   referees?: Referee[];
   onSave: (updatedGame: Game) => void;
   onClose: () => void;
+  isReadOnly?: boolean;
 }
 
 const EditGameModalContent: React.FC<EditGameModalContentProps> = ({
@@ -30,6 +32,7 @@ const EditGameModalContent: React.FC<EditGameModalContentProps> = ({
   referees = [],
   onSave,
   onClose,
+  isReadOnly = false,
 }) => {
   const [date, setDate] = useState(game.date);
   const [time, setTime] = useState(game.time);
@@ -82,6 +85,11 @@ const EditGameModalContent: React.FC<EditGameModalContentProps> = ({
     // If score is entered and status was 'scheduled', auto-mark as 'completed'
     const finalStatus = hasScores && status === 'scheduled' ? 'completed' : status;
 
+    if (isReadOnly) {
+      onClose();
+      return;
+    }
+
     onSave({
       ...game,
       date,
@@ -107,7 +115,7 @@ const EditGameModalContent: React.FC<EditGameModalContentProps> = ({
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 bg-slate-50">
           <div>
             <h3 className="text-base font-semibold text-slate-900 leading-tight">
-              Edit Match Details
+              {isReadOnly ? 'Match Details (Read-Only)' : 'Edit Match Details'}
             </h3>
             <p className="text-xs text-slate-500">
               {currentDivision?.name || 'League Match'} · Round {game.roundNumber}
@@ -121,6 +129,13 @@ const EditGameModalContent: React.FC<EditGameModalContentProps> = ({
             <X className="w-4 h-4" />
           </button>
         </div>
+
+        {isReadOnly && (
+          <div className="px-6 py-2.5 bg-amber-50 border-b border-amber-200 text-amber-800 text-xs flex items-center gap-2">
+            <Shield className="w-4 h-4 text-amber-600 shrink-0" />
+            <span>Read-Only Viewer Account: You can view match assignments and times, but cannot edit this match.</span>
+          </div>
+        )}
 
         {/* Form Body */}
         <form onSubmit={handleSubmit} className="p-6 space-y-4 max-h-[75vh] overflow-y-auto">
@@ -463,14 +478,16 @@ const EditGameModalContent: React.FC<EditGameModalContentProps> = ({
               onClick={onClose}
               className="px-4 py-2 text-xs font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-100 transition-colors"
             >
-              Cancel
+              {isReadOnly ? 'Close' : 'Cancel'}
             </button>
-            <button
-              type="submit"
-              className="px-4 py-2 text-xs font-medium text-white bg-slate-900 rounded-lg hover:bg-slate-800 transition-colors"
-            >
-              Save Match Changes
-            </button>
+            {!isReadOnly && (
+              <button
+                type="submit"
+                className="px-4 py-2 text-xs font-medium text-white bg-slate-900 rounded-lg hover:bg-slate-800 transition-colors"
+              >
+                Save Match Changes
+              </button>
+            )}
           </div>
         </form>
       </div>
@@ -486,6 +503,7 @@ export const EditGameModal: React.FC<EditGameModalProps> = ({
   referees,
   onSave,
   onClose,
+  isReadOnly,
 }) => {
   if (!game) return null;
 
@@ -498,6 +516,7 @@ export const EditGameModal: React.FC<EditGameModalProps> = ({
       referees={referees}
       onSave={onSave}
       onClose={onClose}
+      isReadOnly={isReadOnly}
     />
   );
 };

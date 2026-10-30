@@ -22,7 +22,10 @@ import {
   MapPin,
   UserCheck,
   Database,
+  Lock,
+  Eye,
 } from 'lucide-react';
+import { AdminUser, canPublishSchedule, isViewerRole } from '../../utils/authClient';
 import {
   exportTeamsToCsv,
   exportScheduleToCsv,
@@ -33,6 +36,7 @@ import {
 
 interface DatasetModalProps {
   appData: AppData;
+  adminUser?: AdminUser | null;
   onUpdateData: (newData: AppData) => void;
   onClose: () => void;
   onOpenCsvImport?: (type?: 'teams' | 'fields' | 'schedule' | 'referees') => void;
@@ -41,11 +45,14 @@ interface DatasetModalProps {
 
 export const DatasetModal: React.FC<DatasetModalProps> = ({
   appData,
+  adminUser,
   onUpdateData,
   onClose,
   onOpenCsvImport,
   onOpenMySqlBackupModal,
 }) => {
+  const canPublish = canPublishSchedule(adminUser);
+  const isViewer = isViewerRole(adminUser);
   const [fileNameInput, setFileNameInput] = useState(appData.fileName || 'soccer_schedule.json');
   const [statusMessage, setStatusMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -361,14 +368,14 @@ export const DatasetModal: React.FC<DatasetModalProps> = ({
                 <button
                   type="button"
                   onClick={() => handleExport(false)}
-                  className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 transition-colors shadow-2xs"
+                  className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 transition-colors shadow-2xs cursor-pointer"
                 >
                   <Save className="w-3.5 h-3.5" />
                   <span>
-                    {overwriteMode && fsSupported ? 'Save & Overwrite JSON' : 'Export & Download JSON'}
+                    {!isViewer && overwriteMode && fsSupported ? 'Save & Overwrite JSON' : 'Export & Download JSON'}
                   </span>
                 </button>
-                {overwriteMode && fsSupported && (
+                {!isViewer && overwriteMode && fsSupported && (
                   <button
                     type="button"
                     onClick={() => handleExport(true)}
@@ -388,7 +395,9 @@ export const DatasetModal: React.FC<DatasetModalProps> = ({
                   <h4 className="text-sm font-semibold text-slate-900">Import Dataset</h4>
                 </div>
                 <p className="text-xs text-slate-500 leading-relaxed">
-                  Load a previously exported JSON dataset into the scheduler.
+                  {isViewer
+                    ? 'Dataset importing is disabled for Read-Only Viewer accounts.'
+                    : 'Load a previously exported JSON dataset into the scheduler.'}
                 </p>
               </div>
               <input
@@ -397,14 +406,20 @@ export const DatasetModal: React.FC<DatasetModalProps> = ({
                 onChange={handleFileChange}
                 accept=".json,application/json"
                 className="hidden"
+                disabled={isViewer}
               />
               <button
                 type="button"
-                onClick={() => fileInputRef.current?.click()}
-                className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium text-slate-700 bg-slate-100 border border-slate-300 rounded-lg hover:bg-slate-200 transition-colors"
+                disabled={isViewer}
+                onClick={() => !isViewer && fileInputRef.current?.click()}
+                className={`w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg transition-colors ${
+                  isViewer
+                    ? 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed'
+                    : 'text-slate-700 bg-slate-100 border border-slate-300 hover:bg-slate-200 cursor-pointer'
+                }`}
               >
-                <Upload className="w-3.5 h-3.5" />
-                <span>Choose JSON File</span>
+                {isViewer ? <Lock className="w-3.5 h-3.5" /> : <Upload className="w-3.5 h-3.5" />}
+                <span>{isViewer ? 'Import Disabled (Viewer)' : 'Choose JSON File'}</span>
               </button>
             </div>
           </div>
@@ -489,7 +504,7 @@ export const DatasetModal: React.FC<DatasetModalProps> = ({
             </div>
 
             {/* Import Section */}
-            {onOpenCsvImport && (
+            {onOpenCsvImport && !isViewer && (
               <div className="space-y-1.5 pt-2 border-t border-emerald-200/60">
                 <span className="text-[11px] font-bold text-emerald-950 uppercase tracking-wider block">
                   Import New or Migrated Data from CSV:
@@ -561,15 +576,25 @@ export const DatasetModal: React.FC<DatasetModalProps> = ({
             <p className="text-xs text-purple-900/80 leading-relaxed">
               Push your updated divisions, teams, and schedule directly into <code className="font-mono text-purple-950 bg-white/80 px-1 py-0.5 rounded">league_schedule.json</code> on the server. Referee personal contact details (phone, email, notes) are automatically stripped to safeguard referee privacy on the public portal, while remaining completely intact in your downloaded JSON and database backups.
             </p>
-            <button
-              type="button"
-              onClick={handlePublishToServer}
-              disabled={isPublishing}
-              className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold text-white bg-purple-700 rounded-lg hover:bg-purple-800 transition-colors shadow-2xs disabled:opacity-50"
-            >
-              <Globe className={`w-3.5 h-3.5 ${isPublishing ? 'animate-spin' : ''}`} />
-              <span>{isPublishing ? 'Publishing to Server...' : 'Publish to Server (league_schedule.json)'}</span>
-            </button>
+            {canPublish ? (
+              <button
+                type="button"
+                onClick={handlePublishToServer}
+                disabled={isPublishing}
+                className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-semibold text-white bg-purple-700 rounded-lg hover:bg-purple-800 transition-colors shadow-2xs disabled:opacity-50 cursor-pointer"
+              >
+                <Globe className={`w-3.5 h-3.5 ${isPublishing ? 'animate-spin' : ''}`} />
+                <span>{isPublishing ? 'Publishing to Server...' : 'Publish to Server (league_schedule.json)'}</span>
+              </button>
+            ) : (
+              <div className="p-3 bg-purple-100/70 rounded-lg border border-purple-200 text-xs text-purple-900 flex items-start gap-2">
+                <Lock className="w-4 h-4 text-purple-700 shrink-0 mt-0.5" />
+                <div>
+                  <span className="font-semibold block">Publishing Restricted</span>
+                  <span>Server publishing is restricted to Scheduler, Admin, and Superadmin accounts. Viewer accounts have read-only access.</span>
+                </div>
+              </div>
+            )}
             <button
               type="button"
               onClick={async () => {
@@ -590,17 +615,19 @@ export const DatasetModal: React.FC<DatasetModalProps> = ({
             </button>
           </div>
 
-          {/* Reset button */}
-          <div className="pt-2 border-t border-slate-200">
-            <button
-              type="button"
-              onClick={handleResetDemo}
-              className="inline-flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-800 transition-colors"
-            >
-              <RefreshCw className="w-3.5 h-3.5" />
-              <span>Reset to default sample league dataset</span>
-            </button>
-          </div>
+          {/* Reset button - Hidden for Viewer */}
+          {!isViewer && (
+            <div className="pt-2 border-t border-slate-200">
+              <button
+                type="button"
+                onClick={handleResetDemo}
+                className="inline-flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-800 transition-colors"
+              >
+                <RefreshCw className="w-3.5 h-3.5" />
+                <span>Reset to default sample league dataset</span>
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Footer */}

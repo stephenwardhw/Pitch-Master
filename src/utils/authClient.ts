@@ -1,8 +1,10 @@
+export type AdminRole = 'superadmin' | 'admin' | 'scheduler' | 'viewer';
+
 export interface AdminUser {
   id: number | string;
   username: string;
   displayName: string;
-  role: 'superadmin' | 'admin' | 'scheduler' | 'viewer';
+  role: AdminRole;
   createdAt?: string;
   lastLoginAt?: string | null;
 }
@@ -11,6 +13,52 @@ export interface AuthState {
   isAuthenticated: boolean;
   user: AdminUser | null;
   token: string | null;
+}
+
+export const ROLE_HIERARCHY: Record<AdminRole, number> = {
+  viewer: 1,
+  scheduler: 2,
+  admin: 3,
+  superadmin: 4,
+};
+
+/**
+ * Returns true if the user's role meets or exceeds the required minimum level.
+ */
+export function isRoleAtLeast(user: AdminUser | null | undefined, minRole: AdminRole): boolean {
+  if (!user || !user.role) return false;
+  const userRank = ROLE_HIERARCHY[user.role] ?? 0;
+  const minRank = ROLE_HIERARCHY[minRole] ?? 0;
+  return userRank >= minRank;
+}
+
+/**
+ * Publish links and actions are restricted to scheduler and above (scheduler, admin, superadmin).
+ */
+export function canPublishSchedule(user: AdminUser | null | undefined): boolean {
+  return isRoleAtLeast(user, 'scheduler');
+}
+
+/**
+ * Match edits, reassignments, and automated schedule generation are allowed for scheduler and above.
+ */
+export function canEditSchedule(user: AdminUser | null | undefined): boolean {
+  return isRoleAtLeast(user, 'scheduler');
+}
+
+/**
+ * Entity administration (divisions, teams, fields, referees, bulletins, season rules)
+ * is restricted to scheduler and above.
+ */
+export function canManageEntities(user: AdminUser | null | undefined): boolean {
+  return isRoleAtLeast(user, 'scheduler');
+}
+
+/**
+ * Returns true if the active account is at the Viewer level (strict read-only access).
+ */
+export function isViewerRole(user: AdminUser | null | undefined): boolean {
+  return user?.role === 'viewer';
 }
 
 const TOKEN_KEY = 'pitchmaster_admin_token';

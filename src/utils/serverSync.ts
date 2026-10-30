@@ -1,5 +1,6 @@
 import { AppData, Referee } from '../types';
 import { saveOrExportJson } from './fileExport';
+import { getStoredToken } from './authClient';
 
 /**
  * Sanitizes referee records for the publicly accessible league_schedule.json file.
@@ -92,12 +93,18 @@ export async function publishScheduleToServer(
   const publicData = sanitizeDataForPublicPublish(data);
 
   let response: Response;
+  const token = getStoredToken();
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
   try {
     response = await fetch('/api/publish-schedule', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers,
       body: JSON.stringify(publicData),
     });
   } catch (err: any) {

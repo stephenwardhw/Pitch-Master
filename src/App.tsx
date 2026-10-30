@@ -27,7 +27,14 @@ import { MySqlBackupModal } from './components/modals/MySqlBackupModal';
 import { AdminLoginScreen } from './components/AdminLoginScreen';
 import { AdminUsersModal } from './components/modals/AdminUsersModal';
 import { ActivityLogModal } from './components/modals/ActivityLogModal';
-import { AdminUser, checkAdminSession, getStoredUser, logoutAdmin } from './utils/authClient';
+import {
+  AdminUser,
+  checkAdminSession,
+  getStoredUser,
+  logoutAdmin,
+  canPublishSchedule,
+  isViewerRole,
+} from './utils/authClient';
 import { saveOrExportJson } from './utils/fileExport';
 import { saveMySqlBackup, getMySqlBackup } from './utils/mysqlBackupClient';
 import { publishScheduleToServer } from './utils/serverSync';
@@ -140,9 +147,16 @@ export default function App() {
   const [scheduleNotice, setScheduleNotice] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
   const handleOpenCsvImport = useCallback((type: CsvImportType = 'teams') => {
+    if (isViewerRole(adminUser)) {
+      setScheduleNotice({
+        message: 'Action not allowed: Viewer accounts have read-only access and cannot import data.',
+        type: 'error',
+      });
+      return;
+    }
     setCsvImportInitialType(type);
     setIsCsvImportOpen(true);
-  }, []);
+  }, [adminUser]);
 
   // Conflicts scanning
   const conflicts = useMemo(() => {
@@ -151,22 +165,43 @@ export default function App() {
 
   // Persist appData whenever it changes
   const updateAndSaveAppData = useCallback((updater: (prev: AppData) => AppData) => {
+    if (isViewerRole(adminUser)) {
+      setScheduleNotice({
+        message: 'Action not allowed: Viewer accounts have read-only access.',
+        type: 'error',
+      });
+      return;
+    }
     setAppData((prev) => {
       const next = updater(prev);
       next.lastModified = new Date().toISOString();
       saveAppData(next);
       return next;
     });
-  }, []);
+  }, [adminUser]);
 
   // Update whole dataset (e.g. from import or reset)
   const handleUpdateFullData = useCallback((newData: AppData) => {
+    if (isViewerRole(adminUser)) {
+      setScheduleNotice({
+        message: 'Action not allowed: Viewer accounts have read-only access.',
+        type: 'error',
+      });
+      return;
+    }
     setAppData(newData);
     saveAppData(newData);
-  }, []);
+  }, [adminUser]);
 
   // Unified Save: Persists current schedule to MySQL NoSQL document and saves to local JSON file
   const handleUnifiedSave = useCallback(async (): Promise<{ success: boolean; message: string }> => {
+    if (isViewerRole(adminUser)) {
+      setScheduleNotice({
+        message: 'Action not allowed: Viewer accounts have read-only access and cannot save or overwrite data.',
+        type: 'error',
+      });
+      return { success: false, message: 'Forbidden: Read-only viewer' };
+    }
     try {
       const activeName = appData.fileName || getCookie(COOKIE_NAME) || 'soccer_schedule.json';
       const cleanJsonName = activeName.endsWith('.json') ? activeName : `${activeName}.json`;
@@ -240,6 +275,14 @@ export default function App() {
 
   // Publish Schedule directly to server file league_schedule.json for public coach/parent access
   const handlePublishToServer = useCallback(async () => {
+    if (!canPublishSchedule(adminUser)) {
+      const errorMsg = 'Action not allowed: Publishing the schedule requires Scheduler role or above.';
+      setScheduleNotice({
+        message: errorMsg,
+        type: 'error',
+      });
+      return { success: false, message: errorMsg };
+    }
     try {
       const res = await publishScheduleToServer(appData);
       const successMsg =
@@ -258,7 +301,7 @@ export default function App() {
       });
       return { success: false, message: errorMsg };
     }
-  }, [appData]);
+  }, [appData, adminUser]);
 
   // Game update
   const handleUpdateGame = useCallback((updatedGame: Game) => {
@@ -645,6 +688,8 @@ export default function App() {
           <SchedulePage
             appData={appData}
             conflicts={conflicts}
+            canPublish={canPublishSchedule(adminUser)}
+            isReadOnly={isViewerRole(adminUser)}
             activeRefinementTab={
               currentTab === 'matchups' || currentTab === 'conflicts' || currentTab === 'balance'
                 ? currentTab
@@ -675,6 +720,7 @@ export default function App() {
         {currentTab === 'stats' && (
           <TeamStatisticsPage
             appData={appData}
+            isReadOnly={isViewerRole(adminUser)}
             onUpdateGame={handleUpdateGame}
             onUpdateBatchGames={handleUpdateBatchGames}
             onSelectTeamContact={(team, divisionName) => setActiveContactTeam({ team, divisionName })}
@@ -687,6 +733,7 @@ export default function App() {
         {currentTab === 'divisions' && (
           <DivisionsPage
             appData={appData}
+            isReadOnly={isViewerRole(adminUser)}
             onSaveDivision={handleSaveDivision}
             onDeleteDivision={handleDeleteDivision}
             onSelectTeam={(team) => {
@@ -700,6 +747,7 @@ export default function App() {
         {currentTab === 'teams' && (
           <TeamsPage
             appData={appData}
+            isReadOnly={isViewerRole(adminUser)}
             onSaveTeam={handleSaveTeam}
             onDeleteTeam={handleDeleteTeam}
             onOpenManageTeamSizes={() => setIsTeamSizesModalOpen(true)}
@@ -712,6 +760,7 @@ export default function App() {
         {currentTab === 'fields' && (
           <FieldsPage
             appData={appData}
+            isReadOnly={isViewerRole(adminUser)}
             onSaveField={handleSaveField}
             onDeleteField={handleDeleteField}
             onSelectFieldMap={(field) => setActiveMapField(field)}
@@ -722,6 +771,7 @@ export default function App() {
         {currentTab === 'referees' && (
           <RefereesPage
             appData={appData}
+            isReadOnly={isViewerRole(adminUser)}
             onSaveReferee={handleSaveReferee}
             onDeleteReferee={handleDeleteReferee}
             onUpdateGame={handleUpdateGame}
@@ -736,6 +786,7 @@ export default function App() {
           <BulletinsPage
             appData={appData}
             adminUser={adminUser}
+            isReadOnly={isViewerRole(adminUser)}
             onSaveBulletin={handleSaveBulletin}
             onDeleteBulletin={handleDeleteBulletin}
             onTogglePinBulletin={handleTogglePinBulletin}
@@ -844,6 +895,7 @@ export default function App() {
           teams={appData.teams}
           fields={appData.fields}
           referees={appData.referees}
+          isReadOnly={isViewerRole(adminUser)}
           onSave={handleUpdateGame}
           onClose={() => setActiveEditingGame(null)}
         />
@@ -853,6 +905,7 @@ export default function App() {
       {isDatasetModalOpen && (
         <DatasetModal
           appData={appData}
+          adminUser={adminUser}
           onUpdateData={handleUpdateFullData}
           onClose={() => setIsDatasetModalOpen(false)}
           onOpenCsvImport={handleOpenCsvImport}
@@ -864,6 +917,8 @@ export default function App() {
       {isMySqlBackupModalOpen && (
         <MySqlBackupModal
           appData={appData}
+          adminUser={adminUser}
+          isReadOnly={isViewerRole(adminUser)}
           onUpdateAppData={(updatedData) => {
             handleUpdateFullData(updatedData);
           }}

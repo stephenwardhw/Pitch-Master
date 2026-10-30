@@ -639,79 +639,111 @@ export function getInitialAppData(fileName: string = DEFAULT_FILE_NAME): AppData
 }
 
 // Storage helpers
+export const MANUAL_LOCAL_BACKUP_KEY = 'pitchmaster_manual_local_backup';
+
+export interface ManualLocalBackupRecord {
+  savedAt: string;
+  fileName: string;
+  data: AppData;
+}
+
+/**
+ * Ephemeral save helper for in-memory session.
+ * NOTE: Local JSON backups are NO LONGER created automatically on save.
+ * Manual local backups can be created explicitly via saveManualLocalJsonBackup.
+ */
 export function saveAppData(data: AppData): void {
   try {
-    const serialized = JSON.stringify(data);
-    // Save under the specific file key
-    localStorage.setItem(`soccer_dataset_${data.fileName}`, serialized);
-    // Save under active fallback key
-    localStorage.setItem('soccer_dataset_active', serialized);
-    // Update client side cookie to keep track of data file last used
+    // Only track the active filename in cookie
     setCookie(COOKIE_NAME, data.fileName);
   } catch (err) {
-    console.error('Error saving app data:', err);
+    console.error('Error updating active file state:', err);
   }
 }
 
-export function loadAppData(): AppData {
+/**
+ * Manual option to save an explicit local JSON backup into browser localStorage.
+ */
+export function saveManualLocalJsonBackup(data: AppData): {
+  success: boolean;
+  savedAt: string;
+  fileName: string;
+} {
   try {
-    // 1. Check client-side cookie for last used filename
-    const cookieFileName = getCookie(COOKIE_NAME);
-    const targetFileName = cookieFileName || DEFAULT_FILE_NAME;
-
-    // 2. Attempt to retrieve data associated with that filename
-    const fileSaved = localStorage.getItem(`soccer_dataset_${targetFileName}`);
-    if (fileSaved) {
-      const parsed: AppData = JSON.parse(fileSaved);
-      parsed.fileName = targetFileName;
-      if (!parsed.referees || !Array.isArray(parsed.referees) || parsed.referees.length === 0) {
-        parsed.referees = initialReferees;
-      }
-      if (!parsed.refereeCertifications || !Array.isArray(parsed.refereeCertifications) || parsed.refereeCertifications.length === 0) {
-        parsed.refereeCertifications = DEFAULT_REFEREE_CERTIFICATIONS;
-      }
-      if (!parsed.bulletins || !Array.isArray(parsed.bulletins) || parsed.bulletins.length === 0) {
-        parsed.bulletins = initialBulletins;
-      }
-      if (parsed.teams && Array.isArray(parsed.teams)) {
-        parsed.teams = parsed.teams.map((t) => ({
-          ...t,
-          blackoutDates: Array.isArray(t.blackoutDates) ? t.blackoutDates : [],
-        }));
-      }
-      setCookie(COOKIE_NAME, targetFileName);
-      return parsed;
-    }
-
-    // 3. Fallback to active key if present
-    const activeSaved = localStorage.getItem('soccer_dataset_active');
-    if (activeSaved) {
-      const parsed: AppData = JSON.parse(activeSaved);
-      if (!parsed.fileName) parsed.fileName = targetFileName;
-      if (!parsed.referees || !Array.isArray(parsed.referees) || parsed.referees.length === 0) {
-        parsed.referees = initialReferees;
-      }
-      if (!parsed.refereeCertifications || !Array.isArray(parsed.refereeCertifications) || parsed.refereeCertifications.length === 0) {
-        parsed.refereeCertifications = DEFAULT_REFEREE_CERTIFICATIONS;
-      }
-      if (!parsed.bulletins || !Array.isArray(parsed.bulletins) || parsed.bulletins.length === 0) {
-        parsed.bulletins = initialBulletins;
-      }
-      if (parsed.teams && Array.isArray(parsed.teams)) {
-        parsed.teams = parsed.teams.map((t) => ({
-          ...t,
-          blackoutDates: Array.isArray(t.blackoutDates) ? t.blackoutDates : [],
-        }));
-      }
-      setCookie(COOKIE_NAME, parsed.fileName);
-      return parsed;
-    }
+    const savedAt = new Date().toISOString();
+    const fileName = data.fileName || DEFAULT_FILE_NAME;
+    const record: ManualLocalBackupRecord = {
+      savedAt,
+      fileName,
+      data,
+    };
+    localStorage.setItem(MANUAL_LOCAL_BACKUP_KEY, JSON.stringify(record));
+    return { success: true, savedAt, fileName };
   } catch (err) {
-    console.error('Error loading app data from storage:', err);
+    console.error('Failed to create manual local JSON backup:', err);
+    throw new Error('Failed to save manual local backup to browser storage.');
   }
+}
 
-  // 4. If no stored dataset, initialize and store default dataset
-  const initialData = getInitialAppData(DEFAULT_FILE_NAME);
-  saveAppData(initialData);
-  return initialData;
+/**
+ * Manual option to retrieve the stored local JSON backup from browser localStorage.
+ */
+export function loadManualLocalJsonBackup(): ManualLocalBackupRecord | null {
+  try {
+    const raw = localStorage.getItem(MANUAL_LOCAL_BACKUP_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed || !parsed.data) return null;
+    return parsed as ManualLocalBackupRecord;
+  } catch (err) {
+    console.error('Failed to load manual local JSON backup:', err);
+    return null;
+  }
+}
+
+/**
+ * Returns summary metadata about the manual local JSON backup if present.
+ */
+export function getManualLocalBackupMetadata(): {
+  exists: boolean;
+  savedAt?: string;
+  fileName?: string;
+  teamsCount?: number;
+  gamesCount?: number;
+  divisionsCount?: number;
+} {
+  try {
+    const record = loadManualLocalJsonBackup();
+    if (!record || !record.data) {
+      return { exists: false };
+    }
+    return {
+      exists: true,
+      savedAt: record.savedAt,
+      fileName: record.fileName,
+      teamsCount: record.data.teams?.length || 0,
+      gamesCount: record.data.games?.length || 0,
+      divisionsCount: record.data.divisions?.length || 0,
+    };
+  } catch {
+    return { exists: false };
+  }
+}
+
+/**
+ * Removes the manual local backup from browser storage.
+ */
+export function clearManualLocalBackup(): void {
+  try {
+    localStorage.removeItem(MANUAL_LOCAL_BACKUP_KEY);
+  } catch {}
+}
+
+/**
+ * Initializes baseline default template.
+ * NOTE: Local JSON files are NOT loaded automatically on page start anymore.
+ * The application immediately queries the MySQL server on load as authoritative priority #1.
+ */
+export function loadAppData(): AppData {
+  return getInitialAppData(DEFAULT_FILE_NAME);
 }

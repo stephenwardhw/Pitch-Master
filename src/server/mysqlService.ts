@@ -254,6 +254,72 @@ export async function listBackups(): Promise<{
 }
 
 /**
+ * Retrieves the most recent backup document from MySQL (or fallback store)
+ */
+export async function getLatestBackup(): Promise<{
+  record: BackupRecord | null;
+  appData: AppData | null;
+  isLiveMySql: boolean;
+}> {
+  const pool = await getPool();
+  const tableName = activeConfig.tableName || 'schedule_backups';
+
+  if (!pool) {
+    const store = readFallbackStore();
+    const records = Object.values(store);
+    if (records.length === 0) {
+      return { record: null, appData: null, isLiveMySql: false };
+    }
+    records.sort((a, b) => new Date(b.last_modified_at).getTime() - new Date(a.last_modified_at).getTime());
+    const top = records[0];
+    try {
+      const appData = JSON.parse(top.data_json);
+      return { record: top, appData, isLiveMySql: false };
+    } catch {
+      return { record: null, appData: null, isLiveMySql: false };
+    }
+  }
+
+  try {
+    const [rows] = await pool.query(
+      `SELECT id, name, data_json, sync_token, last_modified_by, last_modified_at, created_at, version_number FROM \`${tableName}\` ORDER BY last_modified_at DESC LIMIT 1`
+    );
+    const rowList = rows as any[];
+    if (rowList.length === 0) {
+      return { record: null, appData: null, isLiveMySql: true };
+    }
+    const r = rowList[0];
+    const record: BackupRecord = {
+      id: r.id,
+      name: r.name,
+      data_json: r.data_json,
+      sync_token: r.sync_token,
+      last_modified_by: r.last_modified_by,
+      last_modified_at: new Date(r.last_modified_at).toISOString(),
+      created_at: new Date(r.created_at).toISOString(),
+      version_number: Number(r.version_number) || 1,
+    };
+    const appData = JSON.parse(r.data_json);
+    return { record, appData, isLiveMySql: true };
+  } catch (err) {
+    console.error('Error fetching latest backup from MySQL:', err);
+    const store = readFallbackStore();
+    const records = Object.values(store);
+    if (records.length === 0) {
+      return { record: null, appData: null, isLiveMySql: false };
+    }
+    records.sort((a, b) => new Date(b.last_modified_at).getTime() - new Date(a.last_modified_at).getTime());
+    const top = records[0];
+    try {
+      const appData = JSON.parse(top.data_json);
+      return { record: top, appData, isLiveMySql: false };
+    } catch {
+      return { record: null, appData: null, isLiveMySql: false };
+    }
+  }
+}
+
+/**
  * Retrieves a single backup document by ID
  */
 export async function getBackup(id: string): Promise<{

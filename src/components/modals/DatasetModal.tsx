@@ -1,6 +1,15 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { AppData } from '../../types';
-import { COOKIE_NAME, getCookie, setCookie, getInitialAppData } from '../../utils/cookieStorage';
+import {
+  COOKIE_NAME,
+  getCookie,
+  setCookie,
+  getInitialAppData,
+  saveManualLocalJsonBackup,
+  loadManualLocalJsonBackup,
+  getManualLocalBackupMetadata,
+  clearManualLocalBackup,
+} from '../../utils/cookieStorage';
 import { publishScheduleToServer, downloadLeagueScheduleJson } from '../../utils/serverSync';
 import { saveOrExportJson, isFileSystemAccessSupported } from '../../utils/fileExport';
 import {
@@ -24,6 +33,9 @@ import {
   Database,
   Lock,
   Eye,
+  FolderOpen,
+  Trash2,
+  HardDrive,
 } from 'lucide-react';
 import { AdminUser, canPublishSchedule, isViewerRole } from '../../utils/authClient';
 import {
@@ -41,6 +53,10 @@ interface DatasetModalProps {
   onClose: () => void;
   onOpenCsvImport?: (type?: 'teams' | 'fields' | 'schedule' | 'referees') => void;
   onOpenMySqlBackupModal?: () => void;
+  onCreateLocalBackupJson?: () => Promise<void>;
+  onLoadLocalBackupJson?: () => void;
+  onFetchLatestMySql?: () => Promise<void>;
+  isLoadingMySql?: boolean;
 }
 
 export const DatasetModal: React.FC<DatasetModalProps> = ({
@@ -50,6 +66,10 @@ export const DatasetModal: React.FC<DatasetModalProps> = ({
   onClose,
   onOpenCsvImport,
   onOpenMySqlBackupModal,
+  onCreateLocalBackupJson,
+  onLoadLocalBackupJson,
+  onFetchLatestMySql,
+  isLoadingMySql = false,
 }) => {
   const canPublish = canPublishSchedule(adminUser);
   const isViewer = isViewerRole(adminUser);
@@ -59,6 +79,63 @@ export const DatasetModal: React.FC<DatasetModalProps> = ({
   const [isPublishing, setIsPublishing] = useState(false);
   const fsSupported = isFileSystemAccessSupported();
   const [overwriteMode, setOverwriteMode] = useState<boolean>(true);
+  const [localBackupMeta, setLocalBackupMeta] = useState(() => getManualLocalBackupMetadata());
+
+  const refreshLocalBackupMeta = () => {
+    setLocalBackupMeta(getManualLocalBackupMetadata());
+  };
+
+  const handleManualCreateLocal = async () => {
+    try {
+      const res = saveManualLocalJsonBackup(appData);
+      refreshLocalBackupMeta();
+      setStatusMessage({
+        text: `Manual local JSON backup created in browser storage (${new Date(res.savedAt).toLocaleTimeString()}).`,
+        type: 'success',
+      });
+      if (onCreateLocalBackupJson) {
+        await onCreateLocalBackupJson();
+      }
+    } catch (err: any) {
+      setStatusMessage({
+        text: `Failed to create local backup: ${err.message}`,
+        type: 'error',
+      });
+    }
+  };
+
+  const handleManualLoadLocal = () => {
+    const record = loadManualLocalJsonBackup();
+    if (!record || !record.data) {
+      setStatusMessage({
+        text: 'No manual local backup found in browser storage.',
+        type: 'error',
+      });
+      return;
+    }
+    if (
+      window.confirm(
+        `Load manual local JSON backup saved on ${new Date(record.savedAt).toLocaleString()} (${record.fileName})?\n\nThis will replace the current view with your local backup.`
+      )
+    ) {
+      onUpdateData(record.data);
+      setStatusMessage({
+        text: `Successfully loaded manual local backup "${record.fileName}" (saved ${new Date(record.savedAt).toLocaleString()}).`,
+        type: 'success',
+      });
+    }
+  };
+
+  const handleManualClearLocal = () => {
+    if (window.confirm('Delete the manual local JSON backup stored in this browser?')) {
+      clearManualLocalBackup();
+      refreshLocalBackupMeta();
+      setStatusMessage({
+        text: 'Manual local storage backup cleared.',
+        type: 'success',
+      });
+    }
+  };
 
   const currentCookieVal = getCookie(COOKIE_NAME);
 
@@ -238,61 +315,161 @@ export const DatasetModal: React.FC<DatasetModalProps> = ({
             </div>
           )}
 
-          {/* Cookie Tracking Badge */}
-          <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-lg space-y-2">
-            <div className="flex items-center gap-2 text-xs font-semibold text-slate-700">
-              <Cookie className="w-4 h-4 text-amber-600" />
-              <span>Browser Cookie State</span>
-            </div>
-            <div className="text-xs text-slate-600 space-y-1">
-              <div>
-                Cookie Name: <code className="font-mono text-slate-900 bg-white px-1.5 py-0.5 rounded border border-slate-200">{COOKIE_NAME}</code>
-              </div>
-              <div>
-                Last Used File in Cookie: <strong className="font-mono text-slate-900">{currentCookieVal || 'None'}</strong>
-              </div>
-              <p className="text-[11px] text-slate-500 pt-0.5">
-                On page load, the application inspects this cookie to automatically reload your last exported or active schedule file.
-              </p>
-            </div>
-          </div>
-
-          {/* MySQL NoSQL Backup Storage Card */}
-          {onOpenMySqlBackupModal && (
-            <div className="p-3.5 bg-indigo-50/70 border border-indigo-200 rounded-xl flex items-center justify-between gap-3">
+          {/* MySQL Authoritative Storage Card */}
+          <div className="p-3.5 bg-indigo-50/80 border border-indigo-200 rounded-xl space-y-2.5">
+            <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 rounded-lg bg-indigo-600 text-white flex items-center justify-center shrink-0">
                   <Database className="w-4 h-4" />
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="font-bold text-slate-900 text-xs">MySQL NoSQL Backup & Concurrency Sync</span>
-                    {appData.mysqlBackupSync && (
-                      <span className="px-1.5 py-0.2 bg-emerald-100 text-emerald-800 text-[10px] rounded-full font-semibold">
+                    <span className="font-bold text-slate-900 text-xs">MySQL Server (Primary Authoritative Source)</span>
+                    {appData.mysqlBackupSync ? (
+                      <span className="px-1.5 py-0.2 bg-emerald-100 text-emerald-800 text-[10px] rounded-full font-semibold border border-emerald-200">
                         Synced
+                      </span>
+                    ) : (
+                      <span className="px-1.5 py-0.2 bg-indigo-100 text-indigo-800 text-[10px] rounded-full font-semibold border border-indigo-200">
+                        Priority #1
                       </span>
                     )}
                   </div>
                   <p className="text-[11px] text-slate-600">
                     {appData.mysqlBackupSync
-                      ? `Linked to "${appData.mysqlBackupSync.backupName}" (Rev: ${appData.mysqlBackupSync.syncToken.substring(0, 16)}...) with concurrency protection`
-                      : 'Store schedule JSON documents into MySQL database with conflict detection'}
+                      ? `Linked to "${appData.mysqlBackupSync.backupName}" (Rev: ${appData.mysqlBackupSync.syncToken.substring(0, 16)}...). The browser always fetches and prioritizes MySQL data on admin access.`
+                      : 'The browser queries MySQL first when accessing the admin area, prioritizing server data over any local JSON files.'}
                   </p>
                 </div>
               </div>
 
-              <button
-                type="button"
-                onClick={() => {
-                  onClose();
-                  onOpenMySqlBackupModal();
-                }}
-                className="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold shrink-0 transition-colors shadow-2xs"
-              >
-                {appData.mysqlBackupSync ? 'Manage Backup' : 'Open MySQL'}
-              </button>
+              <div className="flex items-center gap-2 shrink-0">
+                {onFetchLatestMySql && (
+                  <button
+                    type="button"
+                    onClick={onFetchLatestMySql}
+                    disabled={isLoadingMySql}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-indigo-300 hover:bg-indigo-50 text-indigo-900 text-xs font-semibold transition-colors shadow-2xs cursor-pointer"
+                    title="Grab the most recent copy of data from the MySQL server"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 text-indigo-600 ${isLoadingMySql ? 'animate-spin' : ''}`} />
+                    <span>{isLoadingMySql ? 'Fetching...' : 'Fetch Latest'}</span>
+                  </button>
+                )}
+
+                {onOpenMySqlBackupModal && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onClose();
+                      onOpenMySqlBackupModal();
+                    }}
+                    className="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold shrink-0 transition-colors shadow-2xs cursor-pointer"
+                  >
+                    {appData.mysqlBackupSync ? 'Manage MySQL' : 'Open MySQL'}
+                  </button>
+                )}
+              </div>
             </div>
-          )}
+          </div>
+
+          {/* Manual Local Storage Backup Card */}
+          <div className="p-3.5 bg-amber-50/70 border border-amber-200 rounded-xl space-y-2.5">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-start gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-amber-600 text-white flex items-center justify-center shrink-0 mt-0.5">
+                  <HardDrive className="w-4 h-4" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-slate-900 text-xs">Manual Local JSON Backup (Browser Storage)</span>
+                    <span className="px-1.5 py-0.2 bg-amber-100 text-amber-800 text-[10px] rounded-full font-semibold border border-amber-300">
+                      On-Demand Only
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-600 mt-0.5 leading-relaxed">
+                    Local JSON files are <strong className="text-slate-800">never automatically loaded on page start</strong> and are <strong className="text-slate-800">never saved automatically on save</strong>. You can manually snapshot your schedule here, or restore it on demand.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Local backup status details */}
+            <div className="p-2.5 rounded-lg bg-white border border-amber-200/80 text-xs text-slate-700 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div>
+                {localBackupMeta.exists ? (
+                  <div className="space-y-0.5">
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-slate-900">Stored Local Backup:</span>
+                      <code className="font-mono text-emerald-800 bg-emerald-50 px-1 py-0.2 rounded border border-emerald-200 text-[11px]">
+                        {localBackupMeta.fileName}
+                      </code>
+                    </div>
+                    <div className="text-[11px] text-slate-500">
+                      Saved: {localBackupMeta.savedAt ? new Date(localBackupMeta.savedAt).toLocaleString() : 'Unknown'} · {localBackupMeta.teamsCount || 0} teams · {localBackupMeta.gamesCount || 0} games
+                    </div>
+                  </div>
+                ) : (
+                  <span className="text-slate-500 italic text-[11px]">
+                    No manual local storage backup exists currently. Click "Create Local Backup" to take a snapshot.
+                  </span>
+                )}
+              </div>
+
+              <div className="flex items-center gap-1.5 shrink-0">
+                {!isViewer && (
+                  <button
+                    type="button"
+                    onClick={handleManualCreateLocal}
+                    className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-emerald-800 bg-emerald-50 border border-emerald-300 rounded-lg hover:bg-emerald-100 transition-colors cursor-pointer"
+                    title="Snapshot current schedule to local browser storage"
+                  >
+                    <Download className="w-3.5 h-3.5 text-emerald-700" />
+                    <span>Create Local Backup</span>
+                  </button>
+                )}
+
+                {localBackupMeta.exists && !isViewer && (
+                  <button
+                    type="button"
+                    onClick={handleManualLoadLocal}
+                    className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-amber-900 bg-amber-100 border border-amber-300 rounded-lg hover:bg-amber-200 transition-colors cursor-pointer"
+                    title="Load the manual local JSON backup stored in this browser"
+                  >
+                    <FolderOpen className="w-3.5 h-3.5 text-amber-700" />
+                    <span>Load This Backup</span>
+                  </button>
+                )}
+
+                {localBackupMeta.exists && !isViewer && (
+                  <button
+                    type="button"
+                    onClick={handleManualClearLocal}
+                    className="p-1.5 text-rose-600 hover:text-rose-800 hover:bg-rose-50 border border-rose-200 rounded-lg transition-colors cursor-pointer"
+                    title="Delete stored local backup"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Browser Cookie State Badge */}
+          <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg space-y-1.5">
+            <div className="flex items-center gap-2 text-xs font-semibold text-slate-700">
+              <Cookie className="w-4 h-4 text-amber-600" />
+              <span>Browser Cookie State</span>
+            </div>
+            <div className="text-xs text-slate-600 space-y-1">
+              <div>
+                Active Filename Label in Cookie: <strong className="font-mono text-slate-900">{currentCookieVal || fileNameInput}</strong>
+              </div>
+              <p className="text-[11px] text-slate-500">
+                Used as the default label when exporting JSON files manually. Startup loading prioritizes MySQL database backups as the authoritative source.
+              </p>
+            </div>
+          </div>
 
           {/* Active File Name & Rename */}
           <form onSubmit={handleRename} className="space-y-2">
@@ -325,7 +502,7 @@ export const DatasetModal: React.FC<DatasetModalProps> = ({
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Download className="w-4 h-4 text-emerald-600" />
-                    <h4 className="text-sm font-semibold text-slate-900">Export Dataset</h4>
+                    <h4 className="text-sm font-semibold text-slate-900">Create Local Backup JSON (File Export)</h4>
                   </div>
                   {fsSupported && (
                     <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
@@ -334,7 +511,7 @@ export const DatasetModal: React.FC<DatasetModalProps> = ({
                   )}
                 </div>
                 <p className="text-xs text-slate-500 leading-relaxed">
-                  Save current divisions, teams, pitches, and schedule as a JSON file.
+                  Export your current schedule to a local JSON file on your computer. (Manual choice, not executed automatically on save).
                 </p>
 
                 {/* Overwrite option toggle */}

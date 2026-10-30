@@ -1,6 +1,15 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { AppData, Bulletin, Conflict, Division, Field, Game, Referee, RefereeCertificationOption, SeasonConfig, Team, TeamSizeOption } from './types';
-import { loadAppData, saveAppData, COOKIE_NAME, getCookie, setCookie } from './utils/cookieStorage';
+import {
+  loadAppData,
+  saveAppData,
+  COOKIE_NAME,
+  getCookie,
+  setCookie,
+  saveManualLocalJsonBackup,
+  loadManualLocalJsonBackup,
+  getManualLocalBackupMetadata,
+} from './utils/cookieStorage';
 import { generateLeagueSchedule } from './utils/scheduler';
 import { detectConflicts } from './utils/conflictDetector';
 
@@ -36,7 +45,7 @@ import {
   isViewerRole,
 } from './utils/authClient';
 import { saveOrExportJson } from './utils/fileExport';
-import { saveMySqlBackup, getMySqlBackup } from './utils/mysqlBackupClient';
+import { saveMySqlBackup, getMySqlBackup, fetchLatestMySqlSchedule } from './utils/mysqlBackupClient';
 import { publishScheduleToServer } from './utils/serverSync';
 import { Github, Database } from 'lucide-react';
 
@@ -82,6 +91,7 @@ export default function App() {
   const [appData, setAppData] = useState<AppData>(() => loadAppData());
   const [currentTab, setCurrentTab] = useState<NavTab>('schedule');
   const [appMode, setAppMode] = useState<AppMode>(() => checkRouteMode());
+  const [isLoadingMySql, setIsLoadingMySql] = useState(false);
 
   // MySQL Admin Authentication State
   const [adminUser, setAdminUser] = useState<AdminUser | null>(() => getStoredUser());
@@ -193,7 +203,46 @@ export default function App() {
     saveAppData(newData);
   }, [adminUser]);
 
-  // Unified Save: Persists current schedule to MySQL NoSQL document and saves to local JSON file
+  // Fetch the latest authoritative copy from MySQL server
+  // Prioritizes MySQL data over any local JSON backup
+  const handleFetchLatestFromMySql = useCallback(async (isManualTrigger = false) => {
+    setIsLoadingMySql(true);
+    try {
+      const res = await fetchLatestMySqlSchedule();
+      if (res.exists && res.appData) {
+        setAppData(res.appData);
+        setScheduleNotice({
+          message: `Loaded latest schedule from MySQL server (${res.isLiveMySql ? 'Live Database' : 'NoSQL document store'}${res.metadata?.versionNumber ? ` v${res.metadata.versionNumber}` : ''}${res.metadata?.lastModifiedBy ? ` by ${res.metadata.lastModifiedBy}` : ''}).`,
+          type: 'success',
+        });
+      } else if (isManualTrigger) {
+        setScheduleNotice({
+          message: res.message || 'No existing backups found on MySQL server. Your current schedule is active and ready to save.',
+          type: 'success',
+        });
+      }
+    } catch (err: any) {
+      if (isManualTrigger) {
+        setScheduleNotice({
+          message: `Could not fetch latest MySQL schedule: ${err?.message || 'Server error'}`,
+          type: 'error',
+        });
+      }
+    } finally {
+      setIsLoadingMySql(false);
+    }
+  }, []);
+
+  // When browser accesses the admin page, immediately fetch the most recent copy from the MySQL server
+  // Local JSON files are NOT automatically loaded on startup anymore
+  useEffect(() => {
+    if (appMode === 'admin') {
+      handleFetchLatestFromMySql(false);
+    }
+  }, [appMode, handleFetchLatestFromMySql]);
+
+  // Unified Save: Persists current schedule to MySQL NoSQL document
+  // NOTE: Local JSON backup is NOT created automatically on save anymore. It is a separate manual option.
   const handleUnifiedSave = useCallback(async (): Promise<{ success: boolean; message: string }> => {
     if (isViewerRole(adminUser)) {
       setScheduleNotice({
@@ -206,7 +255,7 @@ export default function App() {
       const activeName = appData.fileName || getCookie(COOKIE_NAME) || 'soccer_schedule.json';
       const cleanJsonName = activeName.endsWith('.json') ? activeName : `${activeName}.json`;
 
-      // 1. Save to MySQL Database
+      // 1. Save strictly to MySQL Database (Authoritative Source)
       const backupId = appData.mysqlBackupSync
         ? appData.mysqlBackupSync.backupId
         : cleanJsonName.replace(/\.json$/i, '').toLowerCase().replace(/[^a-z0-9_-]/g, '_');
@@ -232,38 +281,16 @@ export default function App() {
         return { success: false, message: 'MySQL Concurrency Conflict Detected' };
       }
 
-      let dataToExport = appData;
       if (mysqlRes.success && mysqlRes.updatedAppData) {
-        dataToExport = mysqlRes.updatedAppData;
-        handleUpdateFullData(dataToExport);
+        handleUpdateFullData(mysqlRes.updatedAppData);
       }
 
-      // 2. Save / Export to local JSON file
-      const exportRes = await saveOrExportJson(dataToExport, cleanJsonName, {
-        preferOverwrite: true,
-        reuseHandle: true,
+      setCookie(COOKIE_NAME, cleanJsonName);
+      setScheduleNotice({
+        message: `Saved successfully to MySQL database (${mysqlRes.isLiveMySql ? 'Live Database' : 'NoSQL Document Store'})! Concurrency token updated.`,
+        type: 'success',
       });
-
-      if (exportRes.success) {
-        setCookie(COOKIE_NAME, exportRes.fileName);
-        setScheduleNotice({
-          message: `Saved successfully! Schedule updated in MySQL (${mysqlRes.isLiveMySql ? 'Live Database' : 'NoSQL Fallback'}) and saved local file "${exportRes.fileName}".`,
-          type: 'success',
-        });
-        return { success: true, message: `Saved to MySQL & ${exportRes.fileName}` };
-      } else if (exportRes.method === 'cancelled') {
-        setScheduleNotice({
-          message: `Schedule saved to MySQL database (local file save dialog was cancelled).`,
-          type: 'success',
-        });
-        return { success: true, message: 'Saved to MySQL' };
-      } else {
-        setScheduleNotice({
-          message: `Saved to MySQL database. Note on local file: ${exportRes.message}`,
-          type: 'success',
-        });
-        return { success: true, message: 'Saved to MySQL' };
-      }
+      return { success: true, message: 'Saved to MySQL' };
     } catch (err: any) {
       setScheduleNotice({
         message: `Save error: ${err.message || 'Failed to complete save operation'}`,
@@ -272,6 +299,57 @@ export default function App() {
       return { success: false, message: err.message };
     }
   }, [appData, adminUser, handleUpdateFullData]);
+
+  // Manual Option 1: Create a local JSON backup (manual choice, not automatic on save)
+  const handleCreateManualLocalBackup = useCallback(async () => {
+    try {
+      const activeName = appData.fileName || getCookie(COOKIE_NAME) || 'soccer_schedule.json';
+      const cleanJsonName = activeName.endsWith('.json') ? activeName : `${activeName}.json`;
+
+      // 1. Save to browser local storage manual backup slot
+      const localRes = saveManualLocalJsonBackup(appData);
+
+      // 2. Also offer file download / save to disk
+      const exportRes = await saveOrExportJson(appData, cleanJsonName, {
+        preferOverwrite: false,
+      });
+
+      setScheduleNotice({
+        message: `Manual local JSON backup created! Saved to local browser storage (${new Date(localRes.savedAt).toLocaleTimeString()}) and exported as "${exportRes.fileName || cleanJsonName}".`,
+        type: 'success',
+      });
+    } catch (err: any) {
+      setScheduleNotice({
+        message: `Failed to create local backup: ${err.message || 'Error saving local JSON'}`,
+        type: 'error',
+      });
+    }
+  }, [appData]);
+
+  // Manual Option 2: Load local JSON backup (manually loaded from interface)
+  const handleLoadManualLocalBackup = useCallback(() => {
+    const record = loadManualLocalJsonBackup();
+    if (record && record.data) {
+      const confirmed = window.confirm(
+        `Load manual local JSON backup saved on ${new Date(record.savedAt).toLocaleString()} (${record.fileName})?\n\nThis will replace the current view with your local backup. Note: MySQL server remains the authoritative source.`
+      );
+      if (confirmed) {
+        handleUpdateFullData(record.data);
+        setScheduleNotice({
+          message: `Loaded manual local JSON backup from browser storage (saved: ${new Date(record.savedAt).toLocaleString()}, file: ${record.fileName}).`,
+          type: 'success',
+        });
+        return;
+      }
+    } else {
+      // If no local storage manual backup exists, open the Dataset modal to load a JSON file from disk
+      setIsDatasetModalOpen(true);
+      setScheduleNotice({
+        message: 'No manual local storage backup found. Please use "Choose JSON File" to select a backup file from your disk.',
+        type: 'success',
+      });
+    }
+  }, [handleUpdateFullData]);
 
   // Publish Schedule directly to server file league_schedule.json for public coach/parent access
   const handlePublishToServer = useCallback(async () => {
@@ -655,6 +733,10 @@ export default function App() {
         onLogoutAdmin={handleLogoutAdmin}
         onUnifiedSave={handleUnifiedSave}
         onPublishServer={handlePublishToServer}
+        onFetchLatestMySql={() => handleFetchLatestFromMySql(true)}
+        onCreateLocalBackupJson={handleCreateManualLocalBackup}
+        onLoadLocalBackupJson={handleLoadManualLocalBackup}
+        isLoadingMySql={isLoadingMySql}
       />
 
       {/* Main Content Viewport */}
@@ -910,6 +992,10 @@ export default function App() {
           onClose={() => setIsDatasetModalOpen(false)}
           onOpenCsvImport={handleOpenCsvImport}
           onOpenMySqlBackupModal={() => setIsMySqlBackupModalOpen(true)}
+          onCreateLocalBackupJson={handleCreateManualLocalBackup}
+          onLoadLocalBackupJson={handleLoadManualLocalBackup}
+          onFetchLatestMySql={() => handleFetchLatestFromMySql(true)}
+          isLoadingMySql={isLoadingMySql}
         />
       )}
 

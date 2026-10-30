@@ -3,6 +3,7 @@ import {
   initializeTable,
   testConnection,
   listBackups,
+  getLatestBackup,
   getBackup,
   saveBackup,
   getActivityLog,
@@ -92,7 +93,37 @@ mysqlRouter.post('/config', async (req, res) => {
   }
 });
 
-// 4. List all backups
+// 4. Get the latest / most recent backup from MySQL
+mysqlRouter.get('/latest', async (_req, res) => {
+  try {
+    const latest = await getLatestBackup();
+    if (!latest.record || !latest.appData) {
+      return res.json({
+        exists: false,
+        message: 'No backups currently exist in MySQL database.',
+        isLiveMySql: latest.isLiveMySql,
+      });
+    }
+    res.json({
+      exists: true,
+      appData: latest.appData,
+      metadata: {
+        id: latest.record.id,
+        name: latest.record.name,
+        syncToken: latest.record.sync_token,
+        lastModifiedBy: latest.record.last_modified_by,
+        lastModifiedAt: latest.record.last_modified_at,
+        createdAt: latest.record.created_at,
+        versionNumber: latest.record.version_number,
+      },
+      isLiveMySql: latest.isLiveMySql,
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 5. List all backups
 mysqlRouter.get('/backups', async (_req, res) => {
   try {
     const list = await listBackups();

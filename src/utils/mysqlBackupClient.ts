@@ -255,7 +255,63 @@ export async function updateMySqlConfigOnServer(config: Partial<MySqlConfig>): P
 }
 
 /**
- * 4. List All Backups
+ * 4. Fetch the Most Recent Schedule from MySQL Server (Authoritative Source)
+ */
+export async function fetchLatestMySqlSchedule(): Promise<{
+  exists: boolean;
+  appData?: AppData;
+  metadata?: MySqlBackupMetadata;
+  isLiveMySql: boolean;
+  message?: string;
+}> {
+  const result = await safeFetchJson<{
+    exists: boolean;
+    appData?: AppData;
+    metadata?: MySqlBackupMetadata;
+    isLiveMySql: boolean;
+    message?: string;
+  }>('/api/mysql/latest');
+
+  if (result.ok && result.data) {
+    return result.data;
+  }
+
+  // Fallback to local stored backups if MySQL backend is unreachable
+  const localStore = getStoredLocalBackups();
+  const records = Object.values(localStore);
+  if (records.length > 0) {
+    records.sort(
+      (a, b) => new Date(b.last_modified_at).getTime() - new Date(a.last_modified_at).getTime()
+    );
+    const top = records[0];
+    try {
+      const appData = JSON.parse(top.data_json);
+      return {
+        exists: true,
+        appData,
+        metadata: {
+          id: top.id,
+          name: top.name,
+          syncToken: top.sync_token,
+          lastModifiedBy: top.last_modified_by,
+          lastModifiedAt: top.last_modified_at,
+          createdAt: top.created_at,
+          versionNumber: top.version_number,
+        },
+        isLiveMySql: false,
+      };
+    } catch {}
+  }
+
+  return {
+    exists: false,
+    isLiveMySql: false,
+    message: result.error || 'No backups found on MySQL server.',
+  };
+}
+
+/**
+ * 5. List All Backups
  */
 export async function listMySqlBackups(): Promise<{
   isLiveMySql: boolean;

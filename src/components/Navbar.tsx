@@ -28,6 +28,9 @@ import {
   UploadCloud,
   Eye,
   Lock,
+  Download,
+  FolderOpen,
+  HardDrive,
 } from 'lucide-react';
 import { AdminUser, canPublishSchedule, isViewerRole } from '../utils/authClient';
 
@@ -59,6 +62,10 @@ interface NavbarProps {
   onLogoutAdmin?: () => void;
   onUnifiedSave?: () => Promise<{ success: boolean; message: string }>;
   onPublishServer?: () => Promise<{ success: boolean; message: string }>;
+  onFetchLatestMySql?: () => Promise<void>;
+  onCreateLocalBackupJson?: () => Promise<void>;
+  onLoadLocalBackupJson?: () => void;
+  isLoadingMySql?: boolean;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -76,6 +83,10 @@ export const Navbar: React.FC<NavbarProps> = ({
   onLogoutAdmin,
   onUnifiedSave,
   onPublishServer,
+  onFetchLatestMySql,
+  onCreateLocalBackupJson,
+  onLoadLocalBackupJson,
+  isLoadingMySql = false,
 }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [portalMenuOpen, setPortalMenuOpen] = useState(false);
@@ -341,7 +352,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               </div>
             )}
 
-            {/* Unified Save Button (MySQL Database + Local JSON file) */}
+            {/* Unified Save Button (MySQL Database) */}
             {!isViewer && onUnifiedSave && (
               <button
                 type="button"
@@ -352,7 +363,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                     ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
                     : 'bg-indigo-600 hover:bg-indigo-700 text-white active:scale-95'
                 }`}
-                title="Unified Save: Saves current schedule to MySQL NoSQL database and writes/downloads to local JSON file"
+                title="Save to MySQL: Persists current schedule directly to MySQL NoSQL database"
               >
                 {isSavingUnified ? (
                   <RefreshCw className="w-3.5 h-3.5 animate-spin" />
@@ -365,8 +376,8 @@ export const Navbar: React.FC<NavbarProps> = ({
                   {isSavingUnified
                     ? 'Saving...'
                     : saveSuccessState
-                    ? 'Saved!'
-                    : 'Save'}
+                    ? 'Saved to MySQL!'
+                    : 'Save to MySQL'}
                 </span>
               </button>
             )}
@@ -430,7 +441,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               </button>
 
               {syncMenuOpen && (
-                <div className="absolute right-0 mt-1.5 w-72 bg-white rounded-xl shadow-xl border border-slate-200 p-2 z-50 animate-in fade-in space-y-1 text-xs">
+                <div className="absolute right-0 mt-1.5 w-80 bg-white rounded-xl shadow-xl border border-slate-200 p-2 z-50 animate-in fade-in space-y-1 text-xs">
                   <div className="px-2 py-1 border-b border-slate-100 flex items-center justify-between">
                     <span className="font-bold text-slate-800 text-[11px] uppercase tracking-wide">
                       Storage & Backups
@@ -442,6 +453,33 @@ export const Navbar: React.FC<NavbarProps> = ({
                     )}
                   </div>
 
+                  {/* 1. Fetch Latest from MySQL (Authoritative) */}
+                  {onFetchLatestMySql && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSyncMenuOpen(false);
+                        onFetchLatestMySql();
+                      }}
+                      className="w-full flex items-center justify-between p-2 rounded-lg hover:bg-indigo-50 text-slate-700 hover:text-indigo-900 text-left transition-colors cursor-pointer"
+                      title="Fetch and load the most recent copy of the data from the MySQL server"
+                    >
+                      <div className="flex items-center gap-2">
+                        <RefreshCw className={`w-4 h-4 text-indigo-600 shrink-0 ${isLoadingMySql ? 'animate-spin' : ''}`} />
+                        <div>
+                          <span className="font-semibold block leading-tight">Fetch Latest MySQL Data</span>
+                          <span className="text-[10px] text-slate-500 block">
+                            Prioritize latest server document
+                          </span>
+                        </div>
+                      </div>
+                      <span className="text-[10px] font-semibold text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-200">
+                        Server #1
+                      </span>
+                    </button>
+                  )}
+
+                  {/* 2. MySQL NoSQL Backups Modal */}
                   {onOpenMySqlBackupModal && (
                     <button
                       type="button"
@@ -466,6 +504,59 @@ export const Navbar: React.FC<NavbarProps> = ({
                     </button>
                   )}
 
+                  {/* 3. Create Local Backup JSON (Manual Option) */}
+                  {!isViewer && onCreateLocalBackupJson && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSyncMenuOpen(false);
+                        onCreateLocalBackupJson();
+                      }}
+                      className="w-full flex items-center justify-between p-2 rounded-lg hover:bg-emerald-50 text-slate-700 hover:text-emerald-900 text-left transition-colors cursor-pointer"
+                      title="Create a local JSON backup manually (saved in browser local storage & downloaded)"
+                    >
+                      <div className="flex items-center gap-2">
+                        <Download className="w-4 h-4 text-emerald-600 shrink-0" />
+                        <div>
+                          <span className="font-semibold block leading-tight">Create Local Backup JSON</span>
+                          <span className="text-[10px] text-slate-500 block">
+                            Manual snapshot to browser & file
+                          </span>
+                        </div>
+                      </div>
+                      <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
+                        Manual
+                      </span>
+                    </button>
+                  )}
+
+                  {/* 4. Load Local JSON Backup (Manual Option) */}
+                  {!isViewer && onLoadLocalBackupJson && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSyncMenuOpen(false);
+                        onLoadLocalBackupJson();
+                      }}
+                      className="w-full flex items-center justify-between p-2 rounded-lg hover:bg-amber-50 text-slate-700 hover:text-amber-900 text-left transition-colors cursor-pointer"
+                      title="Load a saved local JSON backup from browser local storage"
+                    >
+                      <div className="flex items-center gap-2">
+                        <FolderOpen className="w-4 h-4 text-amber-600 shrink-0" />
+                        <div>
+                          <span className="font-semibold block leading-tight">Load Local JSON Backup</span>
+                          <span className="text-[10px] text-slate-500 block">
+                            Restore manual local snapshot
+                          </span>
+                        </div>
+                      </div>
+                      <span className="text-[10px] font-semibold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">
+                        Manual
+                      </span>
+                    </button>
+                  )}
+
+                  {/* 5. Schedule Activity Log */}
                   {onOpenActivityLogModal && (
                     <button
                       type="button"
@@ -488,6 +579,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                     </button>
                   )}
 
+                  {/* 6. Local File Datasets */}
                   <button
                     type="button"
                     onClick={() => {
@@ -702,7 +794,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               >
                 <div className="flex items-center gap-2">
                   <Save className="w-4 h-4" />
-                  <span>Save (MySQL + Local JSON)</span>
+                  <span>Save to MySQL</span>
                 </div>
                 {isSavingUnified && <RefreshCw className="w-4 h-4 animate-spin" />}
               </button>
@@ -723,6 +815,60 @@ export const Navbar: React.FC<NavbarProps> = ({
                   <span>Publish (Upload league_schedule.json)</span>
                 </div>
                 {isPublishingServer && <RefreshCw className="w-4 h-4 animate-spin" />}
+              </button>
+            )}
+
+            {/* Mobile Fetch Latest MySQL Action */}
+            {onFetchLatestMySql && (
+              <button
+                type="button"
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  onFetchLatestMySql();
+                }}
+                className="w-full flex items-center justify-between px-3 py-2 rounded-lg font-medium text-indigo-700 bg-indigo-50 hover:bg-indigo-100"
+              >
+                <div className="flex items-center gap-2">
+                  <RefreshCw className={`w-4 h-4 text-indigo-600 ${isLoadingMySql ? 'animate-spin' : ''}`} />
+                  <span>Fetch Latest from MySQL</span>
+                </div>
+                <span className="text-[10px] font-bold bg-indigo-200/70 text-indigo-900 px-1.5 py-0.5 rounded">#1 Server</span>
+              </button>
+            )}
+
+            {/* Mobile Manual Create Local Backup */}
+            {!isViewer && onCreateLocalBackupJson && (
+              <button
+                type="button"
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  onCreateLocalBackupJson();
+                }}
+                className="w-full flex items-center justify-between px-3 py-2 rounded-lg font-medium text-emerald-800 bg-emerald-50 hover:bg-emerald-100"
+              >
+                <div className="flex items-center gap-2">
+                  <Download className="w-4 h-4 text-emerald-600" />
+                  <span>Create Local Backup JSON</span>
+                </div>
+                <span className="text-[10px] font-bold bg-emerald-200/70 text-emerald-900 px-1.5 py-0.5 rounded">Manual</span>
+              </button>
+            )}
+
+            {/* Mobile Manual Load Local Backup */}
+            {!isViewer && onLoadLocalBackupJson && (
+              <button
+                type="button"
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  onLoadLocalBackupJson();
+                }}
+                className="w-full flex items-center justify-between px-3 py-2 rounded-lg font-medium text-amber-800 bg-amber-50 hover:bg-amber-100"
+              >
+                <div className="flex items-center gap-2">
+                  <FolderOpen className="w-4 h-4 text-amber-600" />
+                  <span>Load Local JSON Backup</span>
+                </div>
+                <span className="text-[10px] font-bold bg-amber-200/70 text-amber-900 px-1.5 py-0.5 rounded">Manual</span>
               </button>
             )}
 

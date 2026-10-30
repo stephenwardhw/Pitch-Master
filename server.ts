@@ -126,11 +126,15 @@ function tryWriteScheduleFile(filePath: string, content: string): FileWriteResul
 
 // Dedicated route to serve league_schedule.json (serves whichever candidate file was most recently updated)
 app.get('/league_schedule.json', (_req, res) => {
+  const rootPath = path.join(__dirname, 'league_schedule.json');
+  const publicPath = path.join(__dirname, 'public', 'league_schedule.json');
+  const distPath = path.join(__dirname, 'dist', 'league_schedule.json');
+
   const candidatePaths = [
     ...(process.env.SCHEDULE_JSON_PATH ? [path.resolve(process.env.SCHEDULE_JSON_PATH)] : []),
-    path.join(__dirname, 'public', 'league_schedule.json'),
-    path.join(__dirname, 'dist', 'league_schedule.json'),
-    path.join(__dirname, 'league_schedule.json'),
+    rootPath,
+    publicPath,
+    distPath,
   ];
 
   const existingFiles = candidatePaths
@@ -153,13 +157,28 @@ app.get('/league_schedule.json', (_req, res) => {
     const createdIso = birthDate.toISOString();
     const modifiedIso = stat.mtime.toISOString();
 
-    res.setHeader('Content-Type', 'application/json');
-    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    // Absolute zero-cache headers for browsers, proxies, CDNs, and intermediate caches
+    res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0, s-maxage=0');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+    res.setHeader('Surrogate-Control', 'no-store');
     res.setHeader('Last-Modified', stat.mtime.toUTCString());
     res.setHeader('X-File-Created-At', createdIso);
     res.setHeader('X-File-Modified-At', modifiedIso);
     res.setHeader('Access-Control-Expose-Headers', 'X-File-Created-At, X-File-Modified-At, Last-Modified');
-    return res.sendFile(top.path);
+
+    try {
+      const raw = fs.readFileSync(top.path, 'utf-8');
+      const parsed = JSON.parse(raw);
+      // Dynamically attach the exact filesystem timestamps from disk
+      parsed.fileModifiedAt = modifiedIso;
+      parsed.fileCreatedAt = createdIso;
+      parsed.lastModified = modifiedIso;
+      return res.json(parsed);
+    } catch {
+      return res.sendFile(top.path);
+    }
   }
 
   res.status(404).json({ error: 'league_schedule.json not found on server.' });

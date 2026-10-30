@@ -43,7 +43,14 @@ export function sanitizeDataForPublicPublish(data: AppData): AppData {
  * Attaches the file's creation and modification date/time from response headers and payload.
  */
 export async function fetchServerLeagueSchedule(): Promise<AppData> {
-  const response = await fetch(`/league_schedule.json?t=${Date.now()}`);
+  const antiCacheParam = `_t=${Date.now()}&_r=${Math.random().toString(36).substring(2, 9)}`;
+  const response = await fetch(`/league_schedule.json?${antiCacheParam}`, {
+    cache: 'no-store',
+    headers: {
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Pragma': 'no-cache',
+    },
+  });
   
   if (!response.ok) {
     throw new Error(`Server returned HTTP ${response.status} when fetching league_schedule.json`);

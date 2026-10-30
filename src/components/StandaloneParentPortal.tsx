@@ -67,6 +67,7 @@ export const StandaloneParentPortal: React.FC<StandaloneParentPortalProps> = ({
   const [serverDataError, setServerDataError] = useState<string | null>(null);
   const [serverFileLoadedAt, setServerFileLoadedAt] = useState<string | null>(null);
   const [serverFileCreatedAt, setServerFileCreatedAt] = useState<string | null>(null);
+  const [serverFileModifiedAt, setServerFileModifiedAt] = useState<string | null>(null);
 
   // Helper to format ISO dates to a clean human-readable format with date and time
   const formatDateTimeFriendly = useCallback((isoStr?: string | null) => {
@@ -125,7 +126,8 @@ export const StandaloneParentPortal: React.FC<StandaloneParentPortalProps> = ({
       setServerFileLoadedAt(
         new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
       );
-      setServerFileCreatedAt(data.fileCreatedAt || data.lastModified || null);
+      setServerFileCreatedAt(data.fileCreatedAt || null);
+      setServerFileModifiedAt(data.fileModifiedAt || data.lastModified || null);
     } catch (err: any) {
       console.warn('Could not fetch server league_schedule.json:', err);
       setServerDataError(err.message || 'Unable to connect to server league_schedule.json');
@@ -190,19 +192,31 @@ export const StandaloneParentPortal: React.FC<StandaloneParentPortalProps> = ({
 
         // Search query
         if (searchQuery.trim()) {
-          const q = searchQuery.toLowerCase();
-          const home = teamMap.get(g.homeTeamId)?.name.toLowerCase() || '';
-          const away = teamMap.get(g.awayTeamId)?.name.toLowerCase() || '';
+          const q = searchQuery.toLowerCase().trim();
+          const homeTeam = teamMap.get(g.homeTeamId);
+          const awayTeam = teamMap.get(g.awayTeamId);
+          const home = homeTeam?.name.toLowerCase() || '';
+          const away = awayTeam?.name.toLowerCase() || '';
+          const homeCoach = homeTeam?.contactName?.toLowerCase() || '';
+          const awayCoach = awayTeam?.contactName?.toLowerCase() || '';
+          const homePhone = homeTeam?.contactPhone?.toLowerCase() || '';
+          const awayPhone = awayTeam?.contactPhone?.toLowerCase() || '';
           const field = fieldMap.get(g.fieldId)?.name.toLowerCase() || '';
           const div = divisionMap.get(g.divisionId)?.name.toLowerCase() || '';
           const date = g.date.toLowerCase();
+          const round = `round ${g.roundNumber}`.toLowerCase();
 
           return (
             home.includes(q) ||
             away.includes(q) ||
+            homeCoach.includes(q) ||
+            awayCoach.includes(q) ||
+            homePhone.includes(q) ||
+            awayPhone.includes(q) ||
             field.includes(q) ||
             div.includes(q) ||
-            date.includes(q)
+            date.includes(q) ||
+            round.includes(q)
           );
         }
 
@@ -277,12 +291,12 @@ export const StandaloneParentPortal: React.FC<StandaloneParentPortalProps> = ({
     }
   }, [hasUrgentBulletin]);
 
-  // When a specific team is selected, expand all dates so their games are immediately visible
+  // When a specific team is selected or user searches, expand all dates so matching games are immediately visible
   useEffect(() => {
-    if (selectedTeamId !== 'all') {
+    if (selectedTeamId !== 'all' || searchQuery.trim() !== '') {
       setCollapsedDates({});
     }
-  }, [selectedTeamId]);
+  }, [selectedTeamId, searchQuery]);
 
   const toggleDateCollapsed = (dateStr: string) => {
     setCollapsedDates((prev) => ({
@@ -408,14 +422,19 @@ export const StandaloneParentPortal: React.FC<StandaloneParentPortalProps> = ({
                 <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 shadow-2xs">
                   <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
                   <span>Live: <code className="font-mono text-emerald-950 font-semibold">league_schedule.json</code></span>
+                  {serverFileModifiedAt && (
+                    <span className="text-emerald-800 font-medium text-[11px] border-l border-emerald-300 pl-1.5" title={`Disk Modified (mtime): ${serverFileModifiedAt}`}>
+                      File Updated: <strong className="font-mono">{formatDateTimeFriendly(serverFileModifiedAt)}</strong>
+                    </span>
+                  )}
                   {serverFileCreatedAt && (
-                    <span className="text-emerald-700 font-medium text-[11px] border-l border-emerald-300 pl-1.5" title={`File Created: ${serverFileCreatedAt}`}>
-                      Created: <strong className="font-mono">{formatDateTimeFriendly(serverFileCreatedAt)}</strong>
+                    <span className="text-emerald-700 font-normal text-[10px] hidden xl:inline border-l border-emerald-300 pl-1.5" title={`File Created: ${serverFileCreatedAt}`}>
+                      Created: <span className="font-mono">{formatDateTimeFriendly(serverFileCreatedAt)}</span>
                     </span>
                   )}
                   {serverFileLoadedAt && (
-                    <span className="text-slate-500 font-mono text-[10px] hidden xl:inline" title="Loaded in browser">
-                      (Loaded {serverFileLoadedAt})
+                    <span className="text-slate-500 font-mono text-[10px] hidden 2xl:inline" title="Loaded in browser">
+                      (Synced {serverFileLoadedAt})
                     </span>
                   )}
                 </span>
@@ -423,8 +442,8 @@ export const StandaloneParentPortal: React.FC<StandaloneParentPortalProps> = ({
                 <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-full bg-amber-50 text-amber-800 border border-amber-200">
                   <AlertCircle className="w-3 h-3 text-amber-600" />
                   <span>Offline cache</span>
-                  {serverFileCreatedAt && (
-                    <span className="text-amber-700 font-mono text-[10px]">({formatDateTimeFriendly(serverFileCreatedAt)})</span>
+                  {serverFileModifiedAt && (
+                    <span className="text-amber-700 font-mono text-[10px]">({formatDateTimeFriendly(serverFileModifiedAt)})</span>
                   )}
                 </span>
               )}
@@ -562,13 +581,18 @@ export const StandaloneParentPortal: React.FC<StandaloneParentPortalProps> = ({
                   <span className="font-semibold text-slate-800">
                     {serverData ? 'Live Schedule' : 'Cached Schedule'}
                   </span>
+                  {serverFileModifiedAt && (
+                    <span className="font-medium text-[11px] text-emerald-800">
+                      File Updated: <strong className="font-mono">{formatDateTimeFriendly(serverFileModifiedAt)}</strong>
+                    </span>
+                  )}
                   {serverFileCreatedAt && (
-                    <span className="font-medium text-[11px] text-emerald-700">
+                    <span className="font-normal text-[10px] text-slate-600">
                       File Created: <strong className="font-mono">{formatDateTimeFriendly(serverFileCreatedAt)}</strong>
                     </span>
                   )}
                   <span className="font-mono text-[10px] text-slate-500">
-                    {serverFileLoadedAt ? `Loaded in browser: ${serverFileLoadedAt}` : 'league_schedule.json'}
+                    {serverFileLoadedAt ? `Browser sync: ${serverFileLoadedAt}` : 'league_schedule.json'}
                   </span>
                 </div>
               </div>
@@ -697,9 +721,14 @@ export const StandaloneParentPortal: React.FC<StandaloneParentPortalProps> = ({
                 <span className="font-mono text-[10px]">
                   {serverData ? 'league_schedule.json' : 'Cached Data'}
                 </span>
-                {serverFileCreatedAt && (
+                {serverFileModifiedAt && (
                   <span className="text-emerald-300 font-sans text-[10px] border-l border-emerald-700 pl-1.5">
-                    File Created: <strong className="font-mono text-white">{formatDateTimeFriendly(serverFileCreatedAt)}</strong>
+                    File Updated: <strong className="font-mono text-white">{formatDateTimeFriendly(serverFileModifiedAt)}</strong>
+                  </span>
+                )}
+                {serverFileCreatedAt && (
+                  <span className="text-emerald-400 font-sans text-[10px] border-l border-emerald-700 pl-1.5 hidden sm:inline">
+                    Created: <span className="font-mono text-emerald-200">{formatDateTimeFriendly(serverFileCreatedAt)}</span>
                   </span>
                 )}
               </div>
@@ -773,9 +802,14 @@ export const StandaloneParentPortal: React.FC<StandaloneParentPortalProps> = ({
                           {serverData ? (
                             <>
                               Loaded: <code className="font-mono text-emerald-200">league_schedule.json</code>
-                              {serverFileCreatedAt && (
+                              {serverFileModifiedAt && (
                                 <span className="ml-1 text-emerald-300">
-                                  · File Created: <strong className="font-mono text-white">{formatDateTimeFriendly(serverFileCreatedAt)}</strong>
+                                  · File Updated: <strong className="font-mono text-white">{formatDateTimeFriendly(serverFileModifiedAt)}</strong>
+                                </span>
+                              )}
+                              {serverFileCreatedAt && (
+                                <span className="ml-1 text-emerald-400">
+                                  (Created: <span className="font-mono text-emerald-200">{formatDateTimeFriendly(serverFileCreatedAt)}</span>)
                                 </span>
                               )}
                             </>
@@ -807,6 +841,152 @@ export const StandaloneParentPortal: React.FC<StandaloneParentPortalProps> = ({
           <div className="absolute right-[-15px] bottom-[-25px] opacity-10 text-white pointer-events-none select-none text-[140px] sm:text-[180px] font-bold leading-none">
             ⚽
           </div>
+        </div>
+
+        {/* ================= PROMINENT QUICK SCHEDULE SEARCH BAR FOR COACHES & PARENTS ================= */}
+        <div className="bg-white rounded-2xl border-2 border-emerald-500/30 shadow-md p-4 sm:p-5 space-y-3.5 no-print transition-all hover:border-emerald-500/50">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+            <div className="flex items-center gap-2.5">
+              <div className="w-9 h-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-bold shadow-xs shrink-0">
+                <Search className="w-4 h-4 text-white" />
+              </div>
+              <div>
+                <h2 className="text-sm sm:text-base font-bold text-slate-900 tracking-tight flex items-center gap-2">
+                  <span>Quick Schedule Search</span>
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                    Coaches & Parents
+                  </span>
+                </h2>
+                <p className="text-[11px] text-slate-500">
+                  Quickly locate your team schedule, division games, coach contact, or field pitch
+                </p>
+              </div>
+            </div>
+
+            {/* Quick stats / count & Reset button */}
+            <div className="flex items-center gap-2 text-xs">
+              <span className="px-2.5 py-1 rounded-full font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200 shadow-2xs">
+                {filteredGames.length} of {activeData.games.length} Matches
+              </span>
+              {(searchQuery.trim() !== '' || selectedTeamId !== 'all' || selectedDivisionId !== 'all') && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchQuery('');
+                    setSelectedTeamId('all');
+                    setSelectedDivisionId('all');
+                    setViewFilter('all');
+                  }}
+                  className="px-2.5 py-1 rounded-lg text-rose-600 hover:text-rose-800 font-semibold text-xs hover:bg-rose-50 transition-colors flex items-center gap-1 border border-rose-200"
+                >
+                  <X className="w-3.5 h-3.5" />
+                  <span>Clear Search & Filters</span>
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Interactive Search Input Box with Search Icon and Clear button */}
+          <div className="relative">
+            <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+              <Search className="h-5 w-5 text-emerald-600" />
+            </div>
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search by team name, division (e.g. U10, U12), coach name, or pitch..."
+              className="block w-full pl-11 pr-24 py-3 text-sm sm:text-base bg-slate-50 hover:bg-white focus:bg-white text-slate-900 rounded-xl border border-slate-300 focus:border-emerald-600 focus:ring-3 focus:ring-emerald-500/20 transition-all placeholder:text-slate-400 font-medium shadow-2xs"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                className="absolute inset-y-0 right-2 flex items-center px-2.5 text-xs text-slate-500 hover:text-slate-900 font-semibold"
+                title="Clear search"
+              >
+                <X className="w-4 h-4 mr-1 text-slate-400" />
+                <span className="hidden sm:inline">Clear</span>
+              </button>
+            )}
+          </div>
+
+          {/* Quick Division Filter Buttons */}
+          <div className="pt-0.5 flex flex-wrap items-center gap-1.5 text-xs">
+            <span className="text-[11px] font-semibold text-slate-500 mr-1 flex items-center gap-1">
+              <Filter className="w-3 h-3 text-emerald-600" />
+              <span>Quick Divisions:</span>
+            </span>
+
+            <button
+              type="button"
+              onClick={() => setSelectedDivisionId('all')}
+              className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-colors ${
+                selectedDivisionId === 'all'
+                  ? 'bg-slate-900 text-white shadow-2xs'
+                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+              }`}
+            >
+              All Divisions ({activeData.divisions.length})
+            </button>
+
+            {activeData.divisions.map((d) => {
+              const isSelected = selectedDivisionId === d.id;
+              const divGamesCount = activeData.games.filter((g) => g.divisionId === d.id && g.status !== 'cancelled').length;
+              return (
+                <button
+                  key={d.id}
+                  type="button"
+                  onClick={() => {
+                    if (isSelected) {
+                      setSelectedDivisionId('all');
+                    } else {
+                      setSelectedDivisionId(d.id);
+                      if (selectedTeam && selectedTeam.divisionId !== d.id) {
+                        setSelectedTeamId('all');
+                      }
+                    }
+                  }}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5 ${
+                    isSelected
+                      ? 'bg-emerald-600 text-white shadow-xs ring-2 ring-emerald-600/30'
+                      : 'bg-slate-100 text-slate-700 hover:bg-emerald-50 hover:text-emerald-900'
+                  }`}
+                >
+                  <span>{d.name}</span>
+                  <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
+                    isSelected ? 'bg-emerald-700 text-emerald-100' : 'bg-slate-200 text-slate-600'
+                  }`}>
+                    {divGamesCount}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Active Search & Filter Feedback Banner */}
+          {searchQuery.trim() !== '' && (
+            <div className="p-3 rounded-xl bg-emerald-50/80 border border-emerald-200 text-xs flex flex-wrap items-center justify-between gap-2 animate-in fade-in">
+              <div className="flex items-center gap-1.5">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                <span className="font-semibold text-emerald-950">
+                  Showing {filteredGames.length} {filteredGames.length === 1 ? 'match' : 'matches'} for "{searchQuery}"
+                </span>
+                {filteredGames.length === 0 && (
+                  <span className="text-slate-600 ml-1">
+                    — No games matched. Try searching by team name, division, or coach name.
+                  </span>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                className="text-xs font-semibold text-emerald-800 hover:text-emerald-950 underline cursor-pointer"
+              >
+                Clear Search
+              </button>
+            </div>
+          )}
         </div>
 
         {/* ================= COLLAPSIBLE SECTION 1: LEAGUE ANNOUNCEMENTS & BULLETINS ================= */}

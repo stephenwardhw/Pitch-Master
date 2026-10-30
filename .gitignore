@@ -6,3 +6,9 @@ coverage/
 *.log
 .env*
 !.env.example
+
+# Published league schedule data files
+league_schedule.json
+public/league_schedule.json
+dist/league_schedule.json
+**/league_schedule.json

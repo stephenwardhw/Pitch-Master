@@ -31,6 +31,7 @@ export function sanitizeRefereesForPublicSchedule(referees?: Referee[]): Referee
 export function sanitizeDataForPublicPublish(data: AppData): AppData {
   return {
     ...data,
+    fileCreatedAt: data.fileCreatedAt || data.lastModified || new Date().toISOString(),
     referees: sanitizeRefereesForPublicSchedule(data.referees),
   };
 }
@@ -39,6 +40,7 @@ export function sanitizeDataForPublicPublish(data: AppData): AppData {
  * Fetches the league schedule data from the server-hosted league_schedule.json file.
  * Includes a cache-busting timestamp parameter to ensure fresh responses.
  * Guards against Apache/Nginx SPA fallback returning index.html as a 200 response.
+ * Attaches the file's creation and modification date/time from response headers and payload.
  */
 export async function fetchServerLeagueSchedule(): Promise<AppData> {
   const response = await fetch(`/league_schedule.json?t=${Date.now()}`);
@@ -48,6 +50,8 @@ export async function fetchServerLeagueSchedule(): Promise<AppData> {
   }
 
   const contentType = response.headers.get('content-type') || '';
+  const headerCreatedAt = response.headers.get('x-file-created-at');
+  const headerModifiedAt = response.headers.get('x-file-modified-at') || response.headers.get('last-modified');
   const text = await response.text();
 
   // Guard against SPA fallback: If Apache/server rewrites non-matching paths to index.html,
@@ -75,6 +79,19 @@ export async function fetchServerLeagueSchedule(): Promise<AppData> {
 
   if (!data || !Array.isArray(data.divisions) || !Array.isArray(data.teams) || !Array.isArray(data.games)) {
     throw new Error('Invalid format: Missing divisions, teams, or games in league_schedule.json');
+  }
+
+  // Populate file creation and modification timestamps from response headers or JSON payload
+  if (headerCreatedAt) {
+    data.fileCreatedAt = headerCreatedAt;
+  } else if (!data.fileCreatedAt && data.lastModified) {
+    data.fileCreatedAt = data.lastModified;
+  }
+
+  if (headerModifiedAt) {
+    data.fileModifiedAt = headerModifiedAt;
+  } else if (!data.fileModifiedAt && data.lastModified) {
+    data.fileModifiedAt = data.lastModified;
   }
 
   return data;

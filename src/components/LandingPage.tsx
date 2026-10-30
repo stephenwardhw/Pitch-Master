@@ -54,6 +54,24 @@ export const LandingPage: React.FC<LandingPageProps> = ({
   const [loadError, setLoadError] = useState<string | null>(null);
   const [loadedAt, setLoadedAt] = useState<string | null>(null);
 
+  const formatDateTimeFriendly = (isoStr?: string | null) => {
+    if (!isoStr) return '';
+    try {
+      const dt = new Date(isoStr);
+      if (isNaN(dt.getTime())) return isoStr;
+      return dt.toLocaleString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true,
+      });
+    } catch {
+      return isoStr || '';
+    }
+  };
+
   // UI state
   const [copiedLink, setCopiedLink] = useState<string | null>(null);
   const [isRawJsonModalOpen, setIsRawJsonModalOpen] = useState(false);
@@ -317,7 +335,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                   <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-950/80 border border-emerald-700/70 text-emerald-300 text-[11px] font-medium">
                     <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
                     <span>Source: Local <code className="font-mono text-emerald-200">league_schedule.json</code></span>
-                    {loadedAt && <span className="text-slate-400 font-mono">({loadedAt})</span>}
+                    {(fileData.fileCreatedAt || fileData.lastModified) && (
+                      <span className="text-emerald-300 font-sans text-[10px] border-l border-emerald-700 pl-1.5" title={`File Created: ${fileData.fileCreatedAt || fileData.lastModified}`}>
+                        Created: <strong className="font-mono text-white">{formatDateTimeFriendly(fileData.fileCreatedAt || fileData.lastModified)}</strong>
+                      </span>
+                    )}
+                    {loadedAt && <span className="text-slate-400 font-mono text-[10px]">({loadedAt})</span>}
                   </span>
                 ) : (
                   <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-950/80 border border-amber-700/60 text-amber-300 text-[11px] font-medium">

@@ -214,6 +214,8 @@ export interface AppData {
   refereeCertifications?: RefereeCertificationOption[];
   bulletins?: Bulletin[];
   lastModified: string;
+  fileCreatedAt?: string;
+  fileModifiedAt?: string;
   syncToken?: string;
   lastModifiedBy?: string;
   mysqlBackupSync?: MySqlBackupSyncInfo;

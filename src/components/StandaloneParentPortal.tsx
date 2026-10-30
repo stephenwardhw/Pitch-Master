@@ -66,6 +66,26 @@ export const StandaloneParentPortal: React.FC<StandaloneParentPortalProps> = ({
   const [isLoadingServerData, setIsLoadingServerData] = useState<boolean>(true);
   const [serverDataError, setServerDataError] = useState<string | null>(null);
   const [serverFileLoadedAt, setServerFileLoadedAt] = useState<string | null>(null);
+  const [serverFileCreatedAt, setServerFileCreatedAt] = useState<string | null>(null);
+
+  // Helper to format ISO dates to a clean human-readable format with date and time
+  const formatDateTimeFriendly = useCallback((isoStr?: string | null) => {
+    if (!isoStr) return '';
+    try {
+      const dt = new Date(isoStr);
+      if (isNaN(dt.getTime())) return isoStr;
+      return dt.toLocaleString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true,
+      });
+    } catch {
+      return isoStr || '';
+    }
+  }, []);
 
   // Modals & Popups
   const [isExportCalendarModalOpen, setIsExportCalendarModalOpen] = useState(false);
@@ -105,6 +125,7 @@ export const StandaloneParentPortal: React.FC<StandaloneParentPortalProps> = ({
       setServerFileLoadedAt(
         new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
       );
+      setServerFileCreatedAt(data.fileCreatedAt || data.lastModified || null);
     } catch (err: any) {
       console.warn('Could not fetch server league_schedule.json:', err);
       setServerDataError(err.message || 'Unable to connect to server league_schedule.json');
@@ -384,17 +405,27 @@ export const StandaloneParentPortal: React.FC<StandaloneParentPortalProps> = ({
                   <span>Loading schedule...</span>
                 </span>
               ) : serverData ? (
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200">
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 shadow-2xs">
                   <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
                   <span>Live: <code className="font-mono text-emerald-950 font-semibold">league_schedule.json</code></span>
+                  {serverFileCreatedAt && (
+                    <span className="text-emerald-700 font-medium text-[11px] border-l border-emerald-300 pl-1.5" title={`File Created: ${serverFileCreatedAt}`}>
+                      Created: <strong className="font-mono">{formatDateTimeFriendly(serverFileCreatedAt)}</strong>
+                    </span>
+                  )}
                   {serverFileLoadedAt && (
-                    <span className="text-emerald-700 font-mono text-[11px]">({serverFileLoadedAt})</span>
+                    <span className="text-slate-500 font-mono text-[10px] hidden xl:inline" title="Loaded in browser">
+                      (Loaded {serverFileLoadedAt})
+                    </span>
                   )}
                 </span>
               ) : (
                 <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-full bg-amber-50 text-amber-800 border border-amber-200">
                   <AlertCircle className="w-3 h-3 text-amber-600" />
                   <span>Offline cache</span>
+                  {serverFileCreatedAt && (
+                    <span className="text-amber-700 font-mono text-[10px]">({formatDateTimeFriendly(serverFileCreatedAt)})</span>
+                  )}
                 </span>
               )}
 
@@ -531,8 +562,13 @@ export const StandaloneParentPortal: React.FC<StandaloneParentPortalProps> = ({
                   <span className="font-semibold text-slate-800">
                     {serverData ? 'Live Schedule' : 'Cached Schedule'}
                   </span>
+                  {serverFileCreatedAt && (
+                    <span className="font-medium text-[11px] text-emerald-700">
+                      File Created: <strong className="font-mono">{formatDateTimeFriendly(serverFileCreatedAt)}</strong>
+                    </span>
+                  )}
                   <span className="font-mono text-[10px] text-slate-500">
-                    {serverFileLoadedAt ? `Synced: ${serverFileLoadedAt}` : 'league_schedule.json'}
+                    {serverFileLoadedAt ? `Loaded in browser: ${serverFileLoadedAt}` : 'league_schedule.json'}
                   </span>
                 </div>
               </div>
@@ -656,11 +692,16 @@ export const StandaloneParentPortal: React.FC<StandaloneParentPortalProps> = ({
               </div>
 
               {/* Server live indicator pill */}
-              <div className="flex items-center gap-1.5 text-[11px] text-emerald-200 bg-emerald-950/60 px-2 py-0.5 rounded-full border border-emerald-800">
+              <div className="flex items-center gap-1.5 text-[11px] text-emerald-200 bg-emerald-950/60 px-2.5 py-0.5 rounded-full border border-emerald-800">
                 <span className={`w-2 h-2 rounded-full ${serverData ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'}`} />
                 <span className="font-mono text-[10px]">
                   {serverData ? 'league_schedule.json' : 'Cached Data'}
                 </span>
+                {serverFileCreatedAt && (
+                  <span className="text-emerald-300 font-sans text-[10px] border-l border-emerald-700 pl-1.5">
+                    File Created: <strong className="font-mono text-white">{formatDateTimeFriendly(serverFileCreatedAt)}</strong>
+                  </span>
+                )}
               </div>
             </div>
 
@@ -724,16 +765,34 @@ export const StandaloneParentPortal: React.FC<StandaloneParentPortalProps> = ({
                   </div>
                   <div>
                     <span className="text-emerald-400 font-semibold block text-[11px] uppercase tracking-wider">
-                      Data Connection
+                      Data Connection & File Timestamp
                     </span>
-                    <div className="flex items-center gap-2">
-                      <span className="font-mono text-[11px] truncate">
-                        {serverData ? `Synced from server at ${serverFileLoadedAt || 'load'}` : `Offline fallback (${serverDataError || 'Server not reachable'})`}
-                      </span>
+                    <div className="flex items-center justify-between gap-2 mt-0.5">
+                      <div className="flex flex-col text-[11px] leading-relaxed">
+                        <span className="font-medium text-white">
+                          {serverData ? (
+                            <>
+                              Loaded: <code className="font-mono text-emerald-200">league_schedule.json</code>
+                              {serverFileCreatedAt && (
+                                <span className="ml-1 text-emerald-300">
+                                  · File Created: <strong className="font-mono text-white">{formatDateTimeFriendly(serverFileCreatedAt)}</strong>
+                                </span>
+                              )}
+                            </>
+                          ) : (
+                            `Offline fallback (${serverDataError || 'Server not reachable'})`
+                          )}
+                        </span>
+                        {serverFileLoadedAt && (
+                          <span className="text-[10px] text-emerald-300/80 font-mono">
+                            Browser fetch completed at {serverFileLoadedAt}
+                          </span>
+                        )}
+                      </div>
                       <button
                         onClick={loadServerSchedule}
                         disabled={isLoadingServerData}
-                        className="px-2 py-0.5 rounded bg-emerald-800 hover:bg-emerald-700 text-white text-[11px] font-semibold shrink-0"
+                        className="px-2.5 py-1 rounded bg-emerald-800 hover:bg-emerald-700 text-white text-[11px] font-semibold shrink-0 transition-colors shadow-2xs"
                       >
                         {isLoadingServerData ? 'Syncing...' : 'Reload'}
                       </button>

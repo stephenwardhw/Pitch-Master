@@ -137,17 +137,29 @@ app.get('/league_schedule.json', (_req, res) => {
     .filter((p) => fs.existsSync(p))
     .map((p) => {
       try {
-        return { path: p, mtime: fs.statSync(p).mtimeMs };
+        const stat = fs.statSync(p);
+        const birthMs = stat.birthtimeMs && stat.birthtimeMs > 0 ? stat.birthtimeMs : stat.ctimeMs;
+        return { path: p, mtime: stat.mtimeMs, ctime: birthMs, stat };
       } catch {
-        return { path: p, mtime: 0 };
+        return { path: p, mtime: 0, ctime: 0, stat: null };
       }
     })
     .sort((a, b) => b.mtime - a.mtime);
 
   if (existingFiles.length > 0) {
+    const top = existingFiles[0];
+    const stat = top.stat || fs.statSync(top.path);
+    const birthDate = stat.birthtime && stat.birthtime.getTime() > 0 ? stat.birthtime : (stat.ctime || stat.mtime);
+    const createdIso = birthDate.toISOString();
+    const modifiedIso = stat.mtime.toISOString();
+
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-    return res.sendFile(existingFiles[0].path);
+    res.setHeader('Last-Modified', stat.mtime.toUTCString());
+    res.setHeader('X-File-Created-At', createdIso);
+    res.setHeader('X-File-Modified-At', modifiedIso);
+    res.setHeader('Access-Control-Expose-Headers', 'X-File-Created-At, X-File-Modified-At, Last-Modified');
+    return res.sendFile(top.path);
   }
 
   res.status(404).json({ error: 'league_schedule.json not found on server.' });
@@ -180,6 +192,12 @@ app.post('/api/publish-schedule', (req, res) => {
     if (!data || !data.divisions || !data.teams) {
       return res.status(400).json({ error: 'Invalid dataset payload.' });
     }
+
+    // Preserve original creation time or set new timestamp
+    if (!data.fileCreatedAt) {
+      data.fileCreatedAt = data.createdAt || new Date().toISOString();
+    }
+    data.lastModified = new Date().toISOString();
 
     // Sanitize referee contact information for public league_schedule.json:
     // If hideContactPublicly is true, phone and email are stripped (name only).

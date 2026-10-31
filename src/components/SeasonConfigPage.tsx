@@ -30,6 +30,8 @@ export const SeasonConfigPage: React.FC<SeasonConfigPageProps> = ({
   const [seasonName, setSeasonName] = useState(appData.seasonConfig.seasonName);
   const [startDate, setStartDate] = useState(appData.seasonConfig.startDate);
   const [endDate, setEndDate] = useState(appData.seasonConfig.endDate);
+  const [startTime, setStartTime] = useState(appData.seasonConfig.startTime || '09:00');
+  const [endTime, setEndTime] = useState(appData.seasonConfig.endTime || '17:00');
   const [blackoutDates, setBlackoutDates] = useState<string[]>([
     ...(appData.seasonConfig.blackoutDates || []),
   ]);
@@ -54,6 +56,8 @@ export const SeasonConfigPage: React.FC<SeasonConfigPageProps> = ({
       seasonName: seasonName.trim(),
       startDate,
       endDate,
+      startTime,
+      endTime,
       blackoutDates,
     };
     onSaveSeasonConfig(updated);
@@ -200,6 +204,45 @@ export const SeasonConfigPage: React.FC<SeasonConfigPageProps> = ({
               />
               <p className="text-[11px] text-slate-400 mt-1">
                 Final cutoff date for regular season games (~{getWeeksCount()} weeks)
+              </p>
+            </div>
+          </div>
+
+          {/* Season Kickoff & Concluding Times */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1 border-t border-slate-100">
+            <div>
+              <label className="block text-xs font-medium text-slate-700 mb-1">
+                Season Start Time (Opening Kickoff)
+              </label>
+              <input
+                type="time"
+                disabled={!canEdit}
+                value={startTime}
+                onChange={(e) => setStartTime(e.target.value)}
+                className={`w-full text-sm rounded-lg border border-slate-300 p-2.5 font-mono ${
+                  !canEdit ? 'bg-slate-50 text-slate-600 cursor-not-allowed' : 'bg-white'
+                }`}
+              />
+              <p className="text-[11px] text-slate-400 mt-1">
+                Earliest kickoff time on opening match day (e.g. 09:00 AM)
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-slate-700 mb-1">
+                Season End Time (Final Match Whistle)
+              </label>
+              <input
+                type="time"
+                disabled={!canEdit}
+                value={endTime}
+                onChange={(e) => setEndTime(e.target.value)}
+                className={`w-full text-sm rounded-lg border border-slate-300 p-2.5 font-mono ${
+                  !canEdit ? 'bg-slate-50 text-slate-600 cursor-not-allowed' : 'bg-white'
+                }`}
+              />
+              <p className="text-[11px] text-slate-400 mt-1">
+                Latest concluding match time on championship day (e.g. 05:00 PM)
               </p>
             </div>
           </div>

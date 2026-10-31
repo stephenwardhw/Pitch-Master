@@ -127,6 +127,8 @@ export interface SeasonConfig {
   startDate: string; // YYYY-MM-DD
   endDate: string; // YYYY-MM-DD
   blackoutDates: string[]; // Dates when games are not to be scheduled (holidays/breaks)
+  startTime?: string; // Optional start time in HH:MM (e.g. "09:00")
+  endTime?: string; // Optional end time in HH:MM (e.g. "17:00")
 }
 
 export interface MySqlBackupSyncInfo {

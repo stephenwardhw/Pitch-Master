@@ -589,6 +589,8 @@ export function getInitialAppData(fileName: string = DEFAULT_FILE_NAME): AppData
       seasonName: 'Spring 2026 Metro Youth Soccer Championship',
       startDate: '2026-03-28',
       endDate: '2026-05-30',
+      startTime: '08:30',
+      endTime: '17:30',
       blackoutDates: ['2026-04-05', '2026-05-24'], // Easter Sunday & Memorial Day weekend
     },
     teamSizes: initialTeamSizes,

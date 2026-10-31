@@ -158,6 +158,173 @@ export const StandaloneParentPortal: React.FC<StandaloneParentPortalProps> = ({
     lastModified: new Date().toISOString(),
   };
 
+  // Live clock to keep countdown dynamically updated
+  const [currentClock, setCurrentClock] = useState<Date>(() => new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentClock(new Date());
+    }, 30000);
+    return () => clearInterval(timer);
+  }, []);
+
+  // Format 24h HH:MM to 12h readable time (e.g. "09:00" -> "9:00 AM")
+  const formatTimeFriendly = useCallback((timeStr?: string | null) => {
+    if (!timeStr) return '';
+    try {
+      const [hStr, mStr] = timeStr.split(':');
+      let h = parseInt(hStr, 10);
+      const m = mStr ? mStr.padStart(2, '0') : '00';
+      if (isNaN(h)) return timeStr;
+      const ampm = h >= 12 ? 'PM' : 'AM';
+      h = h % 12;
+      if (h === 0) h = 12;
+      return `${h}:${m} ${ampm}`;
+    } catch {
+      return timeStr || '';
+    }
+  }, []);
+
+  // Derive authoritative season timing: start date/time and end date/time
+  const seasonTiming = useMemo(() => {
+    const cfg = activeData.seasonConfig;
+    const games = (activeData.games || []).filter((g) => g.status !== 'cancelled');
+
+    let startTime = cfg?.startTime;
+    let endTime = cfg?.endTime;
+
+    if (!startTime) {
+      if (games.length > 0) {
+        const sortedByTime = [...games].sort((a, b) => a.time.localeCompare(b.time));
+        startTime = sortedByTime[0]?.time;
+      }
+      if (!startTime && activeData.divisions?.length > 0) {
+        const allSlots = activeData.divisions.flatMap((d) => d.playTimeSlots || []);
+        if (allSlots.length > 0) {
+          allSlots.sort();
+          startTime = allSlots[0];
+        }
+      }
+      if (!startTime) startTime = '09:00';
+    }
+
+    if (!endTime) {
+      if (games.length > 0) {
+        const sortedByTime = [...games].sort((a, b) => b.time.localeCompare(a.time));
+        const latestGame = sortedByTime[0];
+        if (latestGame) {
+          const div = activeData.divisions.find((d) => d.id === latestGame.divisionId);
+          const duration = div?.matchDurationMinutes || 60;
+          const [h, m] = latestGame.time.split(':').map(Number);
+          const endTotalMin = (h || 0) * 60 + (m || 0) + duration;
+          const endH = Math.floor(endTotalMin / 60) % 24;
+          const endM = endTotalMin % 60;
+          endTime = `${endH.toString().padStart(2, '0')}:${endM.toString().padStart(2, '0')}`;
+        }
+      }
+      if (!endTime && activeData.divisions?.length > 0) {
+        const allSlots = activeData.divisions.flatMap((d) => d.playTimeSlots || []);
+        if (allSlots.length > 0) {
+          allSlots.sort();
+          const lastSlot = allSlots[allSlots.length - 1];
+          const [h, m] = lastSlot.split(':').map(Number);
+          const endH = Math.min(23, (h || 16) + 1);
+          endTime = `${endH.toString().padStart(2, '0')}:${(m || 0).toString().padStart(2, '0')}`;
+        }
+      }
+      if (!endTime) endTime = '17:00';
+    }
+
+    return {
+      startDate: cfg?.startDate || '',
+      endDate: cfg?.endDate || '',
+      startTime,
+      endTime,
+    };
+  }, [activeData.seasonConfig, activeData.games, activeData.divisions]);
+
+  // Calculate live countdown timer in months and days until season start (changes to "Season Underway" once started)
+  const seasonCountdown = useMemo(() => {
+    if (!seasonTiming.startDate) {
+      return {
+        isUnderway: false,
+        months: 0,
+        days: 0,
+        hours: 0,
+        text: 'Dates TBA',
+        shortText: 'Dates TBA',
+      };
+    }
+
+    const [y, m, d] = seasonTiming.startDate.split('-').map(Number);
+    const [hour, min] = (seasonTiming.startTime || '09:00').split(':').map(Number);
+    const startDateTime = new Date(y, m - 1, d, hour || 0, min || 0, 0);
+
+    // If current time is on or after the season start, status changes to "Season Underway"
+    if (currentClock >= startDateTime) {
+      return {
+        isUnderway: true,
+        months: 0,
+        days: 0,
+        hours: 0,
+        text: 'Season Underway',
+        shortText: 'Season Underway',
+      };
+    }
+
+    // Calculate calendar months and remaining days until start
+    let months =
+      (startDateTime.getFullYear() - currentClock.getFullYear()) * 12 +
+      (startDateTime.getMonth() - currentClock.getMonth());
+    let anchor = new Date(
+      currentClock.getFullYear(),
+      currentClock.getMonth() + months,
+      currentClock.getDate(),
+      currentClock.getHours(),
+      currentClock.getMinutes()
+    );
+
+    if (anchor > startDateTime) {
+      months--;
+      anchor = new Date(
+        currentClock.getFullYear(),
+        currentClock.getMonth() + months,
+        currentClock.getDate(),
+        currentClock.getHours(),
+        currentClock.getMinutes()
+      );
+    }
+
+    const diffMs = startDateTime.getTime() - anchor.getTime();
+    const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+
+    let text = '';
+    let shortText = '';
+    if (months > 0 && days > 0) {
+      text = `${months} ${months === 1 ? 'Month' : 'Months'}, ${days} ${days === 1 ? 'Day' : 'Days'}`;
+      shortText = `${months}m, ${days}d`;
+    } else if (months > 0) {
+      text = `${months} ${months === 1 ? 'Month' : 'Months'}`;
+      shortText = `${months}m`;
+    } else if (days > 0) {
+      text = `${days} ${days === 1 ? 'Day' : 'Days'}`;
+      shortText = `${days}d`;
+    } else {
+      text = hours > 0 ? `${hours} ${hours === 1 ? 'Hour' : 'Hours'}` : 'Starting Today';
+      shortText = hours > 0 ? `${hours}h` : 'Today';
+    }
+
+    return {
+      isUnderway: false,
+      months: Math.max(0, months),
+      days: Math.max(0, days),
+      hours: Math.max(0, hours),
+      text,
+      shortText,
+    };
+  }, [seasonTiming, currentClock]);
+
   const [selectedTeamId, setSelectedTeamId] = useState<string>('all');
   const [selectedDivisionId, setSelectedDivisionId] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -404,6 +571,20 @@ export const StandaloneParentPortal: React.FC<StandaloneParentPortalProps> = ({
                   <span className="px-1.5 py-0.5 rounded-full text-[9px] sm:text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200 shrink-0">
                     Portal
                   </span>
+                  {seasonCountdown.isUnderway ? (
+                    <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 shrink-0">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                      Season Underway
+                    </span>
+                  ) : (
+                    <span
+                      className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300 shrink-0"
+                      title={`Season starts: ${formatDateFriendly(seasonTiming.startDate)} at ${formatTimeFriendly(seasonTiming.startTime)}`}
+                    >
+                      <Clock className="w-3 h-3 text-amber-600" />
+                      Starts in {seasonCountdown.shortText}
+                    </span>
+                  )}
                 </div>
                 <span className="text-[10px] sm:text-[11px] text-slate-500 font-medium truncate block">
                   {activeData.seasonConfig.seasonName || 'Official Schedule'}
@@ -573,6 +754,42 @@ export const StandaloneParentPortal: React.FC<StandaloneParentPortalProps> = ({
         {/* Mobile Slide-down Action Menu Drawer */}
         {isMobileMenuOpen && (
           <div className="md:hidden border-t border-slate-200 bg-white px-4 py-3 space-y-3 shadow-lg animate-in slide-in-from-top-2 duration-150">
+            {/* Season Timing & Countdown on Mobile Drawer */}
+            <div className="p-3 rounded-xl bg-emerald-950 text-white border border-emerald-800 space-y-2 text-xs shadow-xs">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-300">
+                  Season Schedule & Countdown
+                </span>
+                {seasonCountdown.isUnderway ? (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-500/20 text-emerald-200 border border-emerald-400">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                    Season Underway
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold bg-amber-500/20 text-amber-200 border border-amber-400/80">
+                    <Clock className="w-2.5 h-2.5 text-amber-300" />
+                    Starts in {seasonCountdown.text}
+                  </span>
+                )}
+              </div>
+              <div className="text-[11px] space-y-1 text-emerald-100 bg-emerald-900/40 p-2 rounded-lg border border-emerald-800/60">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-emerald-300">Opening Kickoff:</span>
+                  <span className="font-semibold text-white">
+                    {seasonTiming.startDate ? formatDateFriendly(seasonTiming.startDate) : 'TBA'}
+                    {seasonTiming.startTime ? ` · ${formatTimeFriendly(seasonTiming.startTime)}` : ''}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-emerald-300">Final Whistle:</span>
+                  <span className="font-semibold text-white">
+                    {seasonTiming.endDate ? formatDateFriendly(seasonTiming.endDate) : 'TBA'}
+                    {seasonTiming.endTime ? ` · ${formatTimeFriendly(seasonTiming.endTime)}` : ''}
+                  </span>
+                </div>
+              </div>
+            </div>
+
             {/* Live Server Sync Status on Mobile */}
             <div className="flex items-center justify-between p-2.5 rounded-lg bg-slate-50 border border-slate-200 text-xs">
               <div className="flex items-center gap-2">
@@ -743,6 +960,87 @@ export const StandaloneParentPortal: React.FC<StandaloneParentPortalProps> = ({
               </p>
             </div>
 
+            {/* Dedicated Season Start & End Times + Countdown Timer Card */}
+            <div className="p-3.5 sm:p-4 rounded-xl bg-emerald-950/70 border border-emerald-700/80 backdrop-blur-xs flex flex-col md:flex-row md:items-center justify-between gap-3 text-white shadow-inner">
+              {/* Season Start & End Details */}
+              <div className="flex flex-wrap items-center gap-4 sm:gap-6 text-xs">
+                {/* Season Start with Opening Kickoff */}
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-emerald-800/80 border border-emerald-600/60 flex items-center justify-center shrink-0 text-emerald-300">
+                    <Calendar className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <span className="text-[10px] uppercase font-bold tracking-wider text-emerald-300 block">
+                      Season Start & Kickoff
+                    </span>
+                    <div className="font-semibold text-white flex items-center gap-1.5 flex-wrap">
+                      <span>{seasonTiming.startDate ? formatDateFriendly(seasonTiming.startDate) : 'Dates TBA'}</span>
+                      {seasonTiming.startTime && (
+                        <span className="text-emerald-200 font-mono text-[11px] bg-emerald-900/90 px-1.5 py-0.5 rounded border border-emerald-700">
+                          {formatTimeFriendly(seasonTiming.startTime)}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Vertical Divider */}
+                <div className="hidden sm:block h-8 w-px bg-emerald-700/60" />
+
+                {/* Season End & Final Match */}
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-emerald-800/80 border border-emerald-600/60 flex items-center justify-center shrink-0 text-emerald-300">
+                    <Clock className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <span className="text-[10px] uppercase font-bold tracking-wider text-emerald-300 block">
+                      Season Concludes
+                    </span>
+                    <div className="font-semibold text-white flex items-center gap-1.5 flex-wrap">
+                      <span>{seasonTiming.endDate ? formatDateFriendly(seasonTiming.endDate) : 'Dates TBA'}</span>
+                      {seasonTiming.endTime && (
+                        <span className="text-emerald-200 font-mono text-[11px] bg-emerald-900/90 px-1.5 py-0.5 rounded border border-emerald-700">
+                          {formatTimeFriendly(seasonTiming.endTime)}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Countdown Timer Badge */}
+              <div className="shrink-0 flex items-center">
+                {seasonCountdown.isUnderway ? (
+                  <div className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg bg-emerald-500/20 border border-emerald-400 text-emerald-200 shadow-xs">
+                    <span className="relative flex h-2.5 w-2.5">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-400"></span>
+                    </span>
+                    <div className="flex flex-col">
+                      <span className="text-[9px] uppercase tracking-wider text-emerald-300 font-bold">
+                        Current Status
+                      </span>
+                      <span className="font-extrabold text-xs uppercase tracking-wider text-emerald-100">
+                        Season Underway
+                      </span>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="inline-flex items-center gap-2.5 px-3.5 py-2 rounded-lg bg-amber-500/20 border border-amber-400/80 text-amber-200 shadow-xs">
+                    <Clock className="w-4 h-4 text-amber-300 animate-pulse shrink-0" />
+                    <div className="flex flex-col">
+                      <span className="text-[9px] uppercase tracking-wider text-amber-300 font-bold">
+                        Season Countdown
+                      </span>
+                      <span className="font-extrabold text-xs text-white">
+                        Starts in {seasonCountdown.text}
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
             {/* Quick Action Chips on Hero */}
             <div className="flex flex-wrap items-center gap-2 pt-1">
               <button
@@ -784,13 +1082,37 @@ export const StandaloneParentPortal: React.FC<StandaloneParentPortalProps> = ({
             {isSeasonDetailsOpen && (
               <div className="pt-3 border-t border-emerald-800/80 text-xs space-y-2 text-emerald-100 animate-in fade-in">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 bg-emerald-950/40 p-3 rounded-xl border border-emerald-800">
-                  <div>
+                  <div className="space-y-1">
                     <span className="text-emerald-400 font-semibold block text-[11px] uppercase tracking-wider">
-                      Season Schedule
+                      Season Schedule & Timing
                     </span>
-                    <span className="font-medium text-white">
+                    <span className="font-medium text-white block">
                       {activeData.games.length} total matches across {activeData.teams.filter((t) => !t.isBye).length} teams and {activeData.divisions.length} divisions
                     </span>
+                    <div className="text-[11px] text-emerald-200/90 pt-1 space-y-0.5">
+                      <div>
+                        Opening Kickoff:{' '}
+                        <strong className="text-white">
+                          {seasonTiming.startDate ? formatDateFriendly(seasonTiming.startDate) : 'TBA'}
+                          {seasonTiming.startTime ? ` at ${formatTimeFriendly(seasonTiming.startTime)}` : ''}
+                        </strong>
+                      </div>
+                      <div>
+                        Final Match Whistle:{' '}
+                        <strong className="text-white">
+                          {seasonTiming.endDate ? formatDateFriendly(seasonTiming.endDate) : 'TBA'}
+                          {seasonTiming.endTime ? ` at ${formatTimeFriendly(seasonTiming.endTime)}` : ''}
+                        </strong>
+                      </div>
+                      <div className="pt-0.5 font-semibold text-emerald-300">
+                        Status:{' '}
+                        {seasonCountdown.isUnderway ? (
+                          <span className="text-emerald-200">Season Underway</span>
+                        ) : (
+                          <span className="text-amber-200">Starts in {seasonCountdown.text}</span>
+                        )}
+                      </div>
+                    </div>
                   </div>
                   <div>
                     <span className="text-emerald-400 font-semibold block text-[11px] uppercase tracking-wider">

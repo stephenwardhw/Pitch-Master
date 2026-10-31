@@ -286,8 +286,9 @@ export default function App() {
       }
 
       setCookie(COOKIE_NAME, cleanJsonName);
+      const vNum = mysqlRes.savedRecord?.versionNumber || mysqlRes.updatedAppData?.mysqlBackupSync?.versionNumber || 1;
       setScheduleNotice({
-        message: `Saved successfully to MySQL database (${mysqlRes.isLiveMySql ? 'Live Database' : 'NoSQL Document Store'})! Concurrency token updated.`,
+        message: `Saved successfully to MySQL (${mysqlRes.isLiveMySql ? 'Live Database' : 'NoSQL Document Store'})! Created new backup v${vNum} in schedule_backups and linked to newest version.`,
         type: 'success',
       });
       return { success: true, message: 'Saved to MySQL' };
@@ -1060,13 +1061,35 @@ export default function App() {
             setIsActivityLogModalOpen(false);
             setIsMySqlBackupModalOpen(true);
           }}
-          onLoadBackup={async (backupId) => {
+          onLoadBackup={async (backupId, syncToken) => {
             try {
-              const res = await getMySqlBackup(backupId);
+              let res: any;
+              try {
+                res = await getMySqlBackup(backupId);
+              } catch (e: any) {
+                if (syncToken) {
+                  res = await getMySqlBackup(syncToken);
+                } else {
+                  throw e;
+                }
+              }
               if (res && res.appData) {
-                handleUpdateFullData(res.appData);
+                // Link the active workspace data to this loaded snapshot version
+                const loadedData: AppData = {
+                  ...res.appData,
+                  mysqlBackupSync: {
+                    backupId: res.metadata.id,
+                    backupName: res.metadata.name,
+                    versionNumber: res.metadata.versionNumber,
+                    syncToken: res.metadata.syncToken,
+                    lastModifiedAt: res.metadata.lastModifiedAt,
+                    lastModifiedBy: res.metadata.lastModifiedBy,
+                    lastSyncedAt: new Date().toISOString(),
+                  },
+                };
+                handleUpdateFullData(loadedData);
                 setScheduleNotice({
-                  message: `Successfully restored and loaded snapshot "${res.metadata.name}" (version v${res.metadata.versionNumber}) from MySQL database.`,
+                  message: `Successfully loaded snapshot "${res.metadata.name}" (version v${res.metadata.versionNumber}) from MySQL database. Restored schedule back to this version.`,
                   type: 'success',
                 });
               }

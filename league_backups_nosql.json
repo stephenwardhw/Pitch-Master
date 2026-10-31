@@ -8,5 +8,15 @@
     "last_modified_at": "2026-10-25T17:23:51.736Z",
     "created_at": "2026-10-25T17:23:43.768Z",
     "version_number": 2
+  },
+  "backup_spring_2026_test_schedule_v3_1793404684126": {
+    "id": "backup_spring_2026_test_schedule_v3_1793404684126",
+    "name": "Spring 2026 Test Schedule",
+    "data_json": "{\"version\":\"1.0.0\",\"fileName\":\"Spring 2026 Test Schedule.json\",\"seasonConfig\":{\"seasonName\":\"Spring 2026 Test\",\"startDate\":\"2026-03-01\",\"endDate\":\"2026-05-30\",\"blackoutDates\":[]},\"teamSizes\":[],\"fields\":[],\"divisions\":[{\"id\":\"d1\",\"name\":\"U10\",\"playDays\":[],\"playTimeSlots\":[],\"fieldIds\":[],\"matchDurationMinutes\":50}],\"teams\":[],\"games\":[],\"lastModified\":\"2026-10-30T23:58:04.126Z\",\"syncToken\":\"mysql_sync_1793404684126_ijvdkc\",\"lastModifiedBy\":\"Test Runner\",\"mysqlBackupSync\":{\"backupId\":\"backup_spring_2026_test_schedule_v3_1793404684126\",\"backupName\":\"Spring 2026 Test Schedule\",\"syncToken\":\"mysql_sync_1793404684126_ijvdkc\",\"lastModifiedAt\":\"2026-10-30T23:58:04.126Z\",\"lastModifiedBy\":\"Test Runner\",\"lastSyncedAt\":\"2026-10-30T23:58:04.126Z\",\"versionNumber\":3}}",
+    "sync_token": "mysql_sync_1793404684126_ijvdkc",
+    "last_modified_by": "Test Runner",
+    "last_modified_at": "2026-10-30T23:58:04.126Z",
+    "created_at": "2026-10-30T23:58:04.126Z",
+    "version_number": 3
   }
 }

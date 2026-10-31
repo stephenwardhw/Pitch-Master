@@ -23,7 +23,7 @@ import {
 
 interface ActivityLogModalProps {
   onClose: () => void;
-  onLoadBackup?: (backupId: string) => Promise<void> | void;
+  onLoadBackup?: (backupId: string, syncToken?: string) => Promise<void> | void;
   onOpenMySqlBackupModal?: () => void;
 }
 
@@ -80,11 +80,11 @@ export const ActivityLogModal: React.FC<ActivityLogModalProps> = ({
     }
   };
 
-  const handleConfirmRestore = async (backupId: string) => {
+  const handleConfirmRestore = async (backupId: string, syncToken?: string) => {
     if (!onLoadBackup) return;
     setRestoringId(backupId);
     try {
-      await onLoadBackup(backupId);
+      await onLoadBackup(backupId, syncToken);
       onClose();
     } catch (err: any) {
       setError(`Failed to load backup: ${err.message}`);
@@ -396,7 +396,7 @@ export const ActivityLogModal: React.FC<ActivityLogModalProps> = ({
                               <button
                                 type="button"
                                 disabled={isRestoring}
-                                onClick={() => handleConfirmRestore(act.backupId)}
+                                onClick={() => handleConfirmRestore(act.backupId, act.syncToken)}
                                 className="px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs transition-colors cursor-pointer"
                               >
                                 {isRestoring ? 'Loading...' : 'Confirm Load'}

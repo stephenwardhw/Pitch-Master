@@ -332,7 +332,29 @@ export async function getBackup(id: string): Promise<{
 
   if (!pool) {
     const store = readFallbackStore();
-    const record = store[id] || null;
+    // 1. Direct match on id
+    let record: BackupRecord | null = store[id] || null;
+    // 2. Match by sync_token or activity log ID
+    if (!record) {
+      record = Object.values(store).find((r) => r.sync_token === id || r.id === id) || null;
+    }
+    if (!record) {
+      const actList = readFallbackActivityStore();
+      const matchedAct = actList.find((a) => a.id === id || a.backupId === id || a.syncToken === id);
+      if (matchedAct && store[matchedAct.backupId]) {
+        record = store[matchedAct.backupId];
+      }
+    }
+    // 3. Match by name or base slug
+    if (!record) {
+      const matching = Object.values(store).filter(
+        (r) => r.name === id || r.id.toLowerCase().includes(id.toLowerCase())
+      );
+      if (matching.length > 0) {
+        matching.sort((a, b) => (b.version_number || 1) - (a.version_number || 1));
+        record = matching[0];
+      }
+    }
     let appData: AppData | null = null;
     if (record) {
       try {
@@ -343,14 +365,46 @@ export async function getBackup(id: string): Promise<{
   }
 
   try {
-    const [rows] = await pool.query(
-      `SELECT id, name, data_json, sync_token, last_modified_by, last_modified_at, created_at, version_number FROM \`${tableName}\` WHERE id = ? LIMIT 1`,
-      [id]
+    // 1. Search by exact ID or sync_token
+    let [rows] = await pool.query(
+      `SELECT id, name, data_json, sync_token, last_modified_by, last_modified_at, created_at, version_number FROM \`${tableName}\` WHERE id = ? OR sync_token = ? ORDER BY (id = ?) DESC, last_modified_at DESC LIMIT 1`,
+      [id, id, id]
     );
-    const list = rows as any[];
+    let list = rows as any[];
+
+    // 2. If not found, check schedule_activity_log for activity ID, sync token, or backup ID
+    if (list.length === 0) {
+      try {
+        const [actRows] = await pool.query(
+          `SELECT backup_id, sync_token FROM \`schedule_activity_log\` WHERE id = ? OR sync_token = ? OR backup_id = ? ORDER BY modified_at DESC LIMIT 1`,
+          [id, id, id]
+        );
+        const actList = actRows as any[];
+        if (actList.length > 0) {
+          const actItem = actList[0];
+          const [foundRows] = await pool.query(
+            `SELECT id, name, data_json, sync_token, last_modified_by, last_modified_at, created_at, version_number FROM \`${tableName}\` WHERE id = ? OR sync_token = ? LIMIT 1`,
+            [actItem.backup_id, actItem.sync_token]
+          );
+          list = foundRows as any[];
+        }
+      } catch {}
+    }
+
+    // 3. If still not found, search by name or ID pattern for latest version
+    if (list.length === 0) {
+      const cleanSlug = id.toLowerCase().replace(/[^a-z0-9_-]/g, '_');
+      const [nameRows] = await pool.query(
+        `SELECT id, name, data_json, sync_token, last_modified_by, last_modified_at, created_at, version_number FROM \`${tableName}\` WHERE name = ? OR id LIKE ? ORDER BY version_number DESC, last_modified_at DESC LIMIT 1`,
+        [id, `%${cleanSlug}%`]
+      );
+      list = nameRows as any[];
+    }
+
     if (list.length === 0) {
       return { record: null, appData: null, isLiveMySql: true };
     }
+
     const r = list[0];
     const record: BackupRecord = {
       id: r.id,
@@ -366,7 +420,10 @@ export async function getBackup(id: string): Promise<{
     return { record, appData, isLiveMySql: true };
   } catch (err) {
     const store = readFallbackStore();
-    const record = store[id] || null;
+    let record: BackupRecord | null = store[id] || null;
+    if (!record) {
+      record = Object.values(store).find((r) => r.sync_token === id || r.id === id) || null;
+    }
     let appData: AppData | null = null;
     if (record) {
       try {
@@ -403,42 +460,77 @@ export async function saveBackup(params: {
   const pool = await getPool();
   const tableName = activeConfig.tableName || 'schedule_backups';
 
-  // 1. Fetch existing record to check concurrency
-  const existing = await getBackup(id);
-
-  if (existing.record && !forceOverwrite && checkSyncToken) {
-    if (existing.record.sync_token !== checkSyncToken) {
+  // 1. Optimistic Concurrency Check: If checkSyncToken provided, check against the latest backup in DB
+  if (!forceOverwrite && checkSyncToken) {
+    const latest = await getLatestBackup();
+    if (
+      latest.record &&
+      latest.record.sync_token !== checkSyncToken &&
+      (latest.record.version_number || 1) >= (appData.mysqlBackupSync?.versionNumber || 1)
+    ) {
       // CONFLICT DETECTED!
       return {
         success: false,
         conflict: true,
-        remoteData: existing.appData || undefined,
-        remoteSyncToken: existing.record.sync_token,
-        remoteModifier: existing.record.last_modified_by,
-        remoteModifiedAt: existing.record.last_modified_at,
-        isLiveMySql: existing.isLiveMySql,
-        message: `Concurrency conflict: Backup was modified by "${existing.record.last_modified_by}" at ${existing.record.last_modified_at}.`,
+        remoteData: latest.appData || undefined,
+        remoteSyncToken: latest.record.sync_token,
+        remoteModifier: latest.record.last_modified_by,
+        remoteModifiedAt: latest.record.last_modified_at,
+        isLiveMySql: latest.isLiveMySql,
+        message: `Concurrency conflict: A newer backup (v${latest.record.version_number}) was saved by "${latest.record.last_modified_by}" at ${latest.record.last_modified_at}.`,
       };
     }
   }
 
-  // Generate new unique syncToken
+  // 2. Calculate next version number across existing backups for this schedule
+  const cleanBaseSlug = (name || id || 'schedule')
+    .toLowerCase()
+    .replace(/\.json$/i, '')
+    .replace(/[^a-z0-9_-]/g, '_')
+    .replace(/^_+|_+$/g, '') || 'schedule';
+
+  let currentMaxVersion = appData.mysqlBackupSync?.versionNumber || 0;
+  if (pool) {
+    try {
+      const [vRows] = await pool.query(
+        `SELECT MAX(version_number) as max_v FROM \`${tableName}\` WHERE name = ? OR id LIKE ?`,
+        [name, `%${cleanBaseSlug}%`]
+      );
+      const maxV = (vRows as any[])[0]?.max_v;
+      if (maxV && Number(maxV) > currentMaxVersion) {
+        currentMaxVersion = Number(maxV);
+      }
+    } catch {}
+  } else {
+    const store = readFallbackStore();
+    for (const r of Object.values(store)) {
+      if ((r.name === name || r.id.toLowerCase().includes(cleanBaseSlug)) && (r.version_number || 0) > currentMaxVersion) {
+        currentMaxVersion = r.version_number;
+      }
+    }
+  }
+  const nextVersion = currentMaxVersion + 1;
+
+  // 3. Generate a distinct new backup ID for this snapshot in schedule_backups table
+  const newBackupId = `backup_${cleanBaseSlug}_v${nextVersion}_${Date.now()}`;
+  const backupName = name || 'Schedule Backup';
+
+  // Generate new unique syncToken and timestamps
   const now = new Date();
   const nowIso = now.toISOString();
   const mysqlDateTime = now.toISOString().slice(0, 19).replace('T', ' ');
   const newSyncToken = `mysql_sync_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
-  const nextVersion = (existing.record?.version_number || 0) + 1;
 
-  // Stamp sync token into AppData document
+  // 4. Link the newest version of the data to this new backup in mysqlBackupSync
   const finalAppData: AppData = {
     ...appData,
-    fileName: name.endsWith('.json') ? name : `${name}.json`,
+    fileName: backupName.endsWith('.json') ? backupName : `${backupName}.json`,
     lastModified: nowIso,
     syncToken: newSyncToken,
     lastModifiedBy: modifiedBy,
     mysqlBackupSync: {
-      backupId: id,
-      backupName: name,
+      backupId: newBackupId,
+      backupName,
       syncToken: newSyncToken,
       lastModifiedAt: nowIso,
       lastModifiedBy: modifiedBy,
@@ -452,32 +544,31 @@ export async function saveBackup(params: {
   const divisionsCount = Array.isArray(appData.divisions) ? appData.divisions.length : 0;
   const teamsCount = Array.isArray(appData.teams) ? appData.teams.length : 0;
   const gamesCount = Array.isArray(appData.games) ? appData.games.length : 0;
-  const isInitial = !existing.record;
-  const action = isInitial ? 'Created Schedule Backup' : `Updated Schedule (v${nextVersion})`;
+  const action = nextVersion === 1 ? 'Created Schedule Backup' : `Updated Schedule (v${nextVersion})`;
   const summary = `${divisionsCount} divisions, ${teamsCount} teams, ${gamesCount} games`;
   const activityId = `act_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
 
   if (!pool) {
-    // Save to fallback store
+    // Save new backup to fallback store
     const store = readFallbackStore();
     const record: BackupRecord = {
-      id,
-      name,
+      id: newBackupId,
+      name: backupName,
       data_json: encodedJson,
       sync_token: newSyncToken,
       last_modified_by: modifiedBy,
       last_modified_at: nowIso,
-      created_at: existing.record?.created_at || nowIso,
+      created_at: nowIso,
       version_number: nextVersion,
     };
-    store[id] = record;
+    store[newBackupId] = record;
     writeFallbackStore(store);
 
     // Save to fallback activity store
     const activityItem: ScheduleActivityItem = {
       id: activityId,
-      backupId: id,
-      backupName: name,
+      backupId: newBackupId,
+      backupName,
       versionNumber: nextVersion,
       action,
       modifiedBy,
@@ -498,51 +589,45 @@ export async function saveBackup(params: {
       isLiveMySql: false,
       updatedAppData: finalAppData,
       savedRecord: {
-        id,
-        name,
+        id: newBackupId,
+        name: backupName,
         syncToken: newSyncToken,
         lastModifiedBy: modifiedBy,
         lastModifiedAt: nowIso,
-        createdAt: record.created_at,
+        createdAt: nowIso,
         versionNumber: nextVersion,
         dataSize: Buffer.byteLength(encodedJson, 'utf-8'),
       },
-      message: 'Saved backup using embedded NoSQL store (MySQL server not connected).',
+      message: `Created new backup (v${nextVersion}) in embedded store.`,
     };
   }
 
   try {
     await initializeTable();
 
-    const insertOrUpdateSql = `
+    // Insert new backup record into schedule_backups table
+    const insertSql = `
       INSERT INTO \`${tableName}\` (id, name, data_json, sync_token, last_modified_by, last_modified_at, created_at, version_number)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-      ON DUPLICATE KEY UPDATE
-        name = VALUES(name),
-        data_json = VALUES(data_json),
-        sync_token = VALUES(sync_token),
-        last_modified_by = VALUES(last_modified_by),
-        last_modified_at = VALUES(last_modified_at),
-        version_number = VALUES(version_number);
     `;
 
-    await pool.query(insertOrUpdateSql, [
-      id,
-      name,
+    await pool.query(insertSql, [
+      newBackupId,
+      backupName,
       encodedJson,
       newSyncToken,
       modifiedBy,
       mysqlDateTime,
-      existing.record ? new Date(existing.record.created_at).toISOString().slice(0, 19).replace('T', ' ') : mysqlDateTime,
+      mysqlDateTime,
       nextVersion,
     ]);
 
-    // Record activity in schedule_activity_log table
+    // Record activity in schedule_activity_log table linked to this new backup
     try {
       await pool.query(
         `INSERT INTO \`schedule_activity_log\` (id, backup_id, backup_name, version_number, action, modified_by, modified_at, summary, divisions_count, teams_count, games_count, sync_token)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [activityId, id, name, nextVersion, action, modifiedBy, mysqlDateTime, summary, divisionsCount, teamsCount, gamesCount, newSyncToken]
+        [activityId, newBackupId, backupName, nextVersion, action, modifiedBy, mysqlDateTime, summary, divisionsCount, teamsCount, gamesCount, newSyncToken]
       );
     } catch (actErr) {
       console.warn('Could not record activity in schedule_activity_log:', actErr);
@@ -551,8 +636,8 @@ export async function saveBackup(params: {
     // Mirror to fallback activity store
     const activityItem: ScheduleActivityItem = {
       id: activityId,
-      backupId: id,
-      backupName: name,
+      backupId: newBackupId,
+      backupName,
       versionNumber: nextVersion,
       action,
       modifiedBy,
@@ -573,36 +658,36 @@ export async function saveBackup(params: {
       isLiveMySql: true,
       updatedAppData: finalAppData,
       savedRecord: {
-        id,
-        name,
+        id: newBackupId,
+        name: backupName,
         syncToken: newSyncToken,
         lastModifiedBy: modifiedBy,
         lastModifiedAt: nowIso,
-        createdAt: existing.record?.created_at || nowIso,
+        createdAt: nowIso,
         versionNumber: nextVersion,
         dataSize: Buffer.byteLength(encodedJson, 'utf-8'),
       },
-      message: `Successfully saved backup to MySQL NoSQL table "${tableName}".`,
+      message: `Successfully created new backup (v${nextVersion}) in MySQL table "${tableName}".`,
     };
   } catch (err: any) {
-    // Fallback save if query failed
+    // Fallback save if MySQL query failed
     const store = readFallbackStore();
-    store[id] = {
-      id,
-      name,
+    store[newBackupId] = {
+      id: newBackupId,
+      name: backupName,
       data_json: encodedJson,
       sync_token: newSyncToken,
       last_modified_by: modifiedBy,
       last_modified_at: nowIso,
-      created_at: existing.record?.created_at || nowIso,
+      created_at: nowIso,
       version_number: nextVersion,
     };
     writeFallbackStore(store);
 
     const activityItem: ScheduleActivityItem = {
       id: activityId,
-      backupId: id,
-      backupName: name,
+      backupId: newBackupId,
+      backupName,
       versionNumber: nextVersion,
       action,
       modifiedBy,
@@ -622,7 +707,17 @@ export async function saveBackup(params: {
       success: true,
       isLiveMySql: false,
       updatedAppData: finalAppData,
-      message: `MySQL Error (${err.message}). Saved into embedded fallback storage.`,
+      savedRecord: {
+        id: newBackupId,
+        name: backupName,
+        syncToken: newSyncToken,
+        lastModifiedBy: modifiedBy,
+        lastModifiedAt: nowIso,
+        createdAt: nowIso,
+        versionNumber: nextVersion,
+        dataSize: Buffer.byteLength(encodedJson, 'utf-8'),
+      },
+      message: `MySQL Error (${err.message}). Saved new backup into embedded fallback storage.`,
     };
   }
 }

@@ -1,5 +1,20 @@
 [
   {
+    "id": "act_1793404684126_4rc7h",
+    "backupId": "backup_spring_2026_test_schedule_v3_1793404684126",
+    "backupName": "Spring 2026 Test Schedule",
+    "versionNumber": 3,
+    "action": "Updated Schedule (v3)",
+    "modifiedBy": "Test Runner",
+    "modifiedAt": "2026-10-30T23:58:04.126Z",
+    "summary": "1 divisions, 0 teams, 0 games",
+    "divisionsCount": 1,
+    "teamsCount": 0,
+    "gamesCount": 0,
+    "syncToken": "mysql_sync_1793404684126_ijvdkc",
+    "dataSize": 764
+  },
+  {
     "id": "act_1792949031736_cxc8f",
     "backupId": "test_league_schedule",
     "backupName": "Spring 2026 Test Schedule",

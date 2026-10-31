@@ -541,7 +541,7 @@ export const StandaloneParentPortal: React.FC<StandaloneParentPortalProps> = ({
       {/* ================= STANDALONE PORTAL TOP HEADER ================= */}
       <header className="sticky top-0 z-40 bg-white border-b border-slate-200 shadow-2xs no-print">
         <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between gap-2 h-14 sm:h-16">
+          <div className="flex items-center justify-between gap-3 h-14 sm:h-16">
             {/* Wordmark & Portal Branding */}
             <div className="flex items-center gap-2 sm:gap-3 min-w-0">
               <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-bold shadow-xs shrink-0">
@@ -564,8 +564,8 @@ export const StandaloneParentPortal: React.FC<StandaloneParentPortalProps> = ({
                 </svg>
               </div>
               <div className="min-w-0">
-                <div className="flex items-center gap-1.5 truncate">
-                  <span className="text-sm sm:text-lg font-bold tracking-tight text-slate-900 leading-none truncate">
+                <div className="flex items-center gap-1.5 sm:gap-2">
+                  <span className="text-sm sm:text-lg font-bold tracking-tight text-slate-900 leading-none shrink-0">
                     PitchMaster
                   </span>
                   <span className="px-1.5 py-0.5 rounded-full text-[9px] sm:text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200 shrink-0">
@@ -586,46 +586,42 @@ export const StandaloneParentPortal: React.FC<StandaloneParentPortalProps> = ({
                     </span>
                   )}
                 </div>
-                <span className="text-[10px] sm:text-[11px] text-slate-500 font-medium truncate block">
+                <span
+                  className="text-[10px] sm:text-[11px] text-slate-500 font-medium truncate block max-w-[180px] sm:max-w-xs md:max-w-sm lg:max-w-md mt-0.5"
+                  title={activeData.seasonConfig.seasonName || 'Official Schedule'}
+                >
                   {activeData.seasonConfig.seasonName || 'Official Schedule'}
                 </span>
               </div>
             </div>
 
-            {/* Desktop Server Connection Pill & Live Sync Status */}
-            <div className="hidden lg:flex items-center gap-2">
+            {/* Desktop Server Connection Pill & Live Sync Status (Clean & Compact) */}
+            <div className="hidden xl:flex items-center gap-2 shrink-0">
               {isLoadingServerData ? (
                 <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-full bg-slate-100 text-slate-600 border border-slate-200">
                   <RefreshCw className="w-3 h-3 animate-spin text-emerald-600" />
-                  <span>Loading schedule...</span>
+                  <span>Syncing...</span>
                 </span>
               ) : serverData ? (
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 shadow-2xs">
+                <span
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 shadow-2xs font-medium cursor-default"
+                  title={`Server schedule: league_schedule.json\nFile Updated: ${formatDateTimeFriendly(serverFileModifiedAt)}\nFile Created: ${formatDateTimeFriendly(serverFileCreatedAt)}\nBrowser Synced: ${serverFileLoadedAt}`}
+                >
                   <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                  <span>Live: <code className="font-mono text-emerald-950 font-semibold">league_schedule.json</code></span>
+                  <span className="font-semibold text-emerald-950">Live Sync</span>
                   {serverFileModifiedAt && (
-                    <span className="text-emerald-800 font-medium text-[11px] border-l border-emerald-300 pl-1.5" title={`Disk Modified (mtime): ${serverFileModifiedAt}`}>
-                      File Updated: <strong className="font-mono">{formatDateTimeFriendly(serverFileModifiedAt)}</strong>
-                    </span>
-                  )}
-                  {serverFileCreatedAt && (
-                    <span className="text-emerald-700 font-normal text-[10px] hidden xl:inline border-l border-emerald-300 pl-1.5" title={`File Created: ${serverFileCreatedAt}`}>
-                      Created: <span className="font-mono">{formatDateTimeFriendly(serverFileCreatedAt)}</span>
-                    </span>
-                  )}
-                  {serverFileLoadedAt && (
-                    <span className="text-slate-500 font-mono text-[10px] hidden 2xl:inline" title="Loaded in browser">
-                      (Synced {serverFileLoadedAt})
+                    <span className="text-emerald-700 font-mono text-[10px] hidden 2xl:inline border-l border-emerald-200 pl-1.5">
+                      Updated: {formatDateTimeFriendly(serverFileModifiedAt)}
                     </span>
                   )}
                 </span>
               ) : (
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-full bg-amber-50 text-amber-800 border border-amber-200">
+                <span
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-full bg-amber-50 text-amber-800 border border-amber-200"
+                  title="Running on local cached schedule"
+                >
                   <AlertCircle className="w-3 h-3 text-amber-600" />
                   <span>Offline cache</span>
-                  {serverFileModifiedAt && (
-                    <span className="text-amber-700 font-mono text-[10px]">({formatDateTimeFriendly(serverFileModifiedAt)})</span>
-                  )}
                 </span>
               )}
 
@@ -633,29 +629,18 @@ export const StandaloneParentPortal: React.FC<StandaloneParentPortalProps> = ({
                 onClick={loadServerSchedule}
                 disabled={isLoadingServerData}
                 title="Refresh schedule from league_schedule.json"
-                className="p-1.5 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors disabled:opacity-50"
+                className="p-1.5 rounded-lg text-slate-500 hover:text-emerald-700 hover:bg-emerald-50 transition-colors disabled:opacity-50"
               >
                 <RefreshCw className={`w-3.5 h-3.5 ${isLoadingServerData ? 'animate-spin' : ''}`} />
               </button>
             </div>
 
             {/* Desktop Action Buttons */}
-            <div className="hidden md:flex items-center gap-2 shrink-0">
-              {onGoToHome && (
-                <button
-                  onClick={onGoToHome}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors shadow-2xs"
-                  title="Return to Main Landing Page (/)"
-                >
-                  <Home className="w-3.5 h-3.5 text-slate-500" />
-                  <span>Home</span>
-                </button>
-              )}
-
+            <div className="hidden md:flex items-center gap-1.5 shrink-0">
               <button
                 type="button"
                 onClick={scrollToBulletins}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-emerald-900 bg-emerald-50 border border-emerald-300 rounded-lg hover:bg-emerald-100 transition-colors shadow-2xs cursor-pointer"
+                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 hover:text-slate-900 transition-colors shadow-2xs cursor-pointer"
                 title="Jump to full league bulletins & notices"
               >
                 <Megaphone className="w-3.5 h-3.5 text-emerald-700" />
@@ -669,16 +654,16 @@ export const StandaloneParentPortal: React.FC<StandaloneParentPortalProps> = ({
 
               <button
                 onClick={() => setIsPrintViewOpen(true)}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors shadow-2xs"
+                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors shadow-2xs"
                 title="Print friendly PDF schedule"
               >
                 <Printer className="w-3.5 h-3.5 text-slate-500" />
-                <span>Print (PDF)</span>
+                <span>Print</span>
               </button>
 
               <button
                 onClick={() => setIsExportCalendarModalOpen(true)}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-emerald-800 bg-emerald-50 border border-emerald-300 rounded-lg hover:bg-emerald-100 transition-colors shadow-2xs"
+                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold text-emerald-800 bg-emerald-50 border border-emerald-300 rounded-lg hover:bg-emerald-100 transition-colors shadow-2xs"
                 title="Add games to Google Calendar, Outlook, or Apple Calendar"
               >
                 <CalendarPlus className="w-3.5 h-3.5 text-emerald-600" />
@@ -690,9 +675,23 @@ export const StandaloneParentPortal: React.FC<StandaloneParentPortalProps> = ({
                 className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
                 title="Copy direct standalone link to share with parents"
               >
-                <Share2 className="w-3.5 h-3.5" />
+                <Share2 className="w-3.5 h-3.5 text-slate-500" />
                 <span>{copyLinkNotice ? 'Copied!' : 'Share'}</span>
               </button>
+
+              {/* Visual Divider between tools and admin/home */}
+              <div className="h-5 w-px bg-slate-200 mx-1" />
+
+              {onGoToHome && (
+                <button
+                  onClick={onGoToHome}
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors"
+                  title="Return to Main Landing Page (/)"
+                >
+                  <Home className="w-3.5 h-3.5 text-slate-500" />
+                  <span className="hidden xl:inline">Home</span>
+                </button>
+              )}
 
               <a
                 href="/admin"
@@ -923,10 +922,10 @@ export const StandaloneParentPortal: React.FC<StandaloneParentPortalProps> = ({
           </div>
         </div>
 
-        {/* Hero Welcome Banner (Mobile Optimized & Collapsible Server Details) */}
+        {/* Hero Welcome Banner (Desktop Optimized & Collapsible Server Details) */}
         <div className="bg-emerald-900 text-white rounded-2xl p-4 sm:p-6 shadow-md relative overflow-hidden no-print">
-          <div className="relative z-10 space-y-3 max-w-3xl">
-            <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="relative z-10 space-y-4 w-full">
+            <div className="flex flex-wrap items-center justify-between gap-2.5">
               <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-800/80 border border-emerald-700/60 text-emerald-200 text-xs font-semibold">
                 <Users className="w-3.5 h-3.5" />
                 <span>Coach, Player & Parent Schedule Portal</span>
@@ -951,7 +950,7 @@ export const StandaloneParentPortal: React.FC<StandaloneParentPortalProps> = ({
               </div>
             </div>
 
-            <div>
+            <div className="max-w-3xl">
               <h1 className="text-xl sm:text-2xl lg:text-3xl font-black tracking-tight text-white leading-tight">
                 {activeData.seasonConfig.seasonName || 'Official League Season'}
               </h1>
@@ -961,7 +960,7 @@ export const StandaloneParentPortal: React.FC<StandaloneParentPortalProps> = ({
             </div>
 
             {/* Dedicated Season Start & End Times + Countdown Timer Card */}
-            <div className="p-3.5 sm:p-4 rounded-xl bg-emerald-950/70 border border-emerald-700/80 backdrop-blur-xs flex flex-col md:flex-row md:items-center justify-between gap-3 text-white shadow-inner">
+            <div className="p-4 sm:p-5 rounded-xl bg-emerald-950/70 border border-emerald-700/80 backdrop-blur-xs flex flex-col lg:flex-row lg:items-center justify-between gap-4 text-white shadow-inner">
               {/* Season Start & End Details */}
               <div className="flex flex-wrap items-center gap-4 sm:gap-6 text-xs">
                 {/* Season Start with Opening Kickoff */}
